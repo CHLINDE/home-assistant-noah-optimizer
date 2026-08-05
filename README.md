@@ -15,12 +15,17 @@ Prognosebasierte Steuerung der Ausgangsleistung eines Growatt NOAH 2000
 ## Voraussetzungen
 
 - Home Assistant
-- MQTT-Broker
-- Noah-MQTT
-- Forecast.Solar
-- saldierter Netzleistungssensor
-- Power Flow Card Plus
-- ApexCharts Card
+
+### Home-Assistant-Komponenten
+
+- [HACS](https://www.hacs.xyz/)
+- [Noah-MQTT](https://github.com/mtrossbach/noah-mqtt)
+- [Forecast.Solar](https://www.home-assistant.io/integrations/forecast_solar/)
+
+### Erforderliche HACS-Dashboardkarten
+
+- [Power Flow Card Plus](https://github.com/flixlix/power-flow-card-plus)
+- [ApexCharts Card](https://github.com/RomRider/apexcharts-card)
 
 ## Installation
 
