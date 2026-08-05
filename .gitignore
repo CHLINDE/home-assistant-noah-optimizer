@@ -1,2 +1,32 @@
-# Visual Studio workspace
+# Home Assistant
+secrets.yaml
+.storage/
+*.db
+*.db-shm
+*.db-wal
+home-assistant.log*
+*.tar
+
+# Zugangsdaten und lokale Konfiguration
+.env
+*.secret
+*.credentials
+credentials.yaml
+
+# Visual Studio
 .vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Editoren und Betriebssystem
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store
+
+# Sicherungs- und temporäre Dateien
+*.bak
+*.tmp
+*~
