@@ -12,6 +12,16 @@ Prognosebasierte Steuerung der Ausgangsleistung eines Growatt NOAH 2000
 - Wetterprognose über Forecast.Solar berücksichtigen
 - vollständige Dashboardübersicht bereitstellen
 
+## Dashboard
+
+### Browseransicht
+
+![NOAH Optimizer Dashboard im Browser](screenshots/noah_dashboard_browser.png)
+
+### Mobile Ansicht
+
+![NOAH Optimizer Dashboard auf dem iPhone](screenshots/noah_dashboard_iPhone.jpeg)
+
 ## Voraussetzungen
 
 - Home Assistant
@@ -36,6 +46,12 @@ Prognosebasierte Steuerung der Ausgangsleistung eines Growatt NOAH 2000
 5. Home Assistant neu starten.
 6. Dashboard importieren.
 7. Optimierer zunächst ausgeschaltet testen.
+
+Eine ausführliche Anleitung befindet sich unter:
+
+- [Installation](docs/installation.md)
+- [Konfiguration](docs/configuration.md)
+- [Fehlerbehebung](docs/troubleshooting.md)
 
 ## Wichtiger Hinweis
 
