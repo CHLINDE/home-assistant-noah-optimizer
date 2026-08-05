@@ -20,7 +20,49 @@ Für das mitgelieferte Dashboard werden zusätzlich benötigt:
 
 Die beiden benutzerdefinierten Karten können über HACS installiert werden.
 
-## 2. Benötigte Entitäten ermitteln
+## 2. Erforderliche Home-Assistant-Komponenten
+
+Vor der Installation des Optimierers müssen die folgenden Komponenten eingerichtet sein:
+
+| Komponente | Zweck | Installation / Dokumentation |
+|---|---|---|
+| [MQTT](https://www.home-assistant.io/integrations/mqtt/) | Überträgt Messwerte und Stellgrößen zwischen Noah-MQTT und Home Assistant. | Als Home-Assistant-Integration einrichten. Bei Home Assistant OS kann beispielsweise der Mosquitto Broker als Add-on verwendet werden. |
+| [Mosquitto Broker](https://github.com/home-assistant/addons/tree/master/mosquitto) | Optionaler MQTT-Broker für Home Assistant OS. | Über **Einstellungen → Add-ons → Add-on-Store** installieren. Ein externer MQTT-Broker kann ebenfalls verwendet werden. |
+| [Noah-MQTT](https://github.com/mtrossbach/noah-mqtt) | Liest die Growatt-NOAH-Daten aus und stellt Sensoren sowie die Stellgröße `System Output Power` über MQTT Discovery bereit. | Noah-MQTT entsprechend der Projektanleitung installieren und mit dem MQTT-Broker verbinden. |
+| [Forecast.Solar](https://www.home-assistant.io/integrations/forecast_solar/) | Liefert die PV-Ertragsprognose und die verbleibende Energieproduktion des aktuellen Tages. | Über **Einstellungen → Geräte & Dienste → Integration hinzufügen** einrichten. |
+| [Sun](https://www.home-assistant.io/integrations/sun/) | Liefert Sonnenstand, Sonnenhöhe und Sonnenuntergang für Tages- und Nachtbetrieb. | Ist in Home Assistant normalerweise standardmäßig vorhanden. |
+| [HACS](https://www.hacs.xyz/) | Wird für die Installation der benutzerdefinierten Dashboardkarten benötigt. | Nach der offiziellen HACS-Anleitung installieren und anschließend als Integration hinzufügen. |
+| [Power Flow Card Plus](https://github.com/flixlix/power-flow-card-plus) | Stellt den aktuellen Energiefluss zwischen PV, Netz, Haus und Akku dar. | In HACS unter **Frontend** beziehungsweise **Dashboard** suchen und installieren. |
+| [ApexCharts Card](https://github.com/RomRider/apexcharts-card) | Stellt Leistungs-, SOC- und Prognoseverläufe im Dashboard dar. | In HACS unter **Frontend** beziehungsweise **Dashboard** suchen und installieren. |
+
+### Mindestanforderungen für die Regelung
+
+Für die eigentliche Regelung werden benötigt:
+
+```text
+MQTT-Broker
+MQTT-Integration
+Noah-MQTT
+Forecast.Solar
+Sun-Integration
+saldierter Netzleistungssensor
+```
+
+HACS, Power Flow Card Plus und ApexCharts Card sind nur für das mitgelieferte Dashboard erforderlich. Der Optimierer selbst funktioniert auch ohne diese drei Komponenten.
+
+### Komponenten vor der Installation prüfen
+
+Unter **Einstellungen → Geräte & Dienste** sollten mindestens folgende Integrationen ohne Fehler angezeigt werden:
+
+```text
+MQTT
+Forecast.Solar
+Sun
+```
+
+Unter **Einstellungen → Geräte & Dienste → MQTT → Geräte** sollte außerdem das NOAH-Gerät mit seinen Sensoren und der verstellbaren Entität **System Output Power** vorhanden sein.
+
+## 3. Benötigte Entitäten ermitteln
 
 Vor der Installation müssen folgende Entitäten in Home Assistant vorhanden sein:
 
@@ -48,7 +90,7 @@ negativ = Netzeinspeisung
 
 Ist die Richtung umgekehrt, kann sie später über den Helfer **NOAH Netzvorzeichen umkehren** korrigiert werden.
 
-## 3. Package-Unterstützung aktivieren
+## 4. Package-Unterstützung aktivieren
 
 Öffne `/config/configuration.yaml`.
 
@@ -72,7 +114,7 @@ Lege anschließend den Ordner an:
 /config/packages
 ```
 
-## 4. Optimierer-Datei kopieren
+## 5. Optimierer-Datei kopieren
 
 Kopiere die veröffentlichte Datei:
 
@@ -86,7 +128,7 @@ nach:
 /config/packages/noah_optimizer.yaml
 ```
 
-## 5. Entity-Platzhalter ersetzen
+## 6. Entity-Platzhalter ersetzen
 
 Öffne `/config/packages/noah_optimizer.yaml` und ersetze alle Platzhalter:
 
@@ -115,7 +157,7 @@ sensor.DEINE_GERAETE_ID_soc
 
 Achte darauf, jede Entity-ID an allen Stellen vollständig zu ersetzen.
 
-## 6. YAML-Konfiguration prüfen
+## 7. YAML-Konfiguration prüfen
 
 Öffne:
 
@@ -125,7 +167,7 @@ Behebe alle gemeldeten Fehler, bevor Home Assistant neu gestartet wird.
 
 Warnungen des Editors zu den neu erzeugten `sensor.noah_opt_...`-Entitäten können vor dem ersten Neustart auftreten, weil diese Entitäten zu diesem Zeitpunkt noch nicht existieren.
 
-## 7. Home Assistant neu starten
+## 8. Home Assistant neu starten
 
 Starte Home Assistant vollständig neu.
 
@@ -152,7 +194,7 @@ sensor.noah_opt_datenstatus = OK
 binary_sensor.noah_opt_kritische_daten_ok = on
 ```
 
-## 8. Grundeinstellungen setzen
+## 9. Grundeinstellungen setzen
 
 Nach dem ersten Neustart müssen die Helfer kontrolliert und sinnvoll eingestellt werden.
 
@@ -183,7 +225,7 @@ Beispiel für zwei Module:
 2 × 2,048 kWh = 4,096 kWh
 ```
 
-## 9. Messwerte prüfen
+## 10. Messwerte prüfen
 
 ### Netzrichtung
 
@@ -213,7 +255,7 @@ Beispiel:
 
 Kleine Abweichungen durch unterschiedliche Aktualisierungszeitpunkte sind normal.
 
-## 10. Schreibzugriff testen
+## 11. Schreibzugriff testen
 
 Der Optimierer bleibt zunächst ausgeschaltet.
 
@@ -241,7 +283,7 @@ number.dein_noah_system_output_power = 300
 
 Die gemessene NOAH-Ausgangsleistung kann verzögert folgen. Bei vollem Akku und vorhandener Solarleistung kann der tatsächliche Ausgang vorübergehend über dem Sollwert liegen.
 
-## 11. Automations-Test
+## 12. Automations-Test
 
 Stelle ein:
 
@@ -266,7 +308,7 @@ Teste danach beispielsweise 500 W.
 
 Wenn beide Werte übernommen werden, schalte den Optimierer wieder aus und stelle die Betriebsart auf **Automatik**.
 
-## 12. Dashboard installieren
+## 13. Dashboard installieren
 
 Installiere über HACS:
 
@@ -275,7 +317,7 @@ Installiere über HACS:
 
 Lade den Browser danach vollständig neu.
 
-## 13. Dashboard importieren
+## 14. Dashboard importieren
 
 Öffne die Datei:
 
@@ -304,7 +346,7 @@ Dann:
 
 Falls `Custom element doesn't exist` erscheint, fehlen die HACS-Karten oder der Browser-Cache wurde noch nicht aktualisiert.
 
-## 14. Automatik aktivieren
+## 15. Automatik aktivieren
 
 Vor der Freigabe müssen folgende Werte plausibel sein:
 
