@@ -1,0 +1,368 @@
+# Growatt NOAH Dashboard
+# Vor dem Import die Stellgrößen-Entität ersetzen:
+# number.dein_noah_system_output_power
+#
+# Voraussetzungen:
+# - Power Flow Card Plus
+# - ApexCharts Card
+#
+title: Growatt NOAH
+views:
+  - title: Optimierung
+    path: noah-optimierung
+    icon: mdi:home-battery
+    type: masonry
+    cards:
+      - type: custom:power-flow-card-plus
+        title: Aktueller Energiefluss
+        clickable_entities: true
+        use_new_flow_rate_model: true
+        min_expected_power: 10
+        max_expected_power: 1600
+        display_zero_lines:
+          mode: transparency
+          transparency: 75
+        entities:
+          grid:
+            name: Netz
+            entity:
+              consumption: sensor.noah_opt_netzbezug
+              production: sensor.noah_opt_netzeinspeisung
+            color_icon: color_dynamically
+          solar:
+            name: PV
+            entity: sensor.noah_opt_pv_leistung
+          battery:
+            name: NOAH
+            entity:
+              consumption: sensor.noah_opt_entladeleistung
+              production: sensor.noah_opt_ladeleistung
+            state_of_charge: sensor.noah_opt_soc
+            color_icon: color_dynamically
+          home:
+            name: Haus
+            entity: sensor.noah_opt_hauslast
+            override_state: true
+      - type: markdown
+        title: Reglerstatus
+        content: >
+          ## {{ states('sensor.noah_opt_reglermodus') }}
+
+          **Datenstatus:** {{ states('sensor.noah_opt_datenstatus') }}
+
+
+          **Sollwert:** {{ states('sensor.noah_opt_ausgangssollwert') }} W  
+
+          **Einspeisung in Hausnetz:** {{
+          states('sensor.noah_opt_ausgangsleistung') }} W  
+
+          **Ladeleistung Speicher:** {{states('sensor.noah_opt_ladeleistung') }}
+          W
+
+          **Netzbezug:** {{ states('sensor.noah_opt_netzleistung') }} W  
+
+          **Ladezustand Batterie:** {{ states('sensor.noah_opt_soc') }} %
+
+
+          **Restprognose wirksam:** {{
+          states('sensor.noah_opt_wirksame_restprognose') }} kWh  
+
+          **Noch benötigte Ladeenergie:** {{
+          states('sensor.noah_opt_ladebedarf') }} kWh  
+
+          **Prognosemarge:** {{ states('sensor.noah_opt_prognosemarge') }} kWh
+      - type: grid
+        title: Kennzahlen
+        columns: 2
+        square: false
+        cards:
+          - type: gauge
+            name: Akkustand
+            entity: sensor.noah_opt_soc
+            min: 0
+            max: 100
+            needle: true
+            severity:
+              red: 0
+              yellow: 20
+              green: 60
+          - type: gauge
+            name: Prognosedeckung
+            entity: sensor.noah_opt_prognosedeckung
+            min: 0
+            max: 200
+            needle: true
+            severity:
+              red: 0
+              yellow: 80
+              green: 110
+          - type: gauge
+            name: Ausgangssollwert
+            entity: sensor.noah_opt_ausgangssollwert
+            min: 0
+            max: 800
+            needle: true
+          - type: gauge
+            name: Netzbezug
+            entity: sensor.noah_opt_netzbezug
+            min: 0
+            max: 1000
+            needle: true
+            severity:
+              green: 0
+              yellow: 100
+              red: 400
+      - type: entities
+        title: Bedienung
+        show_header_toggle: false
+        entities:
+          - entity: input_boolean.noah_optimizer_enabled
+          - entity: input_select.noah_optimizer_mode
+          - entity: input_number.noah_target_soc
+          - entity: input_number.noah_min_soc
+          - entity: input_number.noah_manual_output_w
+          - entity: input_boolean.noah_grid_sign_inverted
+          - type: divider
+          - entity: number.dein_noah_system_output_power
+            name: NOAH System Output Power (direkt)
+      - type: custom:apexcharts-card
+        graph_span: 24h
+        span:
+          start: day
+        update_interval: 1min
+        header:
+          show: true
+          title: Leistung heute
+          show_states: true
+          colorize_states: true
+        now:
+          show: true
+        yaxis:
+          - id: power
+            decimals: 0
+            apex_config:
+              title:
+                text: W
+          - id: soc
+            opposite: true
+            min: 0
+            max: 100
+            decimals: 0
+            apex_config:
+              title:
+                text: "%"
+        series:
+          - entity: sensor.noah_opt_pv_leistung
+            name: PV
+            yaxis_id: power
+            type: area
+            opacity: 0.25
+            stroke_width: 2
+            group_by:
+              duration: 5min
+              func: avg
+          - entity: sensor.noah_opt_ausgangsleistung
+            name: Ausgang
+            yaxis_id: power
+            type: line
+            stroke_width: 2
+            group_by:
+              duration: 5min
+              func: avg
+          - entity: sensor.noah_opt_netzbezug
+            name: Netzbezug
+            yaxis_id: power
+            type: column
+            group_by:
+              duration: 5min
+              func: avg
+          - entity: sensor.noah_opt_netzeinspeisung
+            name: Einspeisung
+            yaxis_id: power
+            type: column
+            transform: return -x;
+            group_by:
+              duration: 5min
+              func: avg
+          - entity: sensor.noah_opt_ladeleistung
+            name: Akkuladung
+            yaxis_id: power
+            type: area
+            opacity: 0.15
+            transform: return -x;
+            group_by:
+              duration: 5min
+              func: avg
+          - entity: sensor.noah_opt_entladeleistung
+            name: Akkuentladung
+            yaxis_id: power
+            type: area
+            opacity: 0.15
+            group_by:
+              duration: 5min
+              func: avg
+          - entity: sensor.noah_opt_soc
+            name: SOC
+            yaxis_id: soc
+            type: line
+            stroke_width: 2
+            group_by:
+              duration: 5min
+              func: avg
+      - type: custom:apexcharts-card
+        graph_span: 24h
+        span:
+          start: day
+        update_interval: 1min
+        header:
+          show: true
+          title: Reglerverhalten
+          show_states: true
+          colorize_states: true
+        now:
+          show: true
+        yaxis:
+          - id: power
+            min: 0
+            max: 800
+            decimals: 0
+            apex_config:
+              title:
+                text: W
+        series:
+          - entity: sensor.noah_opt_ausgangssollwert
+            name: Regler-Soll
+            yaxis_id: power
+            type: line
+            stroke_width: 3
+            group_by:
+              duration: 5min
+              func: last
+          - entity: sensor.noah_opt_ausgangsleistung
+            name: Ist-Ausgang
+            yaxis_id: power
+            type: line
+            stroke_width: 2
+            group_by:
+              duration: 5min
+              func: avg
+          - entity: sensor.noah_opt_eigenverbrauch_soll
+            name: Eigenverbrauch-Soll
+            yaxis_id: power
+            type: line
+            stroke_width: 1
+            group_by:
+              duration: 5min
+              func: avg
+          - entity: sensor.noah_opt_ladeprioritat_soll
+            name: Ladepriorität-Soll
+            yaxis_id: power
+            type: line
+            stroke_width: 1
+            group_by:
+              duration: 5min
+              func: avg
+          - entity: sensor.noah_opt_erforderliche_mittlere_ladeleistung
+            name: nötige Ladeleistung
+            yaxis_id: power
+            type: line
+            stroke_width: 1
+            group_by:
+              duration: 5min
+              func: avg
+      - type: custom:apexcharts-card
+        graph_span: 24h
+        span:
+          start: day
+        update_interval: 5min
+        header:
+          show: true
+          title: Energieplanung bis Sonnenuntergang
+          show_states: true
+          colorize_states: true
+        now:
+          show: true
+        yaxis:
+          - id: energy
+            decimals: 2
+            apex_config:
+              title:
+                text: kWh
+        series:
+          - entity: sensor.noah_opt_wirksame_restprognose
+            name: wirksame PV-Prognose
+            yaxis_id: energy
+            type: line
+            stroke_width: 3
+            group_by:
+              duration: 15min
+              func: last
+          - entity: sensor.noah_opt_ladebedarf
+            name: Ladebedarf
+            yaxis_id: energy
+            type: line
+            stroke_width: 2
+            group_by:
+              duration: 15min
+              func: last
+          - entity: sensor.noah_opt_erwarteter_hausenergiebedarf
+            name: erwartete Hausenergie
+            yaxis_id: energy
+            type: line
+            stroke_width: 2
+            group_by:
+              duration: 15min
+              func: last
+          - entity: sensor.noah_opt_prognosemarge
+            name: Prognosemarge
+            yaxis_id: energy
+            type: area
+            opacity: 0.2
+            stroke_width: 2
+            group_by:
+              duration: 15min
+              func: last
+      - type: entities
+        title: Planung im Detail
+        show_header_toggle: false
+        entities:
+          - entity: sensor.noah_opt_restprognose_heute
+          - entity: sensor.noah_opt_wirksame_restprognose
+          - entity: sensor.noah_opt_ladebedarf
+          - entity: sensor.noah_opt_erwarteter_hausenergiebedarf
+          - entity: sensor.noah_opt_prognosemarge
+          - entity: sensor.noah_opt_prognosedeckung
+          - entity: sensor.noah_opt_stunden_bis_sonnenuntergang
+          - entity: sensor.noah_opt_erforderliche_mittlere_ladeleistung
+          - entity: sensor.noah_opt_minuten_bis_ziel_soc
+          - entity: sensor.noah_opt_verfugbare_akkuenergie
+      - type: entities
+        title: Kalibrierung
+        show_header_toggle: false
+        entities:
+          - entity: input_number.noah_battery_capacity_kwh
+          - entity: input_number.noah_charge_efficiency
+          - entity: input_number.noah_forecast_factor
+          - entity: input_number.noah_forecast_safety_kwh
+          - entity: input_number.noah_release_margin_kwh
+          - entity: input_number.noah_expected_day_load_w
+          - entity: input_number.noah_grid_reserve_w
+          - entity: input_number.noah_max_output_w
+          - entity: input_number.noah_night_max_output_w
+          - entity: input_number.noah_command_step_w
+          - entity: input_number.noah_command_deadband_w
+      - type: entities
+        title: Diagnose
+        show_header_toggle: false
+        entities:
+          - entity: sensor.noah_opt_datenstatus
+          - entity: binary_sensor.noah_opt_kritische_daten_ok
+          - entity: binary_sensor.noah_opt_prognose_verfugbar
+          - entity: sensor.noah_opt_netzleistung
+          - entity: sensor.noah_opt_netzleistung_5_min
+          - entity: sensor.noah_opt_hauslast
+          - entity: sensor.noah_opt_batterieleistung
+          - entity: input_number.noah_last_target_w
+          - entity: input_datetime.noah_last_command
+          - entity: automation.noah_optimierer_ausgangsleistung_regeln
+          - entity: automation.noah_optimierer_datenausfall
