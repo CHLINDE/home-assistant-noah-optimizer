@@ -182,6 +182,12 @@ class NoahOptimizerCoordinator(
             }
         )
 
+    async def async_update_from_states(self) -> None:
+        """Immediately update coordinator data from Home Assistant states."""
+
+        data = await self._async_update_data()
+        self.async_set_updated_data(data)
+
     async def _async_update_data(
         self,
     ) -> dict[str, Any]:

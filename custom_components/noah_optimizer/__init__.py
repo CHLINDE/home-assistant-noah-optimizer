@@ -55,7 +55,7 @@ async def async_setup_entry(
         event: Event[EventStateChangedData],
     ) -> None:
         """Refresh when a configured source entity changes."""
-        await coordinator.async_request_refresh()
+        await coordinator.async_update_from_states()
 
     entry.async_on_unload(
         async_track_state_change_event(
