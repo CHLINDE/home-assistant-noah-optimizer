@@ -57,3 +57,33 @@ Eine ausführliche Anleitung befindet sich unter:
 
 Die Steuerung verwendet die inoffizielle Noah-MQTT-Anbindung und ist keine
 offizielle Growatt-Lösung. Nutzung auf eigene Verantwortung.
+
+## HACS Integration – Beta
+
+A new HACS-compatible Custom Integration is currently under development.
+
+### Version 2.0.0-beta.1
+
+The first beta is observation-only.
+
+It:
+
+- reads existing Home Assistant entities
+- normalizes W/kW and Wh/kWh
+- calculates grid import and grid export
+- calculates home load and battery power
+- checks Forecast.Solar availability
+- checks NOAH System Output Power availability
+- does not send any commands to the NOAH
+
+The beta can therefore run in parallel with the existing YAML optimizer.
+
+> The YAML optimizer remains the active controller during the beta test.
+
+## Important safety note
+
+Version 2.0.0-beta.1 does not write to the NOAH output power entity.
+
+Future beta versions may add active control. Once active control is
+introduced, the YAML optimizer and the HACS optimizer must never control
+the same NOAH simultaneously.

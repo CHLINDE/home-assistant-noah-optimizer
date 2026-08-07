@@ -1,0 +1,94 @@
+{
+  "title": "Growatt NOAH Optimizer",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Set up Growatt NOAH Optimizer",
+        "description": "Select the existing entities provided by Noah-MQTT, Forecast.Solar and your grid meter. This beta is observation-only and does not send control commands.",
+        "data": {
+          "grid_power": "Signed grid power",
+          "solar_power": "NOAH Solar Power",
+          "output_power": "NOAH Output Power",
+          "battery_soc": "NOAH SOC",
+          "charging_power": "NOAH Charging Power",
+          "discharge_power": "NOAH Discharge Power",
+          "forecast_remaining": "Forecast.Solar remaining energy today",
+          "system_output_power": "NOAH System Output Power",
+          "invert_grid_sign": "Invert grid power sign"
+        },
+        "data_description": {
+          "grid_power": "Positive values must indicate grid import and negative values grid export.",
+          "solar_power": "Current NOAH solar power.",
+          "output_power": "Current NOAH output power supplied to the home.",
+          "battery_soc": "Current NOAH battery state of charge.",
+          "charging_power": "Current battery charging power.",
+          "discharge_power": "Current battery discharging power.",
+          "forecast_remaining": "Expected remaining PV energy for today.",
+          "system_output_power": "Writable NOAH output setpoint. This beta only checks its availability and never writes to it.",
+          "invert_grid_sign": "Enable if your grid sensor uses positive values for grid export."
+        }
+      }
+    },
+    "error": {
+      "entity_not_found": "The selected entity could not be found."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "grid_power": {
+        "name": "Grid power"
+      },
+      "grid_import": {
+        "name": "Grid import"
+      },
+      "grid_export": {
+        "name": "Grid export"
+      },
+      "solar_power": {
+        "name": "Solar power"
+      },
+      "output_power": {
+        "name": "Output power"
+      },
+      "soc": {
+        "name": "State of charge"
+      },
+      "charging_power": {
+        "name": "Charging power"
+      },
+      "discharge_power": {
+        "name": "Discharging power"
+      },
+      "battery_power": {
+        "name": "Battery power"
+      },
+      "home_load": {
+        "name": "Home load"
+      },
+      "forecast_remaining": {
+        "name": "Remaining forecast today"
+      },
+      "data_status": {
+        "name": "Data status",
+        "state": {
+          "ok": "OK",
+          "critical_data_missing": "Critical data missing",
+          "battery_data_missing": "Battery data missing",
+          "forecast_unavailable": "Forecast unavailable",
+          "actuator_unavailable": "Actuator unavailable"
+        }
+      }
+    },
+    "binary_sensor": {
+      "critical_data_ok": {
+        "name": "Critical data"
+      },
+      "forecast_available": {
+        "name": "Forecast"
+      },
+      "actuator_available": {
+        "name": "Output control"
+      }
+    }
+  }
+}

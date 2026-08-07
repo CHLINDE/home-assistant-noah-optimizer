@@ -1,0 +1,94 @@
+{
+  "title": "Growatt NOAH Optimizer",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Growatt NOAH Optimizer einrichten",
+        "description": "Wähle die vorhandenen Entitäten von Noah-MQTT, Forecast.Solar und deinem Stromzähler aus. Diese Beta arbeitet ausschließlich im Beobachtungsbetrieb und sendet keine Stellbefehle.",
+        "data": {
+          "grid_power": "Saldierte Netzleistung",
+          "solar_power": "NOAH Solar Power",
+          "output_power": "NOAH Output Power",
+          "battery_soc": "NOAH SOC",
+          "charging_power": "NOAH Charging Power",
+          "discharge_power": "NOAH Discharge Power",
+          "forecast_remaining": "Forecast.Solar Restprognose heute",
+          "system_output_power": "NOAH System Output Power",
+          "invert_grid_sign": "Netzvorzeichen umkehren"
+        },
+        "data_description": {
+          "grid_power": "Positiv muss Netzbezug und negativ Netzeinspeisung bedeuten.",
+          "solar_power": "Aktuelle PV-Leistung des NOAH.",
+          "output_power": "Aktuelle Ausgangsleistung des NOAH zum Hausnetz.",
+          "battery_soc": "Aktueller Ladezustand des NOAH.",
+          "charging_power": "Aktuelle Ladeleistung des Speichers.",
+          "discharge_power": "Aktuelle Entladeleistung des Speichers.",
+          "forecast_remaining": "Noch erwartete PV-Energie für den aktuellen Tag.",
+          "system_output_power": "Beschreibbare NOAH-Stellgröße. In dieser Beta wird sie nur auf Verfügbarkeit geprüft.",
+          "invert_grid_sign": "Aktivieren, wenn dein Netzsensor positive Werte für Einspeisung liefert."
+        }
+      }
+    },
+    "error": {
+      "entity_not_found": "Die ausgewählte Entität wurde nicht gefunden."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "grid_power": {
+        "name": "Netzleistung"
+      },
+      "grid_import": {
+        "name": "Netzbezug"
+      },
+      "grid_export": {
+        "name": "Netzeinspeisung"
+      },
+      "solar_power": {
+        "name": "PV-Leistung"
+      },
+      "output_power": {
+        "name": "Ausgangsleistung"
+      },
+      "soc": {
+        "name": "Ladezustand"
+      },
+      "charging_power": {
+        "name": "Ladeleistung"
+      },
+      "discharge_power": {
+        "name": "Entladeleistung"
+      },
+      "battery_power": {
+        "name": "Batterieleistung"
+      },
+      "home_load": {
+        "name": "Hauslast"
+      },
+      "forecast_remaining": {
+        "name": "Restprognose heute"
+      },
+      "data_status": {
+        "name": "Datenstatus",
+        "state": {
+          "ok": "OK",
+          "critical_data_missing": "Kritische Daten fehlen",
+          "battery_data_missing": "Batteriedaten fehlen",
+          "forecast_unavailable": "Prognose nicht verfügbar",
+          "actuator_unavailable": "Stellgröße nicht verfügbar"
+        }
+      }
+    },
+    "binary_sensor": {
+      "critical_data_ok": {
+        "name": "Kritische Daten"
+      },
+      "forecast_available": {
+        "name": "Prognose"
+      },
+      "actuator_available": {
+        "name": "Stellgröße"
+      }
+    }
+  }
+}

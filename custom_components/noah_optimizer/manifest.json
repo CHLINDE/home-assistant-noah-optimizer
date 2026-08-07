@@ -1,0 +1,15 @@
+{
+  "domain": "noah_optimizer",
+  "name": "Growatt NOAH Optimizer",
+  "codeowners": [
+    "@CHLINDE"
+  ],
+  "config_flow": true,
+  "documentation": "https://github.com/CHLINDE/home-assistant-noah-optimizer/blob/main/docs/installation.md",
+  "integration_type": "helper",
+  "iot_class": "calculated",
+  "issue_tracker": "https://github.com/CHLINDE/home-assistant-noah-optimizer/issues",
+  "requirements": [],
+  "single_config_entry": true,
+  "version": "2.0.0-beta.1"
+}
