@@ -31,7 +31,10 @@ from .control import (
     NoahOptimizerController,
 )
 from .coordinator import NoahOptimizerCoordinator
-from .dashboard import async_ensure_dashboard
+from .dashboard import (
+    async_ensure_dashboard,
+    remove_dashboard_panel,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -59,7 +62,6 @@ async def async_setup_entry(
         coordinator,
     )
 
-    # Keep the existing runtime_data interface for all entities.
     coordinator.controller = controller
     entry.runtime_data = coordinator
 
@@ -90,9 +92,6 @@ async def async_setup_entry(
         )
     )
 
-    # Check active control once per minute.
-    # Actual normal output commands are rate-limited to
-    # at least two minutes in control.py.
     entry.async_on_unload(
         async_track_time_interval(
             hass,
@@ -106,11 +105,11 @@ async def async_setup_entry(
         PLATFORMS,
     )
 
-    # Resume active control if it had explicitly been enabled.
+    # Resume active control only when the user had explicitly enabled it.
     await controller.async_control_tick()
 
-    # Dashboard support is optional and must never prevent
-    # the optimizer itself from loading.
+    # The dashboard is optional and must never prevent the optimizer itself
+    # from loading.
     try:
         await async_ensure_dashboard(
             hass,
@@ -131,7 +130,16 @@ async def async_unload_entry(
 ) -> bool:
     """Unload the Growatt NOAH Optimizer."""
 
-    return await hass.config_entries.async_unload_platforms(
-        entry,
-        PLATFORMS,
+    unload_ok = (
+        await hass.config_entries.async_unload_platforms(
+            entry,
+            PLATFORMS,
+        )
     )
+
+    if unload_ok:
+        remove_dashboard_panel(
+            hass
+        )
+
+    return unload_ok

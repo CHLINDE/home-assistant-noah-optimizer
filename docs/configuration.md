@@ -1,14 +1,45 @@
 # Konfiguration
 
-Dieses Dokument beschreibt die Parameter, Betriebsarten und Berechnungen des NOAH Optimizers.
+Dieses Dokument beschreibt die Parameter, Betriebsarten und Statuswerte der
+HACS-Integration **Growatt NOAH Optimizer**.
 
-## 1. Betriebsarten
+Die tatsächlichen Entity-IDs können je nach Bereichszuordnung oder manueller
+Umbenennung unterschiedlich sein. Deshalb werden hier vor allem die
+angezeigten Entitätsnamen verwendet.
 
-Der Helfer `input_select.noah_optimizer_mode` bietet vier Betriebsarten.
+## 1. Schalter
+
+### Optimierer-Berechnung aktiv
+
+Aktiviert die Berechnung der Optimizer-Sollwerte.
+
+Ist dieser Schalter aus, wird der Reglermodus auf den ausgeschalteten Zustand
+gesetzt und die aktive Steuerung darf keine normalen Stellbefehle senden.
+
+### NOAH-Steuerung aktiv
+
+Gibt das aktive Schreiben auf die konfigurierte NOAH-System-Output-Power-
+Entität frei.
+
+Dieser Schalter ist standardmäßig aus.
+
+Die beiden Schalter sind absichtlich getrennt. Dadurch kann die komplette
+Berechnung geprüft werden, ohne den NOAH zu steuern.
+
+## 2. Betriebsarten
+
+Der Select **Betriebsart** bietet:
+
+```text
+Automatik
+Eigenverbrauch
+Ladepriorität
+Manuell
+```
 
 ### Automatik
 
-Die Ausgangsleistung wird anhand von:
+Der Optimizer wählt seinen internen Reglermodus abhängig von:
 
 - SOC
 - Mindest-SOC
@@ -16,44 +47,47 @@ Die Ausgangsleistung wird anhand von:
 - PV-Restprognose
 - erwarteter Hauslast
 - Netzbezug beziehungsweise Einspeisung
-- Tageszeit und Sonnenstand
+- verbleibender Zeit bis Sonnenuntergang
 
-automatisch berechnet.
+Mögliche Reglermodi sind:
 
-Mögliche interne Reglermodi sind:
-
-- `Aus`
-- `Mindest-SOC`
-- `Nachtbetrieb`
-- `Ziel-SOC erreicht`
-- `Konservativ ohne Prognose`
-- `Ladepriorität`
-- `Eigenverbrauch`
-- `Gleitende Reserve`
+```text
+Aus
+Manuell
+Eigenverbrauch
+Ladepriorität
+Mindest-SOC
+Nachtbetrieb
+Ziel-SOC erreicht
+Konservativ ohne Prognose
+Gleitende Reserve
+```
 
 ### Eigenverbrauch
 
-Der Regler versucht, die NOAH-Ausgangsleistung an die aktuelle Hauslast anzupassen und einen kleinen Rest-Netzbezug einzuhalten.
+Die Ausgangsleistung wird so berechnet, dass der Netzbezug möglichst klein
+bleibt und der eingestellte Rest-Netzbezug berücksichtigt wird.
 
 ### Ladepriorität
 
-Der Regler reserviert einen Teil der PV-Leistung für die Akkuladung. Nur der darüber liegende Anteil darf als Ausgangsleistung verwendet werden.
+Ein Teil der verfügbaren PV-Leistung wird für das Erreichen des Ziel-SOC
+reserviert. Die Ausgangsleistung wird entsprechend begrenzt.
 
 ### Manuell
 
-Die Ausgangsleistung wird aus `input_number.noah_manual_output_w` übernommen.
+Der Parameter **Manuelle Ausgangsleistung** wird als Sollwert verwendet.
 
-Diese Betriebsart ist für die Inbetriebnahme und Fehlerdiagnose vorgesehen.
-
-## 2. Konfigurationsparameter
+## 3. Parameter
 
 ### Nutzbare Akkukapazität
 
+Standard:
+
 ```text
-input_number.noah_battery_capacity_kwh
+2,048 kWh
 ```
 
-Gesamte nutzbare Kapazität aller verbundenen NOAH-Module.
+Gesamte nutzbare Kapazität aller angeschlossenen NOAH-Module.
 
 Beispiele:
 
@@ -65,449 +99,295 @@ Beispiele:
 
 ### Ziel-SOC bei Sonnenuntergang
 
-```text
-input_number.noah_target_soc
-```
-
-SOC, den die Ladeplanung bis zum Abend anstrebt.
-
-Empfehlung:
+Standard:
 
 ```text
 95 %
 ```
 
-95 % lassen eine kleine Aufnahmereserve. Für maximale Nachtenergie kann 100 % gewählt werden.
+SOC, den die Ladeplanung bis Sonnenuntergang anstrebt.
 
 ### Mindest-SOC
 
-```text
-input_number.noah_min_soc
-```
-
-Unterhalb oder bei Erreichen dieses Werts setzt die Automatik den Sollwert auf 0 W.
-
-Der Wert sollte zur Entladeuntergrenze der Growatt-Konfiguration passen.
-
-Empfehlung:
+Standard:
 
 ```text
 10 %
 ```
 
+Unterhalb beziehungsweise beim Erreichen dieses Werts wird in der Automatik
+keine normale Entladung mehr angefordert.
+
 ### Angenommener Ladewirkungsgrad
 
-```text
-input_number.noah_charge_efficiency
-```
-
-Wirkungsgrad für die Berechnung der bis zum Ziel-SOC benötigten Ladeenergie.
-
-Empfehlung:
+Standard:
 
 ```text
 0,90
 ```
 
+Wirkungsgrad für die Berechnung der bis zum Ziel-SOC benötigten Ladeenergie.
+
 ### Prognose-Sicherheitsfaktor
 
-```text
-input_number.noah_forecast_factor
-```
-
-Reduziert oder erhöht die Forecast.Solar-Restprognose für die interne Planung.
-
-Berechnung:
+Standard:
 
 ```text
-wirksame Restprognose =
-Restprognose × Prognose-Sicherheitsfaktor
+0,80
 ```
 
-Interpretation:
+Multipliziert die noch erwartete PV-Energie.
 
-| Wert | Verhalten |
-|---:|---|
-| 0,60–0,75 | konservativ, mehr Ladepriorität |
-| 0,80 | empfohlener Startwert |
-| 0,90–1,00 | optimistischer, mehr Eigenverbrauch |
-| über 1,00 | nur bei systematisch zu niedriger Prognose |
+Beispiel:
+
+```text
+Restprognose: 5,0 kWh
+Faktor:        0,80
+wirksam:       4,0 kWh
+```
+
+Ein höherer Wert vertraut stärker auf die Forecast.Solar-Prognose.
 
 ### Zusätzliche Energiereserve
 
-```text
-input_number.noah_forecast_safety_kwh
-```
-
-Zusätzliche Energiemenge, die bei der Planung als Reserve abgezogen wird.
-
-Empfehlung:
+Standard:
 
 ```text
 0,25 kWh
 ```
 
-Ein höherer Wert priorisiert die Akkuladung stärker.
+Zusätzliche Sicherheitsreserve in der Energieplanung.
 
 ### Freigabemarge
 
-```text
-input_number.noah_release_margin_kwh
-```
-
-Grenze, ab der vollständig auf Eigenverbrauchsregelung umgeschaltet wird.
-
-- Prognosemarge kleiner oder gleich 0: Ladepriorität
-- Prognosemarge größer oder gleich Freigabemarge: Eigenverbrauch
-- dazwischen: gleitende Mischung
-
-Empfehlung:
+Standard:
 
 ```text
 0,50 kWh
 ```
 
+Positive Prognosemarge, ab der die Automatik vollständig in Richtung
+Eigenverbrauch freigeben kann.
+
 ### Erwartete mittlere Hauslast
 
-```text
-input_number.noah_expected_day_load_w
-```
-
-Durchschnittlich erwartete Hauslast bis Sonnenuntergang.
-
-Berechnung:
-
-```text
-erwarteter Hausenergiebedarf =
-Stunden bis Sonnenuntergang × erwartete Hauslast
-```
-
-Empfehlung zum Start:
+Standard:
 
 ```text
 250 W
 ```
 
-Dieser Wert sollte anhand des realen Grundverbrauchs angepasst werden.
+Wird verwendet, um aus der verbleibenden Zeit bis Sonnenuntergang einen
+erwarteten Energiebedarf des Hauses abzuschätzen.
 
 ### Gewünschter Rest-Netzbezug
 
-```text
-input_number.noah_grid_reserve_w
-```
-
-Bewusster kleiner Netzbezug zur Vermeidung von Einspeisung bei schwankender Hauslast.
-
-Empfehlung:
+Standard:
 
 ```text
 50 W
 ```
 
-Höhere Werte reduzieren Einspeisung, erhöhen aber den Netzbezug.
+Kleine positive Netzreserve, die unnötiges Pendeln zwischen Bezug und
+Einspeisung reduzieren soll.
 
 ### Maximale Ausgangsleistung
 
-```text
-input_number.noah_max_output_w
-```
-
-Obere Begrenzung des berechneten Sollwerts.
-
-Typischer Wert:
+Standard:
 
 ```text
 800 W
 ```
 
-Der Wert muss zur zulässigen Ausgangsleistung des Systems passen.
+Obergrenze für den berechneten Ausgangssollwert.
 
 ### Maximale Ausgangsleistung nachts
 
+Standard:
+
 ```text
-input_number.noah_night_max_output_w
+400 W
 ```
 
-Begrenzt die Entladeleistung im Nachtbetrieb.
-
-Beispiele:
-
-| Wert | Wirkung |
-|---:|---|
-| 300–400 W | Akku hält länger, höherer Netzbezug |
-| 500–600 W | mittlerer Kompromiss |
-| 800 W | geringerer Netzbezug, Akku schneller leer |
+Separate Obergrenze für den Nachtbetrieb.
 
 ### Manuelle Ausgangsleistung
 
+Standard:
+
 ```text
-input_number.noah_manual_output_w
+200 W
 ```
 
-Wird ausschließlich in der Betriebsart `Manuell` verwendet.
+Sollwert in der Betriebsart **Manuell**.
 
 ### Stellgrößenraster
 
-```text
-input_number.noah_command_step_w
-```
-
-Rundet den Sollwert auf feste Leistungsstufen.
-
-Beispiele:
-
-```text
-50 W = robuste, grobe Regelung
-20 W = feinere Regelung
-```
-
-Ein kleineres Raster kann die Einspeisung reduzieren, führt aber zu häufigeren Sollwertänderungen.
-
-### Schalt-Hysterese
-
-```text
-input_number.noah_command_deadband_w
-```
-
-Ein neuer Stellbefehl wird nur gesendet, wenn die Abweichung mindestens diesem Wert entspricht.
-
-Empfehlung:
+Standard:
 
 ```text
 50 W
 ```
 
-Bei feinerem Raster kann beispielsweise 30–40 W verwendet werden.
+Der endgültige Sollwert wird auf dieses Raster gerundet.
 
-## 3. Berechnete Messwerte
+### Schalt-Hysterese
 
-### Netzbezug und Einspeisung
-
-Aus der saldierten Netzleistung werden getrennte Sensoren erzeugt:
+Standard:
 
 ```text
-sensor.noah_opt_netzbezug
-sensor.noah_opt_netzeinspeisung
+50 W
 ```
 
-Dabei gilt:
+Erst eine ausreichend große Differenz zwischen Soll- und Referenzwert löst
+einen normalen neuen Stellbefehl aus.
+
+## 4. Wichtige berechnete Sensoren
+
+### Netzleistung
+
+Vorzeichenkonvention:
 
 ```text
-Netzleistung > 0  → Netzbezug
-Netzleistung < 0  → Einspeisung
+positiv = Netzbezug
+negativ = Einspeisung
 ```
+
+### Netzbezug / Netzeinspeisung
+
+Aus der saldierten Netzleistung abgeleitete, getrennte positive Sensoren.
 
 ### Hauslast
 
-```text
-Hauslast =
-Netzleistung + NOAH-Ausgangsleistung
-```
-
-Sensor:
-
-```text
-sensor.noah_opt_hauslast
-```
+Aus Netzleistung und NOAH-Ausgangsleistung berechnete aktuelle Hauslast.
 
 ### Batterieleistung
 
-```text
-Batterieleistung =
-Entladeleistung − Ladeleistung
-```
+Kombinierter Batteriefluss. Für das Dashboard werden zusätzlich die getrennten
+Sensoren **Ladeleistung** und **Entladeleistung** verwendet.
 
-Positiv bedeutet netto Entladung, negativ bedeutet netto Ladung.
+### Netzleistung 5 min
 
-### Verfügbare Akkuenergie
-
-```text
-Kapazität × (SOC − Mindest-SOC) / 100
-```
+Zeitgewichteter gleitender Mittelwert der Netzleistung.
 
 ### Ladebedarf
 
-```text
-Kapazität × (Ziel-SOC − SOC) / 100 / Ladewirkungsgrad
-```
+Noch erforderliche Energie zum Ziel-SOC unter Berücksichtigung des
+Ladewirkungsgrads.
 
-Negative Ergebnisse werden auf 0 begrenzt.
+### Wirksame Restprognose
+
+Restprognose multipliziert mit dem Prognose-Sicherheitsfaktor.
+
+### Erwarteter Hausenergiebedarf
+
+Abschätzung aus verbleibender Zeit bis Sonnenuntergang und erwarteter mittlerer
+Hauslast.
 
 ### Prognosemarge
 
-```text
-wirksame Restprognose
-− Ladebedarf
-− erwarteter Hausenergiebedarf
-− zusätzliche Reserve
-```
-
-Interpretation:
-
-| Prognosemarge | Bedeutung |
-|---:|---|
-| kleiner 0 kWh | Prognose reicht laut Modell nicht für alle Ziele |
-| um 0 kWh | knappe Deckung |
-| größer 0 kWh | rechnerischer Überschuss |
-| über Freigabemarge | vollständige Eigenverbrauchsfreigabe |
+Verbleibende Energiemarge nach Ladebedarf, erwarteter Hausenergie und Reserve.
 
 ### Prognosedeckung
 
-```text
-wirksame Restprognose
-÷ (Ladebedarf + Hausenergiebedarf + Reserve)
-× 100 %
-```
-
-Die Prognosedeckung ist keine Wahrscheinlichkeit. Sie zeigt, welcher Anteil des geplanten verbleibenden Energiebedarfs durch die wirksame PV-Restprognose gedeckt werden kann.
+Prozentuale Deckung des erwarteten Restbedarfs durch die wirksame Prognose.
 
 ### Erforderliche mittlere Ladeleistung
 
-```text
-Ladebedarf × 1000 / Stunden bis Sonnenuntergang
-```
+Mittlere Ladeleistung, die bis Sonnenuntergang noch benötigt wird, um den
+Ziel-SOC zu erreichen.
 
-Dieser Wert wird bei der Ladeprioritätsberechnung von der verfügbaren PV-Leistung reserviert.
+### Ausgangssollwert
 
-## 4. Eigenverbrauchsregelung
+Endgültiger berechneter NOAH-Sollwert nach Betriebsart, Grenzwerten,
+Hysterese-Vorbereitung und Stellgrößenraster.
 
-Der Eigenverbrauchs-Sollwert basiert auf:
+## 5. Controllerdiagnose
 
-```text
-aktuelle NOAH-Ausgangsleistung
-+ gemittelte Netzleistung
-− gewünschter Rest-Netzbezug
-```
-
-Der Wert wird auf 0 W bis zur maximalen Ausgangsleistung begrenzt.
-
-Der Netzleistungssensor wird über fünf Minuten geglättet. Dadurch reagiert der Regler nicht auf jede kurze Lastspitze, kann aber bei schnellen Lastwechseln kurzfristige Einspeisung oder Netzbezug nicht vollständig verhindern.
-
-## 5. Ladeprioritätsregelung
-
-Vereinfacht:
+Der Schalter **NOAH-Steuerung aktiv** stellt Attribute bereit:
 
 ```text
-Ladeprioritäts-Soll =
-PV-Leistung − erforderliche mittlere Ladeleistung
+control_status
+last_command_target
+last_command_at
 ```
 
-Der Wert wird zusätzlich durch das Eigenverbrauchs-Soll begrenzt.
+Typische `control_status`-Werte:
 
-Dadurch wird ein Teil der aktuellen Solarleistung für die Akkuladung reserviert.
+| Status | Bedeutung |
+|---|---|
+| `disabled` | Aktive Steuerung aus |
+| `optimizer_disabled` | Berechnung aus |
+| `legacy_controller_active` | Legacy-YAML-Regler blockiert HACS |
+| `critical_data_missing` | Kritische Messwerte fehlen |
+| `actuator_unavailable` | Stellgröße nicht erreichbar |
+| `target_unavailable` | Kein gültiger Sollwert |
+| `rate_limited` | Mindestabstand noch nicht erreicht |
+| `waiting_for_retry` | Wartet auf Wiederholungsversuch |
+| `in_sync` | Stellgröße liegt innerhalb der Hysterese |
+| `command_sent` | Stellbefehl gesendet |
+| `command_failed` | Stellbefehl fehlgeschlagen |
+| `failsafe` | Failsafe aktiv |
 
-## 6. Nachtbetrieb
+## 6. Failsafe
 
-Der Nachtbetrieb wird aktiviert, wenn:
+Fehlen kritische Messwerte zehn Minuten ununterbrochen, während die aktive
+Steuerung eingeschaltet ist:
+
+1. Home Assistant erzeugt eine persistente Benachrichtigung.
+2. Ist die Stellgröße erreichbar, versucht die Integration `0 W` zu setzen.
+3. Ist sie nicht erreichbar, bleibt die Warnung trotzdem bestehen.
+4. Nach Wiederkehr der Daten werden Failsafe-Zustand und Benachrichtigung
+   zurückgesetzt.
+
+## 7. Legacy-Sperre
+
+Existiert:
 
 ```text
-sun.sun = below_horizon
+input_boolean.noah_optimizer_enabled
 ```
 
-oder wenn gleichzeitig gilt:
+und steht auf `on`, blockiert die HACS-Steuerung normale Ausgangsbefehle.
+
+Legacy-YAML-Optimizer und HACS-Controller dürfen nicht gleichzeitig aktiv
+denselben NOAH steuern.
+
+## 8. Dashboard-Konfiguration
+
+Beta 6 erzeugt beim ersten Start ein eigenes Dashboard.
+
+Die Standardvorlage wird nur verwendet, wenn noch keine gespeicherte
+NOAH-Dashboard-Konfiguration existiert.
+
+Benutzeränderungen werden deshalb bei Neustarts oder Integration-Reloads
+nicht überschrieben.
+
+Die Standardvorlage wird bei der ersten Erzeugung nach der
+Home-Assistant-Sprache gewählt:
 
 ```text
-Sonnenhöhe < 3°
-PV-Leistung < 20 W
+Deutsch -> dashboard_de.yaml
+sonst   -> dashboard_en.yaml
 ```
 
-Dadurch beginnt die Akkuentladung bereits in der Abenddämmerung und nicht erst exakt nach dem astronomischen Sonnenuntergang.
-
-Im Nachtbetrieb gilt:
+Für Power Flow Card Plus werden Netz und Batterie mit getrennten Richtungen
+dargestellt:
 
 ```text
-Sollwert =
-Minimum aus Eigenverbrauchs-Soll und Nachtmaximum
+Grid:
+consumption = Netzbezug
+production  = Netzeinspeisung
+
+Battery:
+consumption = Ladeleistung
+production  = Entladeleistung
 ```
 
-## 7. Verhalten bei Ziel- und Mindest-SOC
+## 9. Legacy-YAML
 
-### Mindest-SOC erreicht
+Die ältere Package-Variante verwendet weiterhin `input_*`-Helfer und
+`sensor.noah_opt_*`-Entitäten.
 
-```text
-SOC <= Mindest-SOC
-```
-
-Ergebnis:
-
-```text
-Ausgangssollwert = 0 W
-Reglermodus = Mindest-SOC
-```
-
-### Ziel-SOC erreicht
-
-```text
-SOC >= Ziel-SOC
-```
-
-Der Regler wechselt zur Eigenverbrauchsregelung. Der Akku kann durch vorhandenen Überschuss trotzdem weiter bis 100 % geladen werden.
-
-## 8. Fehlende Prognose
-
-Wenn Forecast.Solar nicht verfügbar ist, schaltet die Automatik auf:
-
-```text
-Konservativ ohne Prognose
-```
-
-und verwendet die Ladeprioritätsberechnung.
-
-## 9. Ausfallsicherung
-
-Fehlen kritische Messwerte mindestens zehn Minuten, versucht die Automatisierung:
-
-```text
-System Output Power = 0 W
-```
-
-Zusätzlich wird eine dauerhafte Home-Assistant-Benachrichtigung erzeugt.
-
-Kritische Messwerte sind:
-
-- Netzleistung
-- PV-Leistung
-- NOAH-Ausgangsleistung
-- SOC
-
-Die Ausfallsicherung kann nur wirken, wenn die Stellgrößen-Entität selbst noch erreichbar ist.
-
-## 10. Empfohlene Abstimmung
-
-### Akku wird zu früh voll
-
-- Prognosefaktor erhöhen
-- Reserve verringern
-- Freigabemarge verringern
-- erwartete Hauslast verringern
-- Ziel-SOC auf 95 % setzen
-
-### Akku wird abends nicht voll genug
-
-- Ziel-SOC auf 100 % setzen
-- Prognosefaktor verringern
-- Reserve erhöhen
-- Freigabemarge erhöhen
-- erwartete Hauslast erhöhen
-
-### Zu viel Einspeisung
-
-- Rest-Netzbezug erhöhen
-- Stellgrößenraster verkleinern
-- Schalt-Hysterese moderat verringern
-- Lastwechsel und Verzögerungen in den Diagrammen prüfen
-
-### Zu viel Netzbezug
-
-- Rest-Netzbezug verringern
-- maximale Ausgangsleistung prüfen
-- Nachtmaximum erhöhen
-- Prognosefaktor nur erhöhen, wenn die Prognose systematisch zu vorsichtig ist
-
-## 11. Remanenz der Helfer
-
-Die meisten einstellbaren Helfer besitzen in der veröffentlichten Datei keinen festen `initial:`-Wert. Home Assistant kann dadurch den zuletzt gespeicherten Zustand wiederherstellen.
-
-`input_number.noah_last_target_w` besitzt bewusst einen Startwert von 0 W, da es sich um einen internen Statuswert handelt.
-
-Nach Änderungen am Package sollten die konfigurierten Werte nach einem Neustart kontrolliert werden.
+Für neue Installationen wird die HACS-Integration empfohlen. Details zur
+Legacy-Installation stehen in `installation.md`.
