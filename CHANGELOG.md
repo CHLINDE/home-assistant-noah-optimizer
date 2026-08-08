@@ -1,3 +1,19 @@
+## [2.0.0-beta.2]
+
+### Fixed
+
+- Changed the Home Assistant integration type from `helper` to `device`.
+- The NOAH Optimizer is now handled as a regular device integration.
+- Improved visibility of the integration under Settings → Devices & services.
+
+### Changed
+
+- Integration version updated to `2.0.0-beta.2`.
+
+### Safety
+
+This release remains observation-only and does not send commands to the NOAH.
+
 ## [2.0.0-beta.1]
 
 ### Added
