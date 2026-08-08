@@ -41,6 +41,7 @@ RETRY_INTERVAL = timedelta(minutes=20)
 # for this amount of time.
 FAILSAFE_DELAY = timedelta(minutes=10)
 
+
 # Entity used by the legacy YAML optimizer.
 # If it exists and is ON, active control is blocked.
 LEGACY_OPTIMIZER_ENABLE_ENTITY = (
@@ -178,12 +179,25 @@ class NoahOptimizerController:
             CONF_SYSTEM_OUTPUT_POWER
         ]
 
+        # Internally the optimizer always works in watts.
         target = float(round(target))
 
         state = self.hass.states.get(entity_id)
 
         if state is None:
-            self._set_status("actuator_unavailable")
+            self._set_status(
+                "actuator_unavailable"
+            )
+            return False
+
+        if state.state in {
+            STATE_UNKNOWN,
+            STATE_UNAVAILABLE,
+            "",
+        }:
+            self._set_status(
+                "actuator_unavailable"
+            )
             return False
 
         unit = state.attributes.get(
@@ -192,14 +206,22 @@ class NoahOptimizerController:
 
         if unit == "kW":
             service_value = target / 1000
-        elif unit in {"W", None, ""}:
+        elif unit in {
+            "W",
+            None,
+            "",
+        }:
             service_value = target
         else:
             _LOGGER.error(
                 "Unsupported NOAH output power unit: %s",
                 unit,
             )
-            self._set_status("actuator_unavailable")
+
+            self._set_status(
+                "actuator_unavailable"
+            )
+
             return False
 
         try:
@@ -462,8 +484,8 @@ class NoahOptimizerController:
                     now - self._last_command_at
                 )
 
-            # Rate limiting:
-            # never send normal commands faster than every two minutes.
+            # Normal commands must never be sent faster
+            # than once every two minutes.
             if (
                 elapsed is not None
                 and elapsed < MIN_COMMAND_INTERVAL
