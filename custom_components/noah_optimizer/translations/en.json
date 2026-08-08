@@ -4,7 +4,7 @@
     "step": {
       "user": {
         "title": "Set up Growatt NOAH Optimizer",
-        "description": "Select the existing entities provided by Noah-MQTT, Forecast.Solar and your grid meter. This beta is observation-only and does not send control commands.",
+        "description": "Select the existing entities from Noah-MQTT, Forecast.Solar, and your grid meter. This beta operates in observation mode only and does not send any control commands.",
         "data": {
           "grid_power": "Signed grid power",
           "solar_power": "NOAH Solar Power",
@@ -12,20 +12,20 @@
           "battery_soc": "NOAH SOC",
           "charging_power": "NOAH Charging Power",
           "discharge_power": "NOAH Discharge Power",
-          "forecast_remaining": "Forecast.Solar remaining energy today",
+          "forecast_remaining": "Forecast.Solar remaining forecast today",
           "system_output_power": "NOAH System Output Power",
           "invert_grid_sign": "Invert grid power sign"
         },
         "data_description": {
           "grid_power": "Positive values must indicate grid import and negative values grid export.",
-          "solar_power": "Current NOAH solar power.",
-          "output_power": "Current NOAH output power supplied to the home.",
-          "battery_soc": "Current NOAH battery state of charge.",
+          "solar_power": "Current PV power of the NOAH.",
+          "output_power": "Current output power of the NOAH supplied to the home.",
+          "battery_soc": "Current state of charge of the NOAH battery.",
           "charging_power": "Current battery charging power.",
           "discharge_power": "Current battery discharging power.",
-          "forecast_remaining": "Expected remaining PV energy for today.",
-          "system_output_power": "Writable NOAH output setpoint. This beta only checks its availability and never writes to it.",
-          "invert_grid_sign": "Enable if your grid sensor uses positive values for grid export."
+          "forecast_remaining": "Expected remaining PV energy for the current day.",
+          "system_output_power": "Writable NOAH output setpoint. In this beta it is only checked for availability.",
+          "invert_grid_sign": "Enable this if your grid sensor reports positive values for grid export."
         }
       }
     },
@@ -68,6 +68,59 @@
       "forecast_remaining": {
         "name": "Remaining forecast today"
       },
+      "grid_power_average": {
+        "name": "5-minute grid power"
+      },
+      "hours_to_sunset": {
+        "name": "Hours until sunset"
+      },
+      "available_battery_energy": {
+        "name": "Available battery energy"
+      },
+      "charge_need": {
+        "name": "Required charging energy"
+      },
+      "effective_forecast": {
+        "name": "Effective remaining forecast"
+      },
+      "expected_load_energy": {
+        "name": "Expected household energy demand"
+      },
+      "forecast_margin": {
+        "name": "Forecast margin"
+      },
+      "forecast_coverage": {
+        "name": "Forecast coverage"
+      },
+      "required_charge_power": {
+        "name": "Required average charging power"
+      },
+      "minutes_to_target": {
+        "name": "Minutes until target SOC"
+      },
+      "self_consumption_target": {
+        "name": "Self-consumption target"
+      },
+      "charge_priority_target": {
+        "name": "Charge-priority target"
+      },
+      "output_target": {
+        "name": "Output target"
+      },
+      "controller_mode": {
+        "name": "Controller mode",
+        "state": {
+          "off": "Off",
+          "manual": "Manual",
+          "self_consumption": "Self-consumption",
+          "charge_priority": "Charge priority",
+          "minimum_soc": "Minimum SOC",
+          "night": "Night mode",
+          "target_soc_reached": "Target SOC reached",
+          "no_forecast": "Conservative without forecast",
+          "blended_reserve": "Blended reserve"
+        }
+      },
       "data_status": {
         "name": "Data status",
         "state": {
@@ -75,8 +128,68 @@
           "critical_data_missing": "Critical data missing",
           "battery_data_missing": "Battery data missing",
           "forecast_unavailable": "Forecast unavailable",
-          "actuator_unavailable": "Actuator unavailable"
+          "actuator_unavailable": "Output control unavailable"
         }
+      }
+    },
+    "number": {
+      "battery_capacity": {
+        "name": "Usable battery capacity"
+      },
+      "target_soc": {
+        "name": "Target SOC at sunset"
+      },
+      "min_soc": {
+        "name": "Minimum SOC"
+      },
+      "charge_efficiency": {
+        "name": "Assumed charging efficiency"
+      },
+      "forecast_factor": {
+        "name": "Forecast safety factor"
+      },
+      "forecast_safety": {
+        "name": "Additional energy reserve"
+      },
+      "release_margin": {
+        "name": "Release margin"
+      },
+      "expected_day_load": {
+        "name": "Expected average household load"
+      },
+      "grid_reserve": {
+        "name": "Desired residual grid import"
+      },
+      "max_output": {
+        "name": "Maximum output power"
+      },
+      "night_max_output": {
+        "name": "Maximum output power at night"
+      },
+      "manual_output": {
+        "name": "Manual output power"
+      },
+      "command_step": {
+        "name": "Output step size"
+      },
+      "command_deadband": {
+        "name": "Control deadband"
+      }
+    },
+    "select": {
+      "optimizer_mode": {
+        "name": "Operating mode",
+        "state": {
+          "automatic": "Automatic",
+          "self_consumption": "Self-consumption",
+          "charge_priority": "Charge priority",
+          "manual": "Manual"
+        }
+      }
+    },
+    "switch": {
+      "optimizer_enabled": {
+        "name": "Optimizer enabled"
       }
     },
     "binary_sensor": {

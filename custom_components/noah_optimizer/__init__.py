@@ -49,6 +49,7 @@ async def async_setup_entry(
         entry.data[CONF_DISCHARGE_POWER],
         entry.data[CONF_FORECAST_REMAINING],
         entry.data[CONF_SYSTEM_OUTPUT_POWER],
+        "sun.sun",
     ]
 
     async def _async_source_state_changed(
