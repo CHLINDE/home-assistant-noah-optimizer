@@ -4,7 +4,7 @@
     "step": {
       "user": {
         "title": "Set up Growatt NOAH Optimizer",
-        "description": "Select the existing entities from Noah-MQTT, Forecast.Solar, and your grid meter. This beta operates in observation mode only and does not send any control commands.",
+        "description": "Select the existing entities from Noah-MQTT, Forecast.Solar, and your grid meter. Active NOAH control is disabled by default after setup and must be enabled separately.",
         "data": {
           "grid_power": "Signed grid power",
           "solar_power": "NOAH Solar Power",
@@ -24,7 +24,7 @@
           "charging_power": "Current battery charging power.",
           "discharge_power": "Current battery discharging power.",
           "forecast_remaining": "Expected remaining PV energy for the current day.",
-          "system_output_power": "Writable NOAH output setpoint. In this beta it is only checked for availability.",
+          "system_output_power": "Writable NOAH output setpoint. It is only written when active NOAH control has explicitly been enabled.",
           "invert_grid_sign": "Enable this if your grid sensor reports positive values for grid export."
         }
       }
@@ -189,7 +189,10 @@
     },
     "switch": {
       "optimizer_enabled": {
-        "name": "Optimizer enabled"
+        "name": "Optimizer calculation enabled"
+      },
+      "control_enabled": {
+        "name": "Active NOAH control"
       }
     },
     "binary_sensor": {

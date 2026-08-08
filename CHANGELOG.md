@@ -1,3 +1,26 @@
+## [2.0.0-beta.5]
+
+### Added
+
+- Active NOAH output control
+- Separate opt-in switch for active control
+- Minimum interval between output commands
+- Command deadband handling
+- Automatic retry when a requested setpoint is not applied
+- Failsafe output of 0 W after prolonged loss of critical data
+- Protection against simultaneous control by the legacy YAML optimizer
+- Controller diagnostics on the active-control switch
+
+### Safety
+
+Active control is disabled by default.
+
+Updating from an earlier beta does not automatically enable writing to
+the NOAH System Output Power entity.
+
+The legacy YAML optimizer and the HACS optimizer must never control the
+same NOAH simultaneously.
+
 ## [2.0.0-beta.4]
 
 ### Fixed

@@ -4,7 +4,7 @@
     "step": {
       "user": {
         "title": "Growatt NOAH Optimizer einrichten",
-        "description": "Wähle die vorhandenen Entitäten von Noah-MQTT, Forecast.Solar und deinem Stromzähler aus. Diese Beta arbeitet ausschließlich im Beobachtungsbetrieb und sendet keine Stellbefehle.",
+        "description": "Wähle die vorhandenen Entitäten von Noah-MQTT, Forecast.Solar und deinem Stromzähler aus. Die aktive NOAH-Steuerung ist nach der Einrichtung standardmäßig ausgeschaltet und muss separat aktiviert werden.",
         "data": {
           "grid_power": "Saldierte Netzleistung",
           "solar_power": "NOAH Solar Power",
@@ -24,7 +24,7 @@
           "charging_power": "Aktuelle Ladeleistung des Speichers.",
           "discharge_power": "Aktuelle Entladeleistung des Speichers.",
           "forecast_remaining": "Noch erwartete PV-Energie für den aktuellen Tag.",
-          "system_output_power": "Beschreibbare NOAH-Stellgröße. In dieser Beta wird sie nur auf Verfügbarkeit geprüft.",
+          "system_output_power": "Beschreibbare NOAH-Stellgröße. Sie wird nur beschrieben, wenn die aktive NOAH-Steuerung ausdrücklich eingeschaltet ist.",
           "invert_grid_sign": "Aktivieren, wenn dein Netzsensor positive Werte für Einspeisung liefert."
         }
       }
@@ -189,7 +189,10 @@
     },
     "switch": {
       "optimizer_enabled": {
-        "name": "Optimierer aktiv"
+        "name": "Optimierer-Berechnung aktiv"
+      },
+      "control_enabled": {
+        "name": "NOAH-Steuerung aktiv"
       }
     },
     "binary_sensor": {

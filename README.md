@@ -125,3 +125,41 @@ The calculated output target is observation-only.
 
 Version 2.0.0-beta.3 does **not** write to the NOAH System Output Power
 entity and can therefore still be compared with the active YAML optimizer.
+
+### Version 2.0.0-beta.4
+
+Beta 4 fixes the integration setup failure introduced in Beta 3.
+
+Changes include:
+
+- added the missing `select.py` platform
+- restored successful loading of the integration
+- restored the operating mode selector
+- verified that the existing configuration entry remains intact
+- verified that all previously configured source entities remain available
+- verified that the optimizer calculations continue to match the legacy YAML optimizer
+
+Beta 4 remains observation-only.
+
+Version 2.0.0-beta.4 does **not** write to the NOAH System Output Power
+entity and can therefore still run in parallel with the active YAML optimizer.
+
+### Version 2.0.0-beta.5
+
+Beta 5 introduces optional active NOAH output control.
+
+Active control:
+
+- is disabled by default
+- uses the calculated output target from the optimizer
+- respects the configured command deadband
+- rate-limits normal output commands
+- retries a setpoint if the NOAH has not applied it
+- sets the output to 0 W after prolonged loss of critical measurement data
+- blocks output commands while the legacy YAML optimizer is still enabled
+
+The existing optimizer calculation switch and the new active-control
+switch are intentionally separate.
+
+Before enabling active HACS control, the legacy YAML optimizer must be
+disabled.
