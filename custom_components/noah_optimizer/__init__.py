@@ -3,8 +3,15 @@
 from __future__ import annotations
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import Event, EventStateChangedData, HomeAssistant
-from homeassistant.helpers.event import async_track_state_change_event
+from homeassistant.core import (
+    Event,
+    EventStateChangedData,
+    HomeAssistant,
+)
+from homeassistant.helpers.event import (
+    async_track_state_change_event,
+    async_track_time_interval,
+)
 
 from .const import (
     CONF_BATTERY_SOC,
@@ -16,6 +23,10 @@ from .const import (
     CONF_SOLAR_POWER,
     CONF_SYSTEM_OUTPUT_POWER,
     PLATFORMS,
+)
+from .control import (
+    CONTROL_CHECK_INTERVAL,
+    NoahOptimizerController,
 )
 from .coordinator import NoahOptimizerCoordinator
 
@@ -38,6 +49,13 @@ async def async_setup_entry(
 
     await coordinator.async_config_entry_first_refresh()
 
+    controller = NoahOptimizerController(
+        hass,
+        coordinator,
+    )
+
+    # Keep the existing runtime_data interface for all entities.
+    coordinator.controller = controller
     entry.runtime_data = coordinator
 
     source_entities = [
@@ -56,6 +74,7 @@ async def async_setup_entry(
         event: Event[EventStateChangedData],
     ) -> None:
         """Refresh when a configured source entity changes."""
+
         await coordinator.async_update_from_states()
 
     entry.async_on_unload(
@@ -66,10 +85,28 @@ async def async_setup_entry(
         )
     )
 
+    # Check active control once per minute.
+    # Actual normal output commands are rate-limited to
+    # at least two minutes in control.py.
+    entry.async_on_unload(
+        async_track_time_interval(
+            hass,
+            controller.async_control_tick,
+            CONTROL_CHECK_INTERVAL,
+        )
+    )
+
     await hass.config_entries.async_forward_entry_setups(
         entry,
         PLATFORMS,
     )
+
+    # On a normal beta.4 -> beta.5 update this does not write
+    # anything because OPT_CONTROL_ENABLED defaults to False.
+    #
+    # If active control was explicitly enabled in beta.5 and
+    # Home Assistant is restarted, control resumes here.
+    await controller.async_control_tick()
 
     return True
 

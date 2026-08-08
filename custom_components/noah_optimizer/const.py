@@ -42,6 +42,7 @@ CONF_INVERT_GRID_SIGN: Final = "invert_grid_sign"
 
 OPT_ENABLED: Final = "enabled"
 OPT_MODE: Final = "mode"
+OPT_CONTROL_ENABLED: Final = "control_enabled"
 
 OPT_BATTERY_CAPACITY: Final = "battery_capacity"
 OPT_TARGET_SOC: Final = "target_soc"
@@ -71,6 +72,7 @@ MODE_MANUAL: Final = "manual"
 
 DEFAULT_OPTIONS: Final = {
     OPT_ENABLED: False,
+    OPT_CONTROL_ENABLED: False,
     OPT_MODE: MODE_AUTOMATIC,
 
     OPT_BATTERY_CAPACITY: 2.048,

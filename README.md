@@ -37,7 +37,7 @@ Prognosebasierte Steuerung der Ausgangsleistung eines Growatt NOAH 2000
 - [Power Flow Card Plus](https://github.com/flixlix/power-flow-card-plus)
 - [ApexCharts Card](https://github.com/RomRider/apexcharts-card)
 
-## Installation
+## Legacy-YAML-Installation
 
 1. `noah_optimizer.yaml` nach `/config/packages/` kopieren.
 2. Alle Platzhalter-Entity-IDs ersetzen.
@@ -52,6 +52,7 @@ Eine ausführliche Anleitung befindet sich unter:
 - [Installation](docs/installation.md)
 - [Konfiguration](docs/configuration.md)
 - [Fehlerbehebung](docs/troubleshooting.md)
+- [HACS Integration Beta](docs/hacs-beta.md)
 
 ## Wichtiger Hinweis
 
@@ -60,7 +61,7 @@ offizielle Growatt-Lösung. Nutzung auf eigene Verantwortung.
 
 ## HACS Integration – Beta
 
-A new HACS-compatible Custom Integration is currently under development.
+A HACS-compatible Custom Integration is currently under development.
 
 ### Version 2.0.0-beta.1
 
@@ -77,16 +78,6 @@ It:
 - does not send any commands to the NOAH
 
 The beta can therefore run in parallel with the existing YAML optimizer.
-
-> The YAML optimizer remains the active controller during the beta test.
-
-## Important safety note
-
-Version 2.0.0-beta.1 does not write to the NOAH output power entity.
-
-Future beta versions may add active control. Once active control is
-introduced, the YAML optimizer and the HACS optimizer must never control
-the same NOAH simultaneously.
 
 ### Version 2.0.0-beta.2
 
@@ -125,3 +116,59 @@ The calculated output target is observation-only.
 
 Version 2.0.0-beta.3 does **not** write to the NOAH System Output Power
 entity and can therefore still be compared with the active YAML optimizer.
+
+### Version 2.0.0-beta.4
+
+Beta 4 fixes the integration setup failure introduced in Beta 3.
+
+Changes include:
+
+- added the missing `select.py` platform
+- restored successful loading of the integration
+- restored the operating mode selector
+- verified that the existing configuration entry remains intact
+- verified that all previously configured source entities remain available
+- verified that the optimizer calculations continue to match the legacy YAML optimizer
+
+The calculated values were compared against the legacy YAML optimizer.
+For identical configuration parameters, the relevant calculation results,
+controller mode, and final output target matched the YAML implementation.
+
+Beta 4 remains observation-only.
+
+Version 2.0.0-beta.4 does **not** write to the NOAH System Output Power
+entity and can therefore still run in parallel with the active YAML optimizer.
+
+### Version 2.0.0-beta.5
+
+Beta 5 introduces optional active NOAH output control.
+
+Active control:
+
+- is disabled by default
+- uses the calculated output target from the optimizer
+- respects the configured command deadband
+- rate-limits normal output commands
+- retries a setpoint if the NOAH has not applied it
+- sets the output to 0 W after prolonged loss of critical measurement data, if the actuator is reachable
+- creates a Home Assistant notification after prolonged loss of critical measurement data
+- blocks output commands while the legacy YAML optimizer is still enabled
+
+The existing optimizer calculation switch and the new active-control
+switch are intentionally separate.
+
+Before enabling active HACS control, the legacy YAML optimizer must be
+disabled.
+
+## Important safety note
+
+Versions `2.0.0-beta.1` through `2.0.0-beta.4` are observation-only.
+
+Starting with version `2.0.0-beta.5`, optional active NOAH output control
+is available. Active control is disabled by default and must be enabled
+explicitly.
+
+The legacy YAML optimizer and the HACS optimizer must never actively
+control the same NOAH at the same time. Beta 5 contains an additional
+software interlock that blocks HACS output commands while the legacy
+`input_boolean.noah_optimizer_enabled` is on.
