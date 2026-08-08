@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import (
     Event,
@@ -29,6 +31,12 @@ from .control import (
     NoahOptimizerController,
 )
 from .coordinator import NoahOptimizerCoordinator
+from .dashboard import (
+    async_ensure_dashboard,
+    remove_dashboard_panel,
+)
+
+_LOGGER = logging.getLogger(__name__)
 
 
 type NoahOptimizerConfigEntry = ConfigEntry[
@@ -54,7 +62,6 @@ async def async_setup_entry(
         coordinator,
     )
 
-    # Keep the existing runtime_data interface for all entities.
     coordinator.controller = controller
     entry.runtime_data = coordinator
 
@@ -85,9 +92,6 @@ async def async_setup_entry(
         )
     )
 
-    # Check active control once per minute.
-    # Actual normal output commands are rate-limited to
-    # at least two minutes in control.py.
     entry.async_on_unload(
         async_track_time_interval(
             hass,
@@ -101,12 +105,21 @@ async def async_setup_entry(
         PLATFORMS,
     )
 
-    # On a normal beta.4 -> beta.5 update this does not write
-    # anything because OPT_CONTROL_ENABLED defaults to False.
-    #
-    # If active control was explicitly enabled in beta.5 and
-    # Home Assistant is restarted, control resumes here.
+    # Resume active control only when the user had explicitly enabled it.
     await controller.async_control_tick()
+
+    # The dashboard is optional and must never prevent the optimizer itself
+    # from loading.
+    try:
+        await async_ensure_dashboard(
+            hass,
+            entry,
+        )
+
+    except Exception:  # noqa: BLE001
+        _LOGGER.exception(
+            "Could not create the NOAH Optimizer dashboard"
+        )
 
     return True
 
@@ -117,7 +130,16 @@ async def async_unload_entry(
 ) -> bool:
     """Unload the Growatt NOAH Optimizer."""
 
-    return await hass.config_entries.async_unload_platforms(
-        entry,
-        PLATFORMS,
+    unload_ok = (
+        await hass.config_entries.async_unload_platforms(
+            entry,
+            PLATFORMS,
+        )
     )
+
+    if unload_ok:
+        remove_dashboard_panel(
+            hass
+        )
+
+    return unload_ok

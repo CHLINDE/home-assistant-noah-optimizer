@@ -12,6 +12,7 @@ from homeassistant.helpers import selector
 from .const import (
     CONF_BATTERY_SOC,
     CONF_CHARGING_POWER,
+    CONF_DASHBOARD_SHOW_IN_SIDEBAR,
     CONF_DISCHARGE_POWER,
     CONF_FORECAST_REMAINING,
     CONF_GRID_POWER,
@@ -25,6 +26,7 @@ from .const import (
 
 def _sensor_selector() -> selector.EntitySelector:
     """Return a selector for sensor entities."""
+
     return selector.EntitySelector(
         selector.EntitySelectorConfig(
             domain="sensor",
@@ -34,6 +36,7 @@ def _sensor_selector() -> selector.EntitySelector:
 
 def _number_selector() -> selector.EntitySelector:
     """Return a selector for number entities."""
+
     return selector.EntitySelector(
         selector.EntitySelectorConfig(
             domain="number",
@@ -118,6 +121,11 @@ class NoahOptimizerConfigFlow(
                 vol.Optional(
                     CONF_INVERT_GRID_SIGN,
                     default=False,
+                ): selector.BooleanSelector(),
+
+                vol.Optional(
+                    CONF_DASHBOARD_SHOW_IN_SIDEBAR,
+                    default=True,
                 ): selector.BooleanSelector(),
             }
         )

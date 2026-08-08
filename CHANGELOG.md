@@ -1,3 +1,33 @@
+## [2.0.0-beta.6]
+
+### Added
+
+- Automatic NOAH Optimizer dashboard creation
+- Dashboard shown in the Home Assistant sidebar by default
+- Optional sidebar visibility setting during initial setup
+- Dynamic resolution of optimizer entity IDs through the Home Assistant entity registry
+- Power-flow visualization with separate import/export and charge/discharge values
+- Controller status and last-command diagnostics
+- Forecast and energy-planning charts
+- Controller behavior chart
+- Calibration and diagnostic sections
+
+### Changed
+
+- Dashboard updated for the active Beta 5 controller
+- Separate optimizer calculation and active-control switches are shown
+- Direct manual access to the NOAH System Output Power actuator has been removed from the dashboard
+- Existing user-modified dashboards are not overwritten
+
+### Dashboard requirements
+
+The enhanced dashboard uses:
+
+- Power Flow Card Plus
+- ApexCharts Card
+
+The optimizer integration itself continues to work if these dashboard cards are not installed.
+
 ## [2.0.0-beta.5]
 
 ### Added

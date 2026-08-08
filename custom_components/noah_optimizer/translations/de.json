@@ -4,7 +4,7 @@
     "step": {
       "user": {
         "title": "Growatt NOAH Optimizer einrichten",
-        "description": "Wähle die vorhandenen Entitäten von Noah-MQTT, Forecast.Solar und deinem Stromzähler aus. Die aktive NOAH-Steuerung ist nach der Einrichtung standardmäßig ausgeschaltet und muss separat aktiviert werden.",
+        "description": "Wähle die vorhandenen Entitäten von Noah-MQTT, Forecast.Solar und deinem Stromzähler aus. Die aktive NOAH-Steuerung ist nach der Einrichtung standardmäßig ausgeschaltet. Das NOAH-Optimizer-Dashboard wird automatisch erstellt.",
         "data": {
           "grid_power": "Saldierte Netzleistung",
           "solar_power": "NOAH Solar Power",
@@ -14,7 +14,8 @@
           "discharge_power": "NOAH Discharge Power",
           "forecast_remaining": "Forecast.Solar Restprognose heute",
           "system_output_power": "NOAH System Output Power",
-          "invert_grid_sign": "Netzvorzeichen umkehren"
+          "invert_grid_sign": "Netzvorzeichen umkehren",
+          "dashboard_show_in_sidebar": "Dashboard in der Seitenleiste anzeigen"
         },
         "data_description": {
           "grid_power": "Positiv muss Netzbezug und negativ Netzeinspeisung bedeuten.",
@@ -25,7 +26,8 @@
           "discharge_power": "Aktuelle Entladeleistung des Speichers.",
           "forecast_remaining": "Noch erwartete PV-Energie für den aktuellen Tag.",
           "system_output_power": "Beschreibbare NOAH-Stellgröße. Sie wird nur beschrieben, wenn die aktive NOAH-Steuerung ausdrücklich eingeschaltet ist.",
-          "invert_grid_sign": "Aktivieren, wenn dein Netzsensor positive Werte für Einspeisung liefert."
+          "invert_grid_sign": "Aktivieren, wenn dein Netzsensor positive Werte für Einspeisung liefert.",
+          "dashboard_show_in_sidebar": "Das NOAH-Optimizer-Dashboard wird automatisch erstellt. Deaktiviere diese Option, wenn es nicht standardmäßig in der Seitenleiste erscheinen soll."
         }
       }
     },

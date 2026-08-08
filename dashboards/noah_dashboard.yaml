@@ -1,17 +1,19 @@
-# Growatt NOAH Dashboard
-# Vor dem Import die Stellgrößen-Entität ersetzen:
-# number.dein_noah_system_output_power
+# Legacy YAML optimizer dashboard.
 #
-# Voraussetzungen:
-# - Power Flow Card Plus
-# - ApexCharts Card
+# This file is not used by the HACS integration.
+# Starting with version 2.0.0-beta.6, the HACS integration creates
+# its own dashboard automatically.
 #
+# Replace number.dein_noah_system_output_power before using this dashboard.
+
 title: Growatt NOAH
+
 views:
   - title: Optimierung
     path: noah-optimierung
     icon: mdi:home-battery
     type: masonry
+
     cards:
       - type: custom:power-flow-card-plus
         title: Aktueller Energiefluss
@@ -28,57 +30,51 @@ views:
             entity:
               consumption: sensor.noah_opt_netzbezug
               production: sensor.noah_opt_netzeinspeisung
+            display_state: two_way
             color_icon: color_dynamically
+            color_circle: color_dynamically
           solar:
             name: PV
             entity: sensor.noah_opt_pv_leistung
           battery:
             name: NOAH
             entity:
-              consumption: sensor.noah_opt_entladeleistung
-              production: sensor.noah_opt_ladeleistung
+              consumption: sensor.noah_opt_ladeleistung
+              production: sensor.noah_opt_entladeleistung
             state_of_charge: sensor.noah_opt_soc
+            display_state: two_way
             color_icon: color_dynamically
+            color_circle: color_dynamically
+            color_state_of_charge_value: color_dynamically
           home:
             name: Haus
             entity: sensor.noah_opt_hauslast
             override_state: true
+
       - type: markdown
         title: Reglerstatus
-        content: >
+        content: |
           ## {{ states('sensor.noah_opt_reglermodus') }}
 
           **Datenstatus:** {{ states('sensor.noah_opt_datenstatus') }}
-
-
-          **Sollwert:** {{ states('sensor.noah_opt_ausgangssollwert') }} W  
-
-          **Einspeisung in Hausnetz:** {{
-          states('sensor.noah_opt_ausgangsleistung') }} W  
-
-          **Ladeleistung Speicher:** {{states('sensor.noah_opt_ladeleistung') }}
-          W
-
-          **Netzbezug:** {{ states('sensor.noah_opt_netzleistung') }} W  
-
+          **Sollwert:** {{ states('sensor.noah_opt_ausgangssollwert') }} W
+          **Ausgang:** {{ states('sensor.noah_opt_ausgangsleistung') }} W
+          **Netzleistung:** {{ states('sensor.noah_opt_netzleistung') }} W
+          **Ladeleistung Speicher:** {{ states('sensor.noah_opt_ladeleistung') }} W
+          **Entladeleistung Speicher:** {{ states('sensor.noah_opt_entladeleistung') }} W
           **Ladezustand Batterie:** {{ states('sensor.noah_opt_soc') }} %
-
-
-          **Restprognose wirksam:** {{
-          states('sensor.noah_opt_wirksame_restprognose') }} kWh  
-
-          **Noch benötigte Ladeenergie:** {{
-          states('sensor.noah_opt_ladebedarf') }} kWh  
-
+          **Restprognose wirksam:** {{ states('sensor.noah_opt_wirksame_restprognose') }} kWh
+          **Noch benötigte Ladeenergie:** {{ states('sensor.noah_opt_ladebedarf') }} kWh
           **Prognosemarge:** {{ states('sensor.noah_opt_prognosemarge') }} kWh
+
       - type: grid
         title: Kennzahlen
         columns: 2
         square: false
         cards:
           - type: gauge
-            name: Akkustand
             entity: sensor.noah_opt_soc
+            name: Akkustand
             min: 0
             max: 100
             needle: true
@@ -87,8 +83,8 @@ views:
               yellow: 20
               green: 60
           - type: gauge
-            name: Prognosedeckung
             entity: sensor.noah_opt_prognosedeckung
+            name: Prognosedeckung
             min: 0
             max: 200
             needle: true
@@ -97,14 +93,14 @@ views:
               yellow: 80
               green: 110
           - type: gauge
-            name: Ausgangssollwert
             entity: sensor.noah_opt_ausgangssollwert
+            name: Ausgangssollwert
             min: 0
             max: 800
             needle: true
           - type: gauge
-            name: Netzbezug
             entity: sensor.noah_opt_netzbezug
+            name: Netzbezug
             min: 0
             max: 1000
             needle: true
@@ -112,6 +108,7 @@ views:
               green: 0
               yellow: 100
               red: 400
+
       - type: entities
         title: Bedienung
         show_header_toggle: false
@@ -125,32 +122,26 @@ views:
           - type: divider
           - entity: number.dein_noah_system_output_power
             name: NOAH System Output Power (direkt)
+
       - type: custom:apexcharts-card
-        graph_span: 24h
-        span:
-          start: day
-        update_interval: 1min
         header:
           show: true
           title: Leistung heute
           show_states: true
           colorize_states: true
+        graph_span: 24h
+        span:
+          start: day
         now:
           show: true
         yaxis:
           - id: power
             decimals: 0
-            apex_config:
-              title:
-                text: W
           - id: soc
             opposite: true
             min: 0
             max: 100
             decimals: 0
-            apex_config:
-              title:
-                text: "%"
         series:
           - entity: sensor.noah_opt_pv_leistung
             name: PV
@@ -209,16 +200,16 @@ views:
             group_by:
               duration: 5min
               func: avg
+
       - type: custom:apexcharts-card
-        graph_span: 24h
-        span:
-          start: day
-        update_interval: 1min
         header:
           show: true
           title: Reglerverhalten
           show_states: true
           colorize_states: true
+        graph_span: 24h
+        span:
+          start: day
         now:
           show: true
         yaxis:
@@ -226,9 +217,6 @@ views:
             min: 0
             max: 800
             decimals: 0
-            apex_config:
-              title:
-                text: W
         series:
           - entity: sensor.noah_opt_ausgangssollwert
             name: Regler-Soll
@@ -263,34 +251,31 @@ views:
               duration: 5min
               func: avg
           - entity: sensor.noah_opt_erforderliche_mittlere_ladeleistung
-            name: nötige Ladeleistung
+            name: Nötige Ladeleistung
             yaxis_id: power
             type: line
             stroke_width: 1
             group_by:
               duration: 5min
               func: avg
+
       - type: custom:apexcharts-card
-        graph_span: 24h
-        span:
-          start: day
-        update_interval: 5min
         header:
           show: true
           title: Energieplanung bis Sonnenuntergang
           show_states: true
           colorize_states: true
+        graph_span: 24h
+        span:
+          start: day
         now:
           show: true
         yaxis:
           - id: energy
             decimals: 2
-            apex_config:
-              title:
-                text: kWh
         series:
           - entity: sensor.noah_opt_wirksame_restprognose
-            name: wirksame PV-Prognose
+            name: Wirksame PV-Prognose
             yaxis_id: energy
             type: line
             stroke_width: 3
@@ -306,7 +291,7 @@ views:
               duration: 15min
               func: last
           - entity: sensor.noah_opt_erwarteter_hausenergiebedarf
-            name: erwartete Hausenergie
+            name: Erwartete Hausenergie
             yaxis_id: energy
             type: line
             stroke_width: 2
@@ -322,6 +307,7 @@ views:
             group_by:
               duration: 15min
               func: last
+
       - type: entities
         title: Planung im Detail
         show_header_toggle: false
@@ -336,6 +322,7 @@ views:
           - entity: sensor.noah_opt_erforderliche_mittlere_ladeleistung
           - entity: sensor.noah_opt_minuten_bis_ziel_soc
           - entity: sensor.noah_opt_verfugbare_akkuenergie
+
       - type: entities
         title: Kalibrierung
         show_header_toggle: false
@@ -351,6 +338,7 @@ views:
           - entity: input_number.noah_night_max_output_w
           - entity: input_number.noah_command_step_w
           - entity: input_number.noah_command_deadband_w
+
       - type: entities
         title: Diagnose
         show_header_toggle: false

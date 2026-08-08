@@ -34,7 +34,9 @@ CONF_DISCHARGE_POWER: Final = "discharge_power"
 CONF_FORECAST_REMAINING: Final = "forecast_remaining"
 CONF_SYSTEM_OUTPUT_POWER: Final = "system_output_power"
 CONF_INVERT_GRID_SIGN: Final = "invert_grid_sign"
-
+CONF_DASHBOARD_SHOW_IN_SIDEBAR: Final = (
+    "dashboard_show_in_sidebar"
+)
 
 # ---------------------------------------------------------------------------
 # Optimizer options

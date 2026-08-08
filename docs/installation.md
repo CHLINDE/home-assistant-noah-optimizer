@@ -1,211 +1,258 @@
 # Installation
 
-Diese Anleitung beschreibt die Installation des **Home Assistant Growatt NOAH Optimizers** mit der mitgelieferten Package-Datei und dem Dashboard.
+Diese Anleitung beschreibt die Installation des **Home Assistant Growatt NOAH Optimizers**.
+
+Ab Version `2.0.0-beta.6` ist die HACS-Integration der empfohlene
+Installationsweg. Die ältere YAML-Package-Version wird weiter unten separat
+beschrieben.
 
 ## 1. Voraussetzungen
 
-Erforderlich sind:
+Für den Optimizer werden benötigt:
 
-- Home Assistant mit Zugriff auf `/config`
+- Home Assistant
+- HACS
 - ein funktionsfähiger MQTT-Broker
-- eine laufende Noah-MQTT-Anbindung für den Growatt NOAH
-- Forecast.Solar in Home Assistant
-- ein saldierter Netzleistungssensor in Watt
-- die Möglichkeit, `System Output Power` des NOAH über eine `number`-Entität zu setzen
+- Noah-MQTT für den Growatt NOAH
+- Forecast.Solar
+- die Home-Assistant-Sun-Integration
+- ein saldierter Netzleistungssensor
+- eine beschreibbare `number`-Entität für NOAH System Output Power
 
-Für das mitgelieferte Dashboard werden zusätzlich benötigt:
+Für das erweiterte Dashboard werden zusätzlich benötigt:
 
 - Power Flow Card Plus
 - ApexCharts Card
 
-Die beiden benutzerdefinierten Karten können über HACS installiert werden.
+Die Custom Cards sind nur für die Darstellung erforderlich. Der Optimizer
+funktioniert auch ohne sie.
 
-## 2. Erforderliche Home-Assistant-Komponenten
+## 2. Benötigte Quell-Entitäten
 
-Vor der Installation des Optimierers müssen die folgenden Komponenten eingerichtet sein:
+Vor dem Einrichten müssen folgende Entitäten in Home Assistant vorhanden sein:
 
-| Komponente | Zweck | Installation / Dokumentation |
+| Funktion | Entitätstyp | Typische Einheit |
 |---|---|---|
-| [MQTT](https://www.home-assistant.io/integrations/mqtt/) | Überträgt Messwerte und Stellgrößen zwischen Noah-MQTT und Home Assistant. | Als Home-Assistant-Integration einrichten. Bei Home Assistant OS kann beispielsweise der Mosquitto Broker als Add-on verwendet werden. |
-| [Mosquitto Broker](https://github.com/home-assistant/addons/tree/master/mosquitto) | Optionaler MQTT-Broker für Home Assistant OS. | Über **Einstellungen → Add-ons → Add-on-Store** installieren. Ein externer MQTT-Broker kann ebenfalls verwendet werden. |
-| [Noah-MQTT](https://github.com/mtrossbach/noah-mqtt) | Liest die Growatt-NOAH-Daten aus und stellt Sensoren sowie die Stellgröße `System Output Power` über MQTT Discovery bereit. | Noah-MQTT entsprechend der Projektanleitung installieren und mit dem MQTT-Broker verbinden. |
-| [Forecast.Solar](https://www.home-assistant.io/integrations/forecast_solar/) | Liefert die PV-Ertragsprognose und die verbleibende Energieproduktion des aktuellen Tages. | Über **Einstellungen → Geräte & Dienste → Integration hinzufügen** einrichten. |
-| [Sun](https://www.home-assistant.io/integrations/sun/) | Liefert Sonnenstand, Sonnenhöhe und Sonnenuntergang für Tages- und Nachtbetrieb. | Ist in Home Assistant normalerweise standardmäßig vorhanden. |
-| [HACS](https://www.hacs.xyz/) | Wird für die Installation der benutzerdefinierten Dashboardkarten benötigt. | Nach der offiziellen HACS-Anleitung installieren und anschließend als Integration hinzufügen. |
-| [Power Flow Card Plus](https://github.com/flixlix/power-flow-card-plus) | Stellt den aktuellen Energiefluss zwischen PV, Netz, Haus und Akku dar. | In HACS unter **Frontend** beziehungsweise **Dashboard** suchen und installieren. |
-| [ApexCharts Card](https://github.com/RomRider/apexcharts-card) | Stellt Leistungs-, SOC- und Prognoseverläufe im Dashboard dar. | In HACS unter **Frontend** beziehungsweise **Dashboard** suchen und installieren. |
-
-### Mindestanforderungen für die Regelung
-
-Für die eigentliche Regelung werden benötigt:
-
-```text
-MQTT-Broker
-MQTT-Integration
-Noah-MQTT
-Forecast.Solar
-Sun-Integration
-saldierter Netzleistungssensor
-```
-
-HACS, Power Flow Card Plus und ApexCharts Card sind nur für das mitgelieferte Dashboard erforderlich. Der Optimierer selbst funktioniert auch ohne diese drei Komponenten.
-
-### Komponenten vor der Installation prüfen
-
-Unter **Einstellungen → Geräte & Dienste** sollten mindestens folgende Integrationen ohne Fehler angezeigt werden:
-
-```text
-MQTT
-Forecast.Solar
-Sun
-```
-
-Unter **Einstellungen → Geräte & Dienste → MQTT → Geräte** sollte außerdem das NOAH-Gerät mit seinen Sensoren und der verstellbaren Entität **System Output Power** vorhanden sein.
-
-## 3. Benötigte Entitäten ermitteln
-
-Vor der Installation müssen folgende Entitäten in Home Assistant vorhanden sein:
-
-| Funktion | Erwarteter Entitätstyp | Einheit |
-|---|---|---:|
-| Saldierte Netzleistung | `sensor` | W |
-| NOAH Solar Power | `sensor` | W |
-| NOAH Output Power | `sensor` | W |
+| Saldierte Netzleistung | `sensor` | W oder kW |
+| NOAH Solar Power | `sensor` | W oder kW |
+| NOAH Output Power | `sensor` | W oder kW |
 | NOAH SOC | `sensor` | % |
-| NOAH Charging Power | `sensor` | W |
-| NOAH Discharge Power | `sensor` | W |
-| Forecast.Solar Restprognose heute | `sensor` | kWh |
-| NOAH System Output Power | `number` | W |
+| NOAH Charging Power | `sensor` | W oder kW |
+| NOAH Discharge Power | `sensor` | W oder kW |
+| Forecast.Solar Restprognose heute | `sensor` | Wh oder kWh |
+| NOAH System Output Power | `number` | W oder kW |
 
-Die Entity-IDs findest du unter:
+Die vorhandenen Entity-IDs können unter **Werkzeuge → Zustände** geprüft werden.
 
-**Entwicklerwerkzeuge → Zustände**
+### Netzvorzeichen
 
-Die Netzleistung muss folgende Vorzeichenkonvention verwenden:
+Der Optimizer erwartet:
 
 ```text
 positiv = Netzbezug
 negativ = Netzeinspeisung
 ```
 
-Ist die Richtung umgekehrt, kann sie später über den Helfer **NOAH Netzvorzeichen umkehren** korrigiert werden.
+Verwendet der Netzsensor die umgekehrte Konvention, während der Einrichtung
+**Netzvorzeichen umkehren** aktivieren.
 
-## 4. Package-Unterstützung aktivieren
+## 3. Dashboardkarten installieren
 
-Öffne `/config/configuration.yaml`.
-
-Wenn noch kein `homeassistant:`-Abschnitt vorhanden ist, ergänze:
-
-```yaml
-homeassistant:
-  packages: !include_dir_named packages
-```
-
-Wenn bereits ein `homeassistant:`-Abschnitt existiert, ergänze nur die Zeile `packages:` darin:
-
-```yaml
-homeassistant:
-  packages: !include_dir_named packages
-```
-
-Lege anschließend den Ordner an:
+Für das vollständige Dashboard in HACS zusätzlich installieren:
 
 ```text
-/config/packages
+Power Flow Card Plus
+ApexCharts Card
 ```
 
-## 5. Optimierer-Datei kopieren
+Danach den Browser beziehungsweise die Home-Assistant-App vollständig neu
+laden.
 
-Kopiere die veröffentlichte Datei:
+Fehlen diese Karten, bleibt die Optimizer-Integration funktionsfähig. Im
+Dashboard erscheinen dann lediglich Fehler für die betreffenden Custom Cards.
+
+## 4. Repository in HACS hinzufügen
+
+Falls das Projekt noch nicht direkt in HACS gefunden wird:
+
+1. HACS öffnen.
+2. Benutzerdefinierte Repositories öffnen.
+3. Repository eintragen:
 
 ```text
-noah_optimizer.yaml
+https://github.com/CHLINDE/home-assistant-noah-optimizer
 ```
 
-nach:
+4. Typ **Integration** wählen.
+5. Nach **Growatt NOAH Optimizer** suchen.
+
+## 5. Beta 6 installieren
+
+Version:
 
 ```text
-/config/packages/noah_optimizer.yaml
+2.0.0-beta.6
 ```
 
-## 6. Entity-Platzhalter ersetzen
+installieren und Home Assistant vollständig neu starten.
 
-Öffne `/config/packages/noah_optimizer.yaml` und ersetze alle Platzhalter:
-
-```yaml
-sensor.dein_netzleistungssensor
-sensor.dein_noah_solar_power
-sensor.dein_noah_output_power
-sensor.dein_noah_soc
-sensor.dein_noah_charging_power
-sensor.dein_noah_discharge_power
-sensor.deine_forecast_solar_restprognose
-number.dein_noah_system_output_power
-```
-
-Beispiel:
-
-```yaml
-sensor.dein_noah_soc
-```
-
-wird zu:
-
-```yaml
-sensor.DEINE_GERAETE_ID_soc
-```
-
-Achte darauf, jede Entity-ID an allen Stellen vollständig zu ersetzen.
-
-## 7. YAML-Konfiguration prüfen
+## 6. Integration einrichten
 
 Öffne:
 
-**Entwicklerwerkzeuge → YAML → Konfiguration prüfen**
+**Einstellungen → Geräte & Dienste → Integration hinzufügen**
 
-Behebe alle gemeldeten Fehler, bevor Home Assistant neu gestartet wird.
-
-Warnungen des Editors zu den neu erzeugten `sensor.noah_opt_...`-Entitäten können vor dem ersten Neustart auftreten, weil diese Entitäten zu diesem Zeitpunkt noch nicht existieren.
-
-## 8. Home Assistant neu starten
-
-Starte Home Assistant vollständig neu.
-
-Danach sollten unter **Entwicklerwerkzeuge → Zustände** unter anderem folgende Entitäten existieren:
+und suche nach:
 
 ```text
-sensor.noah_opt_netzleistung
-sensor.noah_opt_pv_leistung
-sensor.noah_opt_ausgangsleistung
-sensor.noah_opt_soc
-sensor.noah_opt_ladeleistung
-sensor.noah_opt_entladeleistung
-sensor.noah_opt_hauslast
-sensor.noah_opt_ausgangssollwert
-sensor.noah_opt_reglermodus
-sensor.noah_opt_datenstatus
-binary_sensor.noah_opt_kritische_daten_ok
+Growatt NOAH Optimizer
 ```
 
-Erwartet werden:
+Wähle anschließend die acht Quell-Entitäten aus.
+
+Zusätzlich gibt es zwei Setup-Optionen:
+
+### Netzvorzeichen umkehren
+
+Aktivieren, wenn der Netzsensor positive Werte für Einspeisung und negative
+Werte für Bezug liefert.
+
+### Dashboard in der Seitenleiste anzeigen
+
+Standard:
 
 ```text
-sensor.noah_opt_datenstatus = OK
-binary_sensor.noah_opt_kritische_daten_ok = on
+Ein
 ```
 
-## 9. Grundeinstellungen setzen
+Bei **Ein** wird der Eintrag **NOAH Optimizer** direkt in der Seitenleiste
+registriert. Bei **Aus** wird das Dashboard trotzdem erzeugt, aber nicht in der
+Seitenleiste angezeigt.
 
-Nach dem ersten Neustart müssen die Helfer kontrolliert und sinnvoll eingestellt werden.
+## 7. Update von Beta 5
 
-Empfohlene Startwerte:
+Beim Update von `2.0.0-beta.5` auf `2.0.0-beta.6` muss die Integration nicht neu
+eingerichtet werden.
 
-| Einstellung | Startwert |
+Die bereits ausgewählten Quell-Entitäten und Optimizer-Parameter bleiben
+erhalten.
+
+Da Beta 5 die Dashboard-Option noch nicht kannte, gilt beim Upgrade:
+
+```text
+Dashboard in der Seitenleiste anzeigen = Ein
+```
+
+Während des Beta-Updates empfiehlt sich:
+
+```text
+NOAH-Steuerung aktiv = Aus
+```
+
+Nach erfolgreicher Prüfung kann sie wieder eingeschaltet werden.
+
+## 8. Automatisches Dashboard
+
+Beta 6 legt beim ersten erfolgreichen Start eine eigene Lovelace-Konfiguration
+für den Panel-Pfad:
+
+```text
+/noah-optimizer
+```
+
+an.
+
+Die Integration benutzt dabei **keine zweite Home-Assistant
+DashboardsCollection**. Das Dashboard wird als von der Integration verwaltetes
+Lovelace-Panel registriert.
+
+Wichtig:
+
+- `configuration.yaml` muss nicht geändert werden.
+- Die Entity-IDs werden dynamisch über die Entity Registry ermittelt.
+- Bereichspräfixe wie `terrasse_` müssen nicht bekannt sein.
+- Das Dashboard wird nur initial mit dem Standardinhalt befüllt.
+- Spätere Benutzeränderungen werden nicht überschrieben.
+- Beim Reload wird nur die Laufzeitregistrierung entfernt und wieder angelegt;
+  die gespeicherte Dashboard-Konfiguration bleibt erhalten.
+
+### Sprache
+
+Bei der ersten Erzeugung gilt:
+
+```text
+Home Assistant Deutsch -> dashboard_de.yaml
+sonstige Sprache        -> dashboard_en.yaml
+```
+
+Ein späterer Sprachwechsel überschreibt ein bereits angepasstes Dashboard
+nicht automatisch.
+
+## 9. Erste Funktionsprüfung
+
+Zunächst:
+
+```text
+Optimierer-Berechnung aktiv = Ein
+NOAH-Steuerung aktiv = Aus
+Betriebsart = Automatik
+```
+
+setzen.
+
+Im Dashboard oder unter **Werkzeuge → Zustände** prüfen:
+
+```text
+Datenstatus = OK
+Kritische Daten = verfügbar
+Prognose = verfügbar
+Stellgröße = verfügbar
+```
+
+Außerdem müssen plausibel sein:
+
+- Netzleistung
+- Netzbezug
+- Netzeinspeisung
+- PV-Leistung
+- Ausgangsleistung
+- Hauslast
+- Ladezustand
+- Ladeleistung
+- Entladeleistung
+- Restprognose
+- Ausgangssollwert
+- Reglermodus
+
+## 10. Netzrichtung prüfen
+
+Einen größeren Verbraucher einschalten.
+
+Bei Netzbezug muss die saldierte Netzleistung positiv sein, zum Beispiel:
+
+```text
++800 W = 800 W Netzbezug
+```
+
+Bei PV-Überschuss muss sie negativ sein:
+
+```text
+-500 W = 500 W Netzeinspeisung
+```
+
+Ist das Verhalten umgekehrt, die Integration mit aktivierter Option
+**Netzvorzeichen umkehren** neu einrichten.
+
+## 11. Grundeinstellungen
+
+Die Standardwerte der HACS-Integration sind:
+
+| Einstellung | Standard |
 |---|---:|
-| Nutzbare Akkukapazität | 2,048 kWh je NOAH-Modul |
+| Nutzbare Akkukapazität | 2,048 kWh |
 | Ziel-SOC bei Sonnenuntergang | 95 % |
 | Mindest-SOC | 10 % |
-| Ladewirkungsgrad | 0,90 |
+| Angenommener Ladewirkungsgrad | 0,90 |
 | Prognose-Sicherheitsfaktor | 0,80 |
 | Zusätzliche Energiereserve | 0,25 kWh |
 | Freigabemarge | 0,50 kWh |
@@ -217,53 +264,21 @@ Empfohlene Startwerte:
 | Stellgrößenraster | 50 W |
 | Schalt-Hysterese | 50 W |
 
-Bei mehreren NOAH-Modulen muss die gesamte nutzbare Akkukapazität eingetragen werden.
+Bei mehreren NOAH-Modulen muss die gesamte nutzbare Kapazität eingetragen
+werden.
 
-Beispiel für zwei Module:
+## 12. Stellgröße manuell testen
 
-```text
-2 × 2,048 kWh = 4,096 kWh
-```
-
-## 10. Messwerte prüfen
-
-### Netzrichtung
-
-Bei einem größeren Verbraucher muss `sensor.noah_opt_netzleistung` positiv werden.
-
-Bei PV-Überschuss muss der Wert negativ werden.
-
-Ist das umgekehrt, aktiviere:
+Vor dem Einschalten der aktiven Regelung unter **Werkzeuge → Aktionen** den
+Dienst:
 
 ```text
-input_boolean.noah_grid_sign_inverted
+number.set_value
 ```
 
-### Leistungsbilanz
+mit der ausgewählten NOAH-System-Output-Power-Entität testen.
 
-Ungefähr muss gelten:
-
-```text
-Hauslast = Netzleistung + NOAH-Ausgangsleistung
-```
-
-Beispiel:
-
-```text
-300 W Netzbezug + 200 W NOAH-Ausgang = 500 W Hauslast
-```
-
-Kleine Abweichungen durch unterschiedliche Aktualisierungszeitpunkte sind normal.
-
-## 11. Schreibzugriff testen
-
-Der Optimierer bleibt zunächst ausgeschaltet.
-
-Öffne:
-
-**Entwicklerwerkzeuge → Aktionen**
-
-Führe testweise aus:
+Bei einer Stellgröße in Watt zum Beispiel:
 
 ```yaml
 action: number.set_value
@@ -273,105 +288,104 @@ data:
   value: 300
 ```
 
-Ersetze die Entity-ID durch deine tatsächliche Stellgröße.
+Bei einer Stellgröße in kW entsprechend:
 
-Prüfe anschließend:
-
-```text
-number.dein_noah_system_output_power = 300
+```yaml
+data:
+  value: 0.3
 ```
 
-Die gemessene NOAH-Ausgangsleistung kann verzögert folgen. Bei vollem Akku und vorhandener Solarleistung kann der tatsächliche Ausgang vorübergehend über dem Sollwert liegen.
+Danach prüfen, ob die Stellgröße den Wert angenommen hat.
 
-## 12. Automations-Test
+## 13. Aktive Steuerung einschalten
 
-Stelle ein:
-
-```text
-NOAH Betriebsart = Manuell
-NOAH manuelle Ausgangsleistung = 300 W
-NOAH Optimierer aktiv = Ein
-```
-
-Der Regler läuft nach der mitgelieferten Konfiguration alle fünf Minuten.
-
-Kontrolliere anschließend:
+Erst wenn Daten und Sollwert plausibel sind:
 
 ```text
-sensor.noah_opt_reglermodus = Manuell
-sensor.noah_opt_ausgangssollwert = 300 W
-input_number.noah_last_target_w = 300 W
-number.dein_noah_system_output_power = 300 W
+Optimierer-Berechnung aktiv = Ein
+NOAH-Steuerung aktiv = Ein
+Betriebsart = Automatik
 ```
 
-Teste danach beispielsweise 500 W.
+Der Controller kann dann die konfigurierte Stellgröße beschreiben.
 
-Wenn beide Werte übernommen werden, schalte den Optimierer wieder aus und stelle die Betriebsart auf **Automatik**.
+Typische Diagnoseattribute am Schalter **NOAH-Steuerung aktiv**:
 
-## 13. Dashboard installieren
+```text
+control_status
+last_command_target
+last_command_at
+```
 
-Installiere über HACS:
+Ein häufiger Normalzustand ist:
 
-- Power Flow Card Plus
-- ApexCharts Card
+```text
+in_sync
+```
 
-Lade den Browser danach vollständig neu.
+## 14. Schutzmechanismen
 
-## 14. Dashboard importieren
+Die aktive Regelung enthält:
 
-Öffne die Datei:
+- Schalt-Hysterese
+- Mindestabstand zwischen normalen Stellbefehlen
+- Wiederholungsversuch
+- 10-Minuten-Failsafe bei dauerhaft fehlenden kritischen Daten
+- persistente Home-Assistant-Benachrichtigung
+- Sperre gegen den Legacy-YAML-Controller
+
+Ist beim Failsafe die Stellgröße erreichbar, wird `0 W` angefordert. Ist die
+Stellgröße nicht erreichbar, wird die Warnmeldung trotzdem erzeugt.
+
+## 15. Legacy-YAML-Optimizer
+
+Der ältere YAML-Optimizer darf nicht gleichzeitig mit der aktiven
+HACS-Steuerung denselben NOAH regeln.
+
+Die HACS-Integration prüft den Legacy-Helfer:
+
+```text
+input_boolean.noah_optimizer_enabled
+```
+
+Steht dieser auf `on`, werden normale HACS-Stellbefehle blockiert.
+
+### Legacy-Package installieren
+
+Package-Unterstützung in `configuration.yaml`:
+
+```yaml
+homeassistant:
+  packages: !include_dir_named packages
+```
+
+Dann:
+
+```text
+noah_optimizer.yaml
+```
+
+nach:
+
+```text
+/config/packages/noah_optimizer.yaml
+```
+
+kopieren und alle Platzhalter-Entity-IDs anpassen.
+
+Anschließend unter **Werkzeuge → YAML** die Konfiguration prüfen und Home
+Assistant neu starten.
+
+Das Legacy-Dashboard befindet sich unter:
 
 ```text
 dashboards/noah_dashboard.yaml
 ```
 
-Ersetze darin:
+Für neue Installationen wird die HACS-Integration empfohlen.
 
-```yaml
-number.dein_noah_system_output_power
-```
+## 16. Weiterführende Dokumentation
 
-durch deine tatsächliche Stellgrößen-Entität.
-
-Dann:
-
-1. **Einstellungen → Dashboards**
-2. Neues Dashboard anlegen
-3. Dashboard öffnen
-4. **Dashboard bearbeiten**
-5. Drei-Punkte-Menü öffnen
-6. **Rohkonfigurationseditor**
-7. Inhalt von `noah_dashboard.yaml` einfügen
-8. Speichern
-
-Falls `Custom element doesn't exist` erscheint, fehlen die HACS-Karten oder der Browser-Cache wurde noch nicht aktualisiert.
-
-## 15. Automatik aktivieren
-
-Vor der Freigabe müssen folgende Werte plausibel sein:
-
-```text
-Datenstatus = OK
-kritische Daten OK = on
-Netzvorzeichen korrekt
-SOC plausibel
-PV-Leistung plausibel
-Ausgangsleistung plausibel
-Restprognose plausibel
-berechneter Ausgangssollwert plausibel
-```
-
-Danach:
-
-```text
-NOAH Betriebsart = Automatik
-NOAH Optimierer aktiv = Ein
-```
-
-Beobachte mindestens die ersten zwei Regelzyklen.
-
-## Sicherheitshinweis
-
-Das Projekt steuert aktiv die Ausgangsleistung des Speichers. Die Noah-MQTT-Anbindung und die verwendete Growatt-Schnittstelle sind keine offizielle lokale Growatt-Steuerung. Die Nutzung erfolgt auf eigene Verantwortung.
-
-Der Optimierer sollte erst aktiviert werden, nachdem Messwerte, Vorzeichen und Schreibzugriff manuell geprüft wurden.
+- [Konfiguration](configuration.md)
+- [Fehlerbehebung](troubleshooting.md)
+- [HACS Beta](hacs-beta.md)

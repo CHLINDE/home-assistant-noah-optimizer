@@ -1,0 +1,482 @@
+views:
+  - title: Battery charge optimization
+    path: optimierung
+    icon: mdi:solar-power
+    type: sections
+    max_columns: 3
+
+    sections:
+      - type: grid
+        cards:
+          - type: custom:power-flow-card-plus
+            title: Current energy flow
+            entities:
+              grid:
+                entity:
+                  consumption: __GRID_IMPORT__
+                  production: __GRID_EXPORT__
+                name: Grid
+                icon: mdi:transmission-tower
+                display_state: two_way
+                color_circle: color_dynamically
+
+              solar:
+                entity: __SOLAR_POWER__
+                name: PV
+                icon: mdi:solar-power
+                color_icon: true
+                color_value: true
+
+              battery:
+                entity:
+                  consumption: __CHARGING_POWER__
+                  production: __DISCHARGING_POWER__
+                state_of_charge: __SOC__
+                name: NOAH
+                icon: mdi:battery
+                display_state: two_way
+                color_circle: color_dynamically
+                color_icon: color_dynamically
+                color_state_of_charge_value: color_dynamically
+
+              home:
+                entity: __HOME_LOAD__
+                name: Home
+                icon: mdi:home
+                override_state: true
+                color_icon: true
+
+            clickable_entities: true
+
+            display_zero_lines:
+              mode: grey_out
+              transparency: 50
+              grey_color:
+                - 189
+                - 189
+                - 189
+
+            use_new_flow_rate_model: true
+            base_decimals: 0
+            kilo_decimals: 1
+            kilo_threshold: 1000
+            min_flow_rate: 0.75
+            max_flow_rate: 6
+            min_expected_power: 0.01
+            max_expected_power: 3000
+
+          - type: markdown
+            title: Controller status
+            content: |
+              {% set mode = states('__CONTROLLER_MODE__') %}
+              {% set mode_text = {
+                'off': 'Off',
+                'manual': 'Manual',
+                'self_consumption': 'Self-consumption',
+                'charge_priority': 'Charge priority',
+                'minimum_soc': 'Minimum SOC',
+                'night': 'Night mode',
+                'target_soc_reached': 'Target SOC reached',
+                'no_forecast': 'Conservative without forecast',
+                'blended_reserve': 'Blended reserve'
+              } %}
+
+              {% set ctrl = '__CONTROL_ENABLED__' %}
+              {% set status = state_attr(ctrl, 'control_status') %}
+
+              {% set status_text = {
+                'disabled': 'Disabled',
+                'optimizer_disabled': 'Calculation disabled',
+                'legacy_controller_active': 'Legacy YAML controller active',
+                'critical_data_missing': 'Critical data missing',
+                'actuator_unavailable': 'Output control unavailable',
+                'target_unavailable': 'Target unavailable',
+                'rate_limited': 'Command rate limited',
+                'waiting_for_retry': 'Waiting for retry',
+                'in_sync': 'In sync',
+                'command_sent': 'Command sent',
+                'failsafe': 'Failsafe active',
+                'command_failed': 'Command failed'
+              } %}
+
+              {% set data_status = states('__DATA_STATUS__') %}
+
+              {% set data_status_text = {
+                'ok': 'OK',
+                'critical_data_missing': 'Critical data missing',
+                'battery_data_missing': 'Battery data missing',
+                'forecast_unavailable': 'Forecast unavailable',
+                'actuator_unavailable': 'Output control unavailable'
+              } %}
+
+              {% set last_target = state_attr(ctrl, 'last_command_target') %}
+              {% set last_time = state_attr(ctrl, 'last_command_at') %}
+
+              ## {{ mode_text.get(mode, mode) }}
+
+              **Controller:** {{ status_text.get(status, status | default('–', true)) }}
+              **Data status:** {{ data_status_text.get(data_status, data_status) }}
+              **Target:** {{ states('__OUTPUT_TARGET__') }} W
+              **Output:** {{ states('__OUTPUT_POWER__') }} W
+              **Grid power:** {{ states('__GRID_POWER__') }} W
+              **Battery charging power:** {{ states('__CHARGING_POWER__') }} W
+              **Battery state of charge:** {{ states('__SOC__') }} %
+              **Effective remaining forecast:** {{ states('__EFFECTIVE_FORECAST__') }} kWh
+              **Required charging energy:** {{ states('__CHARGE_NEED__') }} kWh
+              **Forecast margin:** {{ states('__FORECAST_MARGIN__') }} kWh
+
+              {% if last_target is not none %}
+              **Last command target:** {{ last_target | round(0) }} W
+              {% else %}
+              **Last command target:** No command sent yet
+              {% endif %}
+
+              {% if last_time %}
+              **Last command:** {{ as_timestamp(last_time) | timestamp_custom('%d.%m.%Y %H:%M:%S', true) }}
+              {% else %}
+              **Last command:** No command sent yet
+              {% endif %}
+
+          - type: custom:apexcharts-card
+            section_mode: true
+            header:
+              show: true
+              title: Energy planning until sunset
+              show_states: true
+              colorize_states: true
+            graph_span: 24h
+            span:
+              start: day
+            now:
+              show: true
+              label: Now
+            yaxis:
+              - id: energy
+                decimals: 1
+            series:
+              - entity: __EFFECTIVE_FORECAST__
+                name: Effective PV forecast
+                yaxis_id: energy
+                type: line
+                stroke_width: 2
+                group_by:
+                  duration: 5min
+                  func: avg
+
+              - entity: __CHARGE_NEED__
+                name: Required charging energy
+                yaxis_id: energy
+                type: line
+                stroke_width: 2
+                group_by:
+                  duration: 5min
+                  func: avg
+
+              - entity: __EXPECTED_LOAD_ENERGY__
+                name: Expected household energy
+                yaxis_id: energy
+                type: line
+                stroke_width: 2
+                group_by:
+                  duration: 5min
+                  func: avg
+
+              - entity: __FORECAST_MARGIN__
+                name: Forecast margin
+                yaxis_id: energy
+                type: line
+                stroke_width: 2
+                group_by:
+                  duration: 5min
+                  func: avg
+
+          - type: entities
+            title: Diagnostics
+            show_header_toggle: false
+            entities:
+              - entity: __DATA_STATUS__
+                name: Data status
+              - entity: __CRITICAL_DATA_OK__
+                name: Critical data
+              - entity: __FORECAST_AVAILABLE__
+                name: Forecast available
+              - entity: __ACTUATOR_AVAILABLE__
+                name: Output control available
+              - entity: __GRID_POWER__
+                name: Grid power
+              - entity: __GRID_POWER_AVERAGE__
+                name: 5-minute grid power
+              - entity: __HOME_LOAD__
+                name: Home load
+              - entity: __BATTERY_POWER__
+                name: Battery power
+              - entity: __CHARGING_POWER__
+                name: Charging power
+              - entity: __DISCHARGING_POWER__
+                name: Discharging power
+
+      - type: grid
+        cards:
+          - type: heading
+            heading: Key figures
+            heading_style: title
+
+          - type: grid
+            columns: 2
+            square: false
+            cards:
+              - type: gauge
+                entity: __SOC__
+                name: Battery SOC
+                min: 0
+                max: 100
+                needle: true
+                severity:
+                  red: 0
+                  yellow: 20
+                  green: 60
+
+              - type: gauge
+                entity: __FORECAST_COVERAGE__
+                name: Forecast coverage
+                min: 0
+                max: 100
+                needle: true
+                severity:
+                  red: 0
+                  yellow: 60
+                  green: 100
+
+              - type: gauge
+                entity: __OUTPUT_TARGET__
+                name: Output target
+                min: 0
+                max: 800
+                needle: true
+                severity:
+                  green: 0
+                  yellow: 400
+                  red: 700
+
+              - type: gauge
+                entity: __GRID_IMPORT__
+                name: Grid import
+                min: 0
+                max: 3000
+                needle: true
+                severity:
+                  green: 0
+                  yellow: 200
+                  red: 600
+
+          - type: custom:apexcharts-card
+            section_mode: true
+            header:
+              show: true
+              title: Power today
+              show_states: true
+              colorize_states: true
+            graph_span: 24h
+            span:
+              start: day
+            now:
+              show: true
+              label: Now
+            yaxis:
+              - id: power
+                decimals: 0
+              - id: soc
+                opposite: true
+                min: 0
+                max: 100
+                decimals: 0
+            series:
+              - entity: __SOLAR_POWER__
+                name: PV
+                yaxis_id: power
+                type: line
+                stroke_width: 2
+                group_by:
+                  duration: 5min
+                  func: avg
+
+              - entity: __OUTPUT_POWER__
+                name: Output
+                yaxis_id: power
+                type: line
+                stroke_width: 2
+                group_by:
+                  duration: 5min
+                  func: avg
+
+              - entity: __GRID_IMPORT__
+                name: Grid import
+                yaxis_id: power
+                type: line
+                stroke_width: 1
+                group_by:
+                  duration: 5min
+                  func: avg
+
+              - entity: __GRID_EXPORT__
+                name: Grid export
+                yaxis_id: power
+                type: line
+                stroke_width: 1
+                group_by:
+                  duration: 5min
+                  func: avg
+
+              - entity: __BATTERY_POWER__
+                name: Battery power
+                yaxis_id: power
+                type: line
+                stroke_width: 2
+                group_by:
+                  duration: 5min
+                  func: avg
+
+              - entity: __SOC__
+                name: SOC
+                yaxis_id: soc
+                type: line
+                stroke_width: 2
+                group_by:
+                  duration: 5min
+                  func: avg
+
+          - type: entities
+            title: Planning details
+            show_header_toggle: false
+            entities:
+              - entity: __FORECAST_REMAINING__
+                name: Remaining forecast today
+              - entity: __EFFECTIVE_FORECAST__
+                name: Effective remaining forecast
+              - entity: __CHARGE_NEED__
+                name: Required charging energy
+              - entity: __EXPECTED_LOAD_ENERGY__
+                name: Expected household energy demand
+              - entity: __FORECAST_MARGIN__
+                name: Forecast margin
+              - entity: __FORECAST_COVERAGE__
+                name: Forecast coverage
+              - entity: __HOURS_TO_SUNSET__
+                name: Hours until sunset
+              - entity: __REQUIRED_CHARGE_POWER__
+                name: Required average charging power
+              - entity: __MINUTES_TO_TARGET__
+                name: Minutes until target SOC
+              - entity: __AVAILABLE_BATTERY_ENERGY__
+                name: Available battery energy
+
+      - type: grid
+        cards:
+          - type: entities
+            title: Controls
+            show_header_toggle: false
+            entities:
+              - entity: __OPTIMIZER_ENABLED__
+                name: Optimizer calculation enabled
+              - entity: __CONTROL_ENABLED__
+                name: Active NOAH control
+              - entity: __OPTIMIZER_MODE__
+                name: Operating mode
+              - entity: __TARGET_SOC__
+                name: Target SOC at sunset
+              - entity: __MIN_SOC__
+                name: Minimum SOC
+              - entity: __MANUAL_OUTPUT__
+                name: Manual output power
+
+          - type: custom:apexcharts-card
+            section_mode: true
+            header:
+              show: true
+              title: Controller behavior
+              show_states: true
+              colorize_states: true
+            graph_span: 24h
+            span:
+              start: day
+            now:
+              show: true
+              label: Now
+            yaxis:
+              - id: power
+                min: 0
+                max: 800
+                decimals: 0
+            series:
+              - entity: __OUTPUT_TARGET__
+                name: Controller target
+                yaxis_id: power
+                type: line
+                curve: stepline
+                stroke_width: 3
+                group_by:
+                  duration: 5min
+                  func: avg
+
+              - entity: __OUTPUT_POWER__
+                name: Actual output
+                yaxis_id: power
+                type: line
+                stroke_width: 2
+                group_by:
+                  duration: 5min
+                  func: avg
+
+              - entity: __SELF_CONSUMPTION_TARGET__
+                name: Self-consumption target
+                yaxis_id: power
+                type: line
+                stroke_width: 1
+                group_by:
+                  duration: 5min
+                  func: avg
+
+              - entity: __CHARGE_PRIORITY_TARGET__
+                name: Charge-priority target
+                yaxis_id: power
+                type: line
+                stroke_width: 1
+                group_by:
+                  duration: 5min
+                  func: avg
+
+              - entity: __REQUIRED_CHARGE_POWER__
+                name: Required charging power
+                yaxis_id: power
+                type: line
+                stroke_width: 1
+                group_by:
+                  duration: 5min
+                  func: avg
+
+          - type: entities
+            title: Calibration
+            show_header_toggle: false
+            entities:
+              - entity: __BATTERY_CAPACITY__
+                name: Usable battery capacity
+              - entity: __CHARGE_EFFICIENCY__
+                name: Assumed charging efficiency
+              - entity: __FORECAST_FACTOR__
+                name: Forecast safety factor
+              - entity: __FORECAST_SAFETY__
+                name: Additional energy reserve
+              - entity: __RELEASE_MARGIN__
+                name: Release margin
+              - entity: __EXPECTED_DAY_LOAD__
+                name: Expected average household load
+              - entity: __GRID_RESERVE__
+                name: Desired residual grid import
+              - entity: __MAX_OUTPUT__
+                name: Maximum output power
+              - entity: __NIGHT_MAX_OUTPUT__
+                name: Maximum output power at night
+              - entity: __COMMAND_STEP__
+                name: Output step size
+              - entity: __COMMAND_DEADBAND__
+                name: Control deadband

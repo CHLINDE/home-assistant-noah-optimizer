@@ -4,7 +4,7 @@
     "step": {
       "user": {
         "title": "Set up Growatt NOAH Optimizer",
-        "description": "Select the existing entities from Noah-MQTT, Forecast.Solar, and your grid meter. Active NOAH control is disabled by default after setup and must be enabled separately.",
+        "description": "Select the existing entities from Noah-MQTT, Forecast.Solar, and your grid meter. Active NOAH control is disabled by default after setup. The NOAH Optimizer dashboard is created automatically.",
         "data": {
           "grid_power": "Signed grid power",
           "solar_power": "NOAH Solar Power",
@@ -14,7 +14,8 @@
           "discharge_power": "NOAH Discharge Power",
           "forecast_remaining": "Forecast.Solar remaining forecast today",
           "system_output_power": "NOAH System Output Power",
-          "invert_grid_sign": "Invert grid power sign"
+          "invert_grid_sign": "Invert grid power sign",
+          "dashboard_show_in_sidebar": "Show dashboard in sidebar"
         },
         "data_description": {
           "grid_power": "Positive values must indicate grid import and negative values grid export.",
@@ -25,7 +26,8 @@
           "discharge_power": "Current battery discharging power.",
           "forecast_remaining": "Expected remaining PV energy for the current day.",
           "system_output_power": "Writable NOAH output setpoint. It is only written when active NOAH control has explicitly been enabled.",
-          "invert_grid_sign": "Enable this if your grid sensor reports positive values for grid export."
+          "invert_grid_sign": "Enable this if your grid sensor reports positive values for grid export.",
+          "dashboard_show_in_sidebar": "The NOAH Optimizer dashboard is created automatically. Disable this option if it should not be shown in the sidebar by default."
         }
       }
     },
