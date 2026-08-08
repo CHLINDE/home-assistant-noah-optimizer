@@ -70,6 +70,7 @@ class NoahOptimizerController:
 
         self._critical_missing_since: datetime | None = None
         self._failsafe_sent = False
+        self._failsafe_notified = False
 
         self._status = "disabled"
 
@@ -94,10 +95,7 @@ class NoahOptimizerController:
     def _publish_state(self) -> None:
         """Notify coordinator entities about controller changes."""
 
-        if self.coordinator.data is not None:
-            self.coordinator.async_set_updated_data(
-                dict(self.coordinator.data)
-            )
+        self.coordinator.async_update_listeners()
 
     def _set_status(
         self,
@@ -286,6 +284,12 @@ class NoahOptimizerController:
             )
             return
 
+        # Notify after the failsafe delay even if the actuator itself
+        # is unavailable and 0 W cannot currently be sent.
+        if not self._failsafe_notified:
+            await self._async_create_failsafe_notification()
+            self._failsafe_notified = True
+
         if self._failsafe_sent:
             self._set_status(
                 "failsafe"
@@ -315,8 +319,6 @@ class NoahOptimizerController:
             "failsafe"
         )
 
-        await self._async_create_failsafe_notification()
-
     async def _async_handle_data_recovered(
         self,
     ) -> None:
@@ -325,12 +327,13 @@ class NoahOptimizerController:
         if self._critical_missing_since is None:
             return
 
-        had_failsafe = self._failsafe_sent
+        had_notification = self._failsafe_notified
 
         self._critical_missing_since = None
         self._failsafe_sent = False
+        self._failsafe_notified = False
 
-        if had_failsafe:
+        if had_notification:
             await self._async_dismiss_failsafe_notification()
 
     async def async_control_tick(

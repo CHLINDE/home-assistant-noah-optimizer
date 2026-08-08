@@ -186,10 +186,10 @@ template:
         device_class: power
         state_class: measurement
         availability: >
-          {{ states('sensor.stromzahler_aktuelle_leistung') not in
+          {{ states('sensor.dein_netzleistungssensor') not in
             ['unknown', 'unavailable', 'none', ''] }}
         state: >
-          {% set raw = states('sensor.stromzahler_aktuelle_leistung') | float(0) %}
+          {% set raw = states('sensor.dein_netzleistungssensor') | float(0) %}
           {{ (raw * (-1 if is_state('input_boolean.noah_grid_sign_inverted', 'on') else 1)) | round(0) }}
 
       - name: NOAH Opt PV-Leistung
@@ -198,10 +198,10 @@ template:
         device_class: power
         state_class: measurement
         availability: >
-          {{ states('sensor.0pvpc0ed35kt00kr_solar_power') not in
+          {{ states('sensor.dein_noah_solar_power') not in
             ['unknown', 'unavailable', 'none', ''] }}
         state: >
-          {{ states('sensor.0pvpc0ed35kt00kr_solar_power') | float(0) | round(0) }}
+          {{ states('sensor.dein_noah_solar_power') | float(0) | round(0) }}
 
       - name: NOAH Opt Ausgangsleistung
         unique_id: noah_opt_output_power
@@ -209,10 +209,10 @@ template:
         device_class: power
         state_class: measurement
         availability: >
-          {{ states('sensor.0pvpc0ed35kt00kr_output_power') not in
+          {{ states('sensor.dein_noah_output_power') not in
             ['unknown', 'unavailable', 'none', ''] }}
         state: >
-          {{ states('sensor.0pvpc0ed35kt00kr_output_power') | float(0) | round(0) }}
+          {{ states('sensor.dein_noah_output_power') | float(0) | round(0) }}
 
       - name: NOAH Opt SOC
         unique_id: noah_opt_soc
@@ -220,10 +220,10 @@ template:
         device_class: battery
         state_class: measurement
         availability: >
-          {{ states('sensor.0pvpc0ed35kt00kr_soc') not in
+          {{ states('sensor.dein_noah_soc') not in
             ['unknown', 'unavailable', 'none', ''] }}
         state: >
-          {{ states('sensor.0pvpc0ed35kt00kr_soc') | float(0) | round(1) }}
+          {{ states('sensor.dein_noah_soc') | float(0) | round(1) }}
 
       - name: NOAH Opt Ladeleistung
         unique_id: noah_opt_charge_power
@@ -231,10 +231,10 @@ template:
         device_class: power
         state_class: measurement
         availability: >
-          {{ states('sensor.0pvpc0ed35kt00kr_charging_power') not in
+          {{ states('sensor.dein_noah_charging_power') not in
             ['unknown', 'unavailable', 'none', ''] }}
         state: >
-          {{ states('sensor.0pvpc0ed35kt00kr_charging_power') | float(0) | round(0) }}
+          {{ states('sensor.dein_noah_charging_power') | float(0) | round(0) }}
 
       - name: NOAH Opt Entladeleistung
         unique_id: noah_opt_discharge_power
@@ -242,20 +242,20 @@ template:
         device_class: power
         state_class: measurement
         availability: >
-          {{ states('sensor.0pvpc0ed35kt00kr_discharge_power') not in
+          {{ states('sensor.dein_noah_discharge_power') not in
             ['unknown', 'unavailable', 'none', ''] }}
         state: >
-          {{ states('sensor.0pvpc0ed35kt00kr_discharge_power') | float(0) | round(0) }}
+          {{ states('sensor.dein_noah_discharge_power') | float(0) | round(0) }}
 
       - name: NOAH Opt Restprognose heute
         unique_id: noah_opt_forecast_remaining
         unit_of_measurement: kWh
         device_class: energy
         availability: >
-          {{ states('sensor.energy_production_today_remaining') not in
+          {{ states('sensor.deine_forecast_solar_restprognose') not in
             ['unknown', 'unavailable', 'none', ''] }}
         state: >
-          {{ states('sensor.energy_production_today_remaining') | float(0) | round(3) }}
+          {{ states('sensor.deine_forecast_solar_restprognose') | float(0) | round(3) }}
 
 
       # -----------------------------------------------------------------------
@@ -550,7 +550,7 @@ template:
             and has_value('sensor.noah_opt_soc')
           %}
           {% set actuator =
-            states('number.0pvpc0ed35kt00kr_system_output_power') not in
+            states('number.dein_noah_system_output_power') not in
             ['unknown', 'unavailable', 'none', '']
           %}
           {% set forecast = has_value('sensor.noah_opt_restprognose_heute') %}
@@ -624,7 +624,7 @@ automation:
 
       - condition: template
         value_template: >
-          {{ states('number.0pvpc0ed35kt00kr_system_output_power') not in
+          {{ states('number.dein_noah_system_output_power') not in
             ['unknown', 'unavailable', 'none', ''] }}
 
     actions:
@@ -636,7 +636,7 @@ automation:
             {{ states('input_number.noah_last_target_w') | int(0) }}
 
           actual_setpoint: >
-            {{ states('number.0pvpc0ed35kt00kr_system_output_power') | int(0) }}
+            {{ states('number.dein_noah_system_output_power') | int(0) }}
 
           deadband: >
             {{ states('input_number.noah_command_deadband_w') | int(50) }}
@@ -662,7 +662,7 @@ automation:
 
       - action: number.set_value
         target:
-          entity_id: number.0pvpc0ed35kt00kr_system_output_power
+          entity_id: number.dein_noah_system_output_power
         data:
           value: >
             {{ target }}
@@ -707,13 +707,13 @@ automation:
           - conditions:
               - condition: template
                 value_template: >
-                  {{ states('number.0pvpc0ed35kt00kr_system_output_power') not in
+                  {{ states('number.dein_noah_system_output_power') not in
                     ['unknown', 'unavailable', 'none', ''] }}
 
             sequence:
               - action: number.set_value
                 target:
-                  entity_id: number.0pvpc0ed35kt00kr_system_output_power
+                  entity_id: number.dein_noah_system_output_power
                 data:
                   value: 0
 
