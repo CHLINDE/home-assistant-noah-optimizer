@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import (
     Event,
@@ -29,6 +31,9 @@ from .control import (
     NoahOptimizerController,
 )
 from .coordinator import NoahOptimizerCoordinator
+from .dashboard import async_ensure_dashboard
+
+_LOGGER = logging.getLogger(__name__)
 
 
 type NoahOptimizerConfigEntry = ConfigEntry[
@@ -101,12 +106,21 @@ async def async_setup_entry(
         PLATFORMS,
     )
 
-    # On a normal beta.4 -> beta.5 update this does not write
-    # anything because OPT_CONTROL_ENABLED defaults to False.
-    #
-    # If active control was explicitly enabled in beta.5 and
-    # Home Assistant is restarted, control resumes here.
+    # Resume active control if it had explicitly been enabled.
     await controller.async_control_tick()
+
+    # Dashboard support is optional and must never prevent
+    # the optimizer itself from loading.
+    try:
+        await async_ensure_dashboard(
+            hass,
+            entry,
+        )
+
+    except Exception:  # noqa: BLE001
+        _LOGGER.exception(
+            "Could not create the NOAH Optimizer dashboard"
+        )
 
     return True
 

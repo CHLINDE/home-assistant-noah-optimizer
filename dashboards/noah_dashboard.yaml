@@ -1,11 +1,8 @@
-# Growatt NOAH Dashboard
-# Vor dem Import die Stellgrößen-Entität ersetzen:
-# number.dein_noah_system_output_power
+# Legacy YAML optimizer dashboard.
 #
-# Voraussetzungen:
-# - Power Flow Card Plus
-# - ApexCharts Card
-#
+# This file is not used by the HACS integration.
+# Starting with version 2.0.0-beta.6, the HACS integration creates
+# its own dashboard automatically.
 title: Growatt NOAH
 views:
   - title: Optimierung

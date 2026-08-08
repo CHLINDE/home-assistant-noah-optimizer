@@ -14,6 +14,22 @@ Prognosebasierte Steuerung der Ausgangsleistung eines Growatt NOAH 2000
 
 ## Dashboard
 
+### HACS integration
+
+Starting with `2.0.0-beta.6`, the HACS integration automatically creates
+a dedicated NOAH Optimizer dashboard.
+
+No changes to `configuration.yaml` are required.
+
+### Legacy YAML optimizer
+
+The file:
+
+`dashboards/noah_dashboard.yaml`
+
+remains the example dashboard for the legacy YAML optimizer and is not
+used by the HACS integration.
+
 ### Browseransicht
 
 ![NOAH Optimizer Dashboard im Browser](screenshots/noah_dashboard_browser.png)
@@ -172,3 +188,33 @@ The legacy YAML optimizer and the HACS optimizer must never actively
 control the same NOAH at the same time. Beta 5 contains an additional
 software interlock that blocks HACS output commands while the legacy
 `input_boolean.noah_optimizer_enabled` is on.
+
+### Version 2.0.0-beta.6
+
+Beta 6 introduces automatic dashboard installation.
+
+The integration creates a dedicated **NOAH Optimizer** Home Assistant
+dashboard when it is first set up or after upgrading from an earlier beta.
+
+The dashboard:
+
+- is shown in the Home Assistant sidebar by default
+- dynamically resolves the integration's actual entity IDs
+- supports entity IDs changed by Home Assistant area naming
+- displays grid import and export separately
+- displays battery charging and discharging separately
+- includes active-controller status and command diagnostics
+- includes forecast, energy-planning and controller-history charts
+- includes optimizer configuration and calibration controls
+- is only initialized once and is not overwritten after user customization
+
+For new installations, sidebar visibility can be selected during setup.
+Existing installations upgrading from an earlier beta default to showing
+the dashboard in the sidebar.
+
+The enhanced dashboard requires:
+
+- Power Flow Card Plus
+- ApexCharts Card
+
+These dashboard cards are not installed automatically.

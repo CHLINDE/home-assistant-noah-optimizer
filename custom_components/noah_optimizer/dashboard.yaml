@@ -1,0 +1,596 @@
+views:
+  - title: Ladeoptimierung für den Speicher
+    path: optimierung
+    icon: mdi:solar-power
+    type: sections
+    max_columns: 3
+
+    sections:
+
+      # ==========================================================
+      # SPALTE 1
+      # ==========================================================
+
+      - type: grid
+        cards:
+
+          # ------------------------------------------------------
+          # AKTUELLER ENERGIEFLUSS
+          # ------------------------------------------------------
+
+          - type: custom:power-flow-card-plus
+            title: Aktueller Energiefluss
+            entities:
+
+              grid:
+                entity:
+                  consumption: __GRID_IMPORT__
+                  production: __GRID_EXPORT__
+                name: Netz
+                icon: mdi:transmission-tower
+                display_state: two_way
+                color_circle: color_dynamically
+
+              solar:
+                entity: __SOLAR_POWER__
+                name: PV
+                icon: mdi:solar-power
+                color_icon: true
+                color_value: true
+
+              battery:
+                entity:
+                  consumption: __CHARGING_POWER__
+                  production: __DISCHARGING_POWER__
+                state_of_charge: __SOC__
+                name: NOAH
+                icon: mdi:battery
+                display_state: two_way
+                color_circle: color_dynamically
+                color_icon: color_dynamically
+                color_state_of_charge_value: color_dynamically
+
+              home:
+                entity: __HOME_LOAD__
+                name: Haus
+                icon: mdi:home
+                override_state: true
+                color_icon: true
+
+            clickable_entities: true
+
+            display_zero_lines:
+              mode: grey_out
+              transparency: 50
+              grey_color:
+                - 189
+                - 189
+                - 189
+
+            use_new_flow_rate_model: true
+            base_decimals: 0
+            kilo_decimals: 1
+            kilo_threshold: 1000
+            min_flow_rate: 0.75
+            max_flow_rate: 6
+            min_expected_power: 0.01
+            max_expected_power: 3000
+
+
+          # ------------------------------------------------------
+          # REGLERSTATUS
+          # ------------------------------------------------------
+
+          - type: markdown
+            title: Reglerstatus
+            content: |
+              {% set mode = states('__CONTROLLER_MODE__') %}
+
+              {% set mode_text = {
+                'off': 'Aus',
+                'manual': 'Manuell',
+                'self_consumption': 'Eigenverbrauch',
+                'charge_priority': 'Ladepriorität',
+                'minimum_soc': 'Mindest-SOC',
+                'night': 'Nachtbetrieb',
+                'target_soc_reached': 'Ziel-SOC erreicht',
+                'no_forecast': 'Konservativ ohne Prognose',
+                'blended_reserve': 'Gleitende Reserve'
+              } %}
+
+              {% set ctrl = '__CONTROL_ENABLED__' %}
+              {% set status = state_attr(ctrl, 'control_status') %}
+
+              {% set status_text = {
+                'disabled': 'Deaktiviert',
+                'optimizer_disabled': 'Berechnung deaktiviert',
+                'legacy_controller_active': 'Alter YAML-Regler aktiv',
+                'critical_data_missing': 'Kritische Daten fehlen',
+                'actuator_unavailable': 'Stellgröße nicht verfügbar',
+                'target_unavailable': 'Sollwert nicht verfügbar',
+                'rate_limited': 'Wartezeit nach Stellbefehl',
+                'waiting_for_retry': 'Warte auf Wiederholungsversuch',
+                'in_sync': 'Synchron',
+                'command_sent': 'Stellbefehl gesendet',
+                'failsafe': 'Failsafe aktiv',
+                'command_failed': 'Stellbefehl fehlgeschlagen'
+              } %}
+
+              {% set last_target = state_attr(ctrl, 'last_command_target') %}
+              {% set last_time = state_attr(ctrl, 'last_command_at') %}
+
+              ## {{ mode_text.get(mode, mode) }}
+
+              **Controller:** {{ status_text.get(status, status | default('–', true)) }}  
+              **Datenstatus:** {{ states('__DATA_STATUS__') }}  
+              **Sollwert:** {{ states('__OUTPUT_TARGET__') }} W  
+              **Ausgang:** {{ states('__OUTPUT_POWER__') }} W  
+              **Netzleistung:** {{ states('__GRID_POWER__') }} W  
+              **Ladeleistung Speicher:** {{ states('__CHARGING_POWER__') }} W  
+              **Ladezustand Batterie:** {{ states('__SOC__') }} %  
+              **Restprognose wirksam:** {{ states('__EFFECTIVE_FORECAST__') }} kWh  
+              **Noch benötigte Ladeenergie:** {{ states('__CHARGE_NEED__') }} kWh  
+              **Prognosemarge:** {{ states('__FORECAST_MARGIN__') }} kWh
+
+              {% if last_target is not none %}
+              **Letzter Stellwert:** {{ last_target | round(0) }} W  
+              {% else %}
+              **Letzter Stellwert:** Noch kein Stellbefehl  
+              {% endif %}
+
+              {% if last_time %}
+              **Letzter Stellbefehl:** {{ as_timestamp(last_time) | timestamp_custom('%d.%m.%Y %H:%M:%S', true) }}
+              {% else %}
+              **Letzter Stellbefehl:** Noch kein Stellbefehl
+              {% endif %}
+
+
+          # ------------------------------------------------------
+          # ENERGIEPLANUNG BIS SONNENUNTERGANG
+          # ------------------------------------------------------
+
+          - type: custom:apexcharts-card
+            section_mode: true
+
+            header:
+              show: true
+              title: Energieplanung bis Sonnenuntergang
+              show_states: true
+              colorize_states: true
+
+            graph_span: 24h
+
+            span:
+              start: day
+
+            now:
+              show: true
+              label: Jetzt
+
+            yaxis:
+              - id: energy
+                decimals: 1
+
+            series:
+              - entity: __EFFECTIVE_FORECAST__
+                name: wirksame PV-Prognose
+                yaxis_id: energy
+                type: line
+                stroke_width: 2
+                group_by:
+                  duration: 5min
+                  func: avg
+
+              - entity: __CHARGE_NEED__
+                name: Ladebedarf
+                yaxis_id: energy
+                type: line
+                stroke_width: 2
+                group_by:
+                  duration: 5min
+                  func: avg
+
+              - entity: __EXPECTED_LOAD_ENERGY__
+                name: erwartete Hausenergie
+                yaxis_id: energy
+                type: line
+                stroke_width: 2
+                group_by:
+                  duration: 5min
+                  func: avg
+
+              - entity: __FORECAST_MARGIN__
+                name: Prognosemarge
+                yaxis_id: energy
+                type: line
+                stroke_width: 2
+                group_by:
+                  duration: 5min
+                  func: avg
+
+
+          # ------------------------------------------------------
+          # DIAGNOSE
+          # ------------------------------------------------------
+
+          - type: entities
+            title: Diagnose
+            show_header_toggle: false
+
+            entities:
+              - entity: __DATA_STATUS__
+                name: Datenstatus
+
+              - entity: __CRITICAL_DATA_OK__
+                name: Kritische Daten OK
+
+              - entity: __FORECAST_AVAILABLE__
+                name: Prognose verfügbar
+
+              - entity: __ACTUATOR_AVAILABLE__
+                name: Stellgröße verfügbar
+
+              - entity: __GRID_POWER__
+                name: Netzleistung
+
+              - entity: __GRID_POWER_AVERAGE__
+                name: Netzleistung 5 min
+
+              - entity: __HOME_LOAD__
+                name: Hauslast
+
+              - entity: __BATTERY_POWER__
+                name: Batterieleistung
+
+              - entity: __CHARGING_POWER__
+                name: Ladeleistung
+
+              - entity: __DISCHARGING_POWER__
+                name: Entladeleistung
+
+
+      # ==========================================================
+      # SPALTE 2
+      # ==========================================================
+
+      - type: grid
+        cards:
+
+          # ------------------------------------------------------
+          # KENNZAHLEN
+          # ------------------------------------------------------
+
+          - type: heading
+            heading: Kennzahlen
+            heading_style: title
+
+          - type: grid
+            columns: 2
+            square: false
+
+            cards:
+              - type: gauge
+                entity: __SOC__
+                name: Akkustand
+                min: 0
+                max: 100
+                needle: true
+                severity:
+                  red: 0
+                  yellow: 20
+                  green: 60
+
+              - type: gauge
+                entity: __FORECAST_COVERAGE__
+                name: Prognosedeckung
+                min: 0
+                max: 100
+                needle: true
+                severity:
+                  red: 0
+                  yellow: 60
+                  green: 100
+
+              - type: gauge
+                entity: __OUTPUT_TARGET__
+                name: Ausgangssollwert
+                min: 0
+                max: 800
+                needle: true
+                severity:
+                  green: 0
+                  yellow: 400
+                  red: 700
+
+              - type: gauge
+                entity: __GRID_IMPORT__
+                name: Netzbezug
+                min: 0
+                max: 3000
+                needle: true
+                severity:
+                  green: 0
+                  yellow: 200
+                  red: 600
+
+
+          # ------------------------------------------------------
+          # LEISTUNG HEUTE
+          # ------------------------------------------------------
+
+          - type: custom:apexcharts-card
+            section_mode: true
+
+            header:
+              show: true
+              title: Leistung heute
+              show_states: true
+              colorize_states: true
+
+            graph_span: 24h
+
+            span:
+              start: day
+
+            now:
+              show: true
+              label: Jetzt
+
+            yaxis:
+              - id: power
+                decimals: 0
+
+              - id: soc
+                opposite: true
+                min: 0
+                max: 100
+                decimals: 0
+
+            series:
+              - entity: __SOLAR_POWER__
+                name: PV
+                yaxis_id: power
+                type: line
+                stroke_width: 2
+                group_by:
+                  duration: 5min
+                  func: avg
+
+              - entity: __OUTPUT_POWER__
+                name: Ausgang
+                yaxis_id: power
+                type: line
+                stroke_width: 2
+                group_by:
+                  duration: 5min
+                  func: avg
+
+              - entity: __GRID_IMPORT__
+                name: Netzbezug
+                yaxis_id: power
+                type: line
+                stroke_width: 1
+                group_by:
+                  duration: 5min
+                  func: avg
+
+              - entity: __GRID_EXPORT__
+                name: Einspeisung
+                yaxis_id: power
+                type: line
+                stroke_width: 1
+                group_by:
+                  duration: 5min
+                  func: avg
+
+              - entity: __BATTERY_POWER__
+                name: Akkuleistung
+                yaxis_id: power
+                type: line
+                stroke_width: 2
+                group_by:
+                  duration: 5min
+                  func: avg
+
+              - entity: __SOC__
+                name: SOC
+                yaxis_id: soc
+                type: line
+                stroke_width: 2
+                group_by:
+                  duration: 5min
+                  func: avg
+
+
+          # ------------------------------------------------------
+          # PLANUNG IM DETAIL
+          # ------------------------------------------------------
+
+          - type: entities
+            title: Planung im Detail
+            show_header_toggle: false
+
+            entities:
+              - entity: __FORECAST_REMAINING__
+                name: Restprognose heute
+
+              - entity: __EFFECTIVE_FORECAST__
+                name: Wirksame Restprognose
+
+              - entity: __CHARGE_NEED__
+                name: Ladebedarf
+
+              - entity: __EXPECTED_LOAD_ENERGY__
+                name: Erwarteter Hausenergiebedarf
+
+              - entity: __FORECAST_MARGIN__
+                name: Prognosemarge
+
+              - entity: __FORECAST_COVERAGE__
+                name: Prognosedeckung
+
+              - entity: __HOURS_TO_SUNSET__
+                name: Stunden bis Sonnenuntergang
+
+              - entity: __REQUIRED_CHARGE_POWER__
+                name: Erforderliche mittlere Ladeleistung
+
+              - entity: __MINUTES_TO_TARGET__
+                name: Minuten bis Ziel-SOC
+
+              - entity: __AVAILABLE_BATTERY_ENERGY__
+                name: Verfügbare Akkuenergie
+
+
+      # ==========================================================
+      # SPALTE 3
+      # ==========================================================
+
+      - type: grid
+        cards:
+
+          # ------------------------------------------------------
+          # BEDIENUNG
+          # ------------------------------------------------------
+
+          - type: entities
+            title: Bedienung
+            show_header_toggle: false
+
+            entities:
+              - entity: __OPTIMIZER_ENABLED__
+                name: Optimierer-Berechnung aktiv
+
+              - entity: __CONTROL_ENABLED__
+                name: NOAH-Steuerung aktiv
+
+              - entity: __OPTIMIZER_MODE__
+                name: Betriebsart
+
+              - entity: __TARGET_SOC__
+                name: Ziel-SOC bei Sonnenuntergang
+
+              - entity: __MIN_SOC__
+                name: Mindest-SOC
+
+              - entity: __MANUAL_OUTPUT__
+                name: Manuelle Ausgangsleistung
+
+
+          # ------------------------------------------------------
+          # REGLERVERHALTEN
+          # ------------------------------------------------------
+
+          - type: custom:apexcharts-card
+            section_mode: true
+
+            header:
+              show: true
+              title: Reglerverhalten
+              show_states: true
+              colorize_states: true
+
+            graph_span: 24h
+
+            span:
+              start: day
+
+            now:
+              show: true
+              label: Jetzt
+
+            yaxis:
+              - id: power
+                min: 0
+                max: 800
+                decimals: 0
+
+            series:
+              - entity: __OUTPUT_TARGET__
+                name: Regler-Soll
+                yaxis_id: power
+                type: line
+                curve: stepline
+                stroke_width: 3
+                group_by:
+                  duration: 5min
+                  func: avg
+
+              - entity: __OUTPUT_POWER__
+                name: Ist-Ausgang
+                yaxis_id: power
+                type: line
+                stroke_width: 2
+                group_by:
+                  duration: 5min
+                  func: avg
+
+              - entity: __SELF_CONSUMPTION_TARGET__
+                name: Eigenverbrauch-Soll
+                yaxis_id: power
+                type: line
+                stroke_width: 1
+                group_by:
+                  duration: 5min
+                  func: avg
+
+              - entity: __CHARGE_PRIORITY_TARGET__
+                name: Ladepriorität-Soll
+                yaxis_id: power
+                type: line
+                stroke_width: 1
+                group_by:
+                  duration: 5min
+                  func: avg
+
+              - entity: __REQUIRED_CHARGE_POWER__
+                name: nötige Ladeleistung
+                yaxis_id: power
+                type: line
+                stroke_width: 1
+                group_by:
+                  duration: 5min
+                  func: avg
+
+
+          # ------------------------------------------------------
+          # KALIBRIERUNG
+          # ------------------------------------------------------
+
+          - type: entities
+            title: Kalibrierung
+            show_header_toggle: false
+
+            entities:
+              - entity: __BATTERY_CAPACITY__
+                name: Nutzbare Akkukapazität
+
+              - entity: __CHARGE_EFFICIENCY__
+                name: Angenommener Ladewirkungsgrad
+
+              - entity: __FORECAST_FACTOR__
+                name: Prognose-Sicherheitsfaktor
+
+              - entity: __FORECAST_SAFETY__
+                name: Zusätzliche Energiereserve
+
+              - entity: __RELEASE_MARGIN__
+                name: Freigabemarge
+
+              - entity: __EXPECTED_DAY_LOAD__
+                name: Erwartete mittlere Hauslast
+
+              - entity: __GRID_RESERVE__
+                name: Gewünschter Rest-Netzbezug
+
+              - entity: __MAX_OUTPUT__
+                name: Maximale Ausgangsleistung
+
+              - entity: __NIGHT_MAX_OUTPUT__
+                name: Maximale Ausgangsleistung nachts
+
+              - entity: __COMMAND_STEP__
+                name: Stellgrößenraster
+
+              - entity: __COMMAND_DEADBAND__
+                name: Schalt-Hysterese

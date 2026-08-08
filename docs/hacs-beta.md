@@ -1,11 +1,40 @@
-# HACS Integration Beta
+# HACS Beta
 
-## Current beta: 2.0.0-beta.5
+Current beta: `2.0.0-beta.6`
 
-The HACS integration has progressed from observation-only testing to optional
-active NOAH output control.
+## Automatic dashboard
 
-Active control is disabled by default and must be enabled explicitly.
+Starting with version `2.0.0-beta.6`, the integration automatically
+creates a dedicated Home Assistant dashboard named **NOAH Optimizer**.
+
+The dashboard is shown in the sidebar by default.
+
+For new installations, sidebar visibility can be selected during the
+integration setup.
+
+When upgrading an existing Beta 5 installation, sidebar visibility
+defaults to enabled.
+
+The dashboard resolves the integration entities dynamically through
+Home Assistant's entity registry. Therefore area-based entity ID prefixes
+do not need to be known in advance.
+
+The default dashboard is written only when no existing NOAH Optimizer
+dashboard configuration is present. User modifications are not overwritten
+during later Home Assistant restarts or integration reloads.
+
+### Dashboard requirements
+
+The enhanced dashboard requires:
+
+- Power Flow Card Plus
+- ApexCharts Card
+
+These frontend cards are separate HACS dashboard components and are not
+installed automatically.
+
+The NOAH Optimizer itself continues to operate independently of these
+frontend cards.
 
 ## Required source entities
 
@@ -73,11 +102,11 @@ The calculation logic was compared with the legacy YAML optimizer in Beta 4.
 With identical configuration parameters, the relevant calculated values,
 controller mode, and final output target matched the YAML implementation.
 
-## Active control in Beta 5
+## Active control
 
-Beta 5 can optionally write the calculated output target to the configured
-NOAH System Output Power entity using Home Assistant's `number.set_value`
-service.
+Starting with Beta 5, the integration can optionally write the calculated
+output target to the configured NOAH System Output Power entity using
+Home Assistant's `number.set_value` service.
 
 Two separate switches are provided:
 
@@ -167,9 +196,28 @@ comparison against the legacy YAML optimizer.
 
 ### 2.0.0-beta.5
 
-Adds optional active output control, rate limiting, retry handling, failsafe
+Added optional active output control, rate limiting, retry handling, failsafe
 behavior, controller diagnostics, and protection against simultaneous control
 by the legacy YAML optimizer.
+
+### 2.0.0-beta.6
+
+Adds automatic creation of a dedicated NOAH Optimizer dashboard.
+
+The dashboard:
+
+- is shown in the Home Assistant sidebar by default
+- can optionally be hidden from the sidebar during initial setup
+- resolves optimizer entity IDs dynamically through Home Assistant's entity registry
+- displays grid import and export separately
+- displays battery charging and discharging separately
+- includes controller status and last-command diagnostics
+- includes energy-planning and controller-history charts
+- includes optimizer controls, calibration values, and diagnostics
+- does not overwrite later user modifications
+
+The enhanced dashboard uses Power Flow Card Plus and ApexCharts Card.
+These frontend cards are not installed automatically.
 
 ## Current limitations
 
