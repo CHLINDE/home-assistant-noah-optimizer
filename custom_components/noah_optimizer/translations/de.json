@@ -68,6 +68,59 @@
       "forecast_remaining": {
         "name": "Restprognose heute"
       },
+      "grid_power_average": {
+        "name": "Netzleistung 5 min"
+      },
+      "hours_to_sunset": {
+        "name": "Stunden bis Sonnenuntergang"
+      },
+      "available_battery_energy": {
+        "name": "Verfügbare Akkuenergie"
+      },
+      "charge_need": {
+        "name": "Ladebedarf"
+      },
+      "effective_forecast": {
+        "name": "Wirksame Restprognose"
+      },
+      "expected_load_energy": {
+        "name": "Erwarteter Hausenergiebedarf"
+      },
+      "forecast_margin": {
+        "name": "Prognosemarge"
+      },
+      "forecast_coverage": {
+        "name": "Prognosedeckung"
+      },
+      "required_charge_power": {
+        "name": "Erforderliche mittlere Ladeleistung"
+      },
+      "minutes_to_target": {
+        "name": "Minuten bis Ziel-SOC"
+      },
+      "self_consumption_target": {
+        "name": "Eigenverbrauch-Soll"
+      },
+      "charge_priority_target": {
+        "name": "Ladepriorität-Soll"
+      },
+      "output_target": {
+        "name": "Ausgangssollwert"
+      },
+      "controller_mode": {
+        "name": "Reglermodus",
+        "state": {
+          "off": "Aus",
+          "manual": "Manuell",
+          "self_consumption": "Eigenverbrauch",
+          "charge_priority": "Ladepriorität",
+          "minimum_soc": "Mindest-SOC",
+          "night": "Nachtbetrieb",
+          "target_soc_reached": "Ziel-SOC erreicht",
+          "no_forecast": "Konservativ ohne Prognose",
+          "blended_reserve": "Gleitende Reserve"
+        }
+      },
       "data_status": {
         "name": "Datenstatus",
         "state": {
@@ -77,6 +130,66 @@
           "forecast_unavailable": "Prognose nicht verfügbar",
           "actuator_unavailable": "Stellgröße nicht verfügbar"
         }
+      }
+    },
+    "number": {
+      "battery_capacity": {
+        "name": "Nutzbare Akkukapazität"
+      },
+      "target_soc": {
+        "name": "Ziel-SOC bei Sonnenuntergang"
+      },
+      "min_soc": {
+        "name": "Mindest-SOC"
+      },
+      "charge_efficiency": {
+        "name": "Angenommener Ladewirkungsgrad"
+      },
+      "forecast_factor": {
+        "name": "Prognose-Sicherheitsfaktor"
+      },
+      "forecast_safety": {
+        "name": "Zusätzliche Energiereserve"
+      },
+      "release_margin": {
+        "name": "Freigabemarge"
+      },
+      "expected_day_load": {
+        "name": "Erwartete mittlere Hauslast"
+      },
+      "grid_reserve": {
+        "name": "Gewünschter Rest-Netzbezug"
+      },
+      "max_output": {
+        "name": "Maximale Ausgangsleistung"
+      },
+      "night_max_output": {
+        "name": "Maximale Ausgangsleistung nachts"
+      },
+      "manual_output": {
+        "name": "Manuelle Ausgangsleistung"
+      },
+      "command_step": {
+        "name": "Stellgrößenraster"
+      },
+      "command_deadband": {
+        "name": "Schalt-Hysterese"
+      }
+    },
+    "select": {
+      "optimizer_mode": {
+        "name": "Betriebsart",
+        "state": {
+          "automatic": "Automatik",
+          "self_consumption": "Eigenverbrauch",
+          "charge_priority": "Ladepriorität",
+          "manual": "Manuell"
+        }
+      }
+    },
+    "switch": {
+      "optimizer_enabled": {
+        "name": "Optimierer aktiv"
       }
     },
     "binary_sensor": {

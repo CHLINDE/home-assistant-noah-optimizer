@@ -1,3 +1,37 @@
+## [2.0.0-beta.3]
+
+### Added
+
+- configurable optimizer parameters as Home Assistant number entities
+- operating mode selector
+- optimizer enable switch for calculation state
+- five-minute grid power average
+- remaining hours until sunset
+- available battery energy
+- required charging energy
+- effective remaining PV forecast
+- expected remaining household energy demand
+- forecast margin
+- forecast coverage
+- required average charging power
+- estimated time to target SOC
+- self-consumption output target
+- charge-priority output target
+- calculated final output target
+- calculated controller mode
+
+### Changed
+
+- Existing YAML optimizer calculation logic has been ported to Python.
+- Source and sun state changes trigger immediate recalculation.
+
+### Safety
+
+Version 2.0.0-beta.3 remains observation-only.
+
+It calculates the desired NOAH output power but does not write the
+calculated value to the NOAH System Output Power entity.
+
 ## [2.0.0-beta.2]
 
 ### Fixed
