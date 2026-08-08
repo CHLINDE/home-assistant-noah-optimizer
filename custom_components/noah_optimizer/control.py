@@ -180,13 +180,35 @@ class NoahOptimizerController:
 
         target = float(round(target))
 
+        state = self.hass.states.get(entity_id)
+
+        if state is None:
+            self._set_status("actuator_unavailable")
+            return False
+
+        unit = state.attributes.get(
+            "unit_of_measurement"
+        )
+
+        if unit == "kW":
+            service_value = target / 1000
+        elif unit in {"W", None, ""}:
+            service_value = target
+        else:
+            _LOGGER.error(
+                "Unsupported NOAH output power unit: %s",
+                unit,
+            )
+            self._set_status("actuator_unavailable")
+            return False
+
         try:
             await self.hass.services.async_call(
                 "number",
                 "set_value",
                 {
                     "entity_id": entity_id,
-                    "value": target,
+                    "value": service_value,
                 },
                 blocking=True,
             )
