@@ -1,3 +1,15 @@
+## [2.0.0-beta.4]
+
+### Fixed
+
+- Added the missing `select.py` platform.
+- Fixed integration setup failure introduced in `2.0.0-beta.3`.
+
+### Safety
+
+This release remains observation-only and does not write to the
+NOAH System Output Power entity.
+
 ## [2.0.0-beta.3]
 
 ### Added

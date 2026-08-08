@@ -1,20 +1,11 @@
 # Growatt NOAH – prognosebasierte Leistungsregelung
 # Datei: /config/packages/noah_optimizer.yaml
 #
-# Vor dem Neustart alle Platzhalter mit "dein_" bzw. "deine_" durch die
-# tatsächlichen Entity-IDs ersetzen. Positive Netzleistung muss Netzbezug,
-# negative Netzleistung Einspeisung bedeuten. Falls das bei deinem Zähler
-# umgekehrt ist, den Schalter "NOAH Netzvorzeichen umkehren" aktivieren.
-#
-# Benötigte externe Entitäten:
-# - sensor.dein_netzleistungssensor
-# - sensor.dein_noah_solar_power
-# - sensor.dein_noah_output_power
-# - sensor.dein_noah_soc
-# - sensor.dein_noah_charging_power
-# - sensor.dein_noah_discharge_power
-# - sensor.deine_forecast_solar_restprognose
-# - number.dein_noah_system_output_power
+# Vor dem Neustart alle verbleibenden Platzhalter "dein_..." durch die tatsächlichen
+# Entity-IDs ersetzen. Die Automationen verwenden die aktuelle Home-Assistant-Syntax.
+# Positive Netzleistung muss Netzbezug bedeuten, negative Netzleistung Einspeisung.
+# Falls das bei deinem Zähler umgekehrt ist, den Schalter
+# "NOAH Netzvorzeichen umkehren" aktivieren.
 
 input_boolean:
   noah_optimizer_enabled:
@@ -24,6 +15,7 @@ input_boolean:
   noah_grid_sign_inverted:
     name: NOAH Netzvorzeichen umkehren
     icon: mdi:swap-vertical
+
 
 input_select:
   noah_optimizer_mode:
@@ -35,6 +27,7 @@ input_select:
       - Manuell
     initial: Automatik
     icon: mdi:tune-variant
+
 
 input_number:
   noah_battery_capacity_kwh:
@@ -171,6 +164,7 @@ input_number:
     mode: box
     icon: mdi:send-clock
 
+
 input_datetime:
   noah_last_command:
     name: NOAH letzter Stellbefehl
@@ -178,19 +172,24 @@ input_datetime:
     has_time: true
     icon: mdi:clock-check
 
+
 template:
   - sensor:
-      # ---------- Adapter: hier die vorhandenen Entity-IDs einsetzen ----------
+
+      # -----------------------------------------------------------------------
+      # Adapter
+      # -----------------------------------------------------------------------
+
       - name: NOAH Opt Netzleistung
         unique_id: noah_opt_grid_power
         unit_of_measurement: W
         device_class: power
         state_class: measurement
         availability: >
-          {{ states('sensor.dein_netzleistungssensor') not in
+          {{ states('sensor.stromzahler_aktuelle_leistung') not in
             ['unknown', 'unavailable', 'none', ''] }}
         state: >
-          {% set raw = states('sensor.dein_netzleistungssensor') | float(0) %}
+          {% set raw = states('sensor.stromzahler_aktuelle_leistung') | float(0) %}
           {{ (raw * (-1 if is_state('input_boolean.noah_grid_sign_inverted', 'on') else 1)) | round(0) }}
 
       - name: NOAH Opt PV-Leistung
@@ -199,9 +198,10 @@ template:
         device_class: power
         state_class: measurement
         availability: >
-          {{ states('sensor.dein_noah_solar_power') not in
+          {{ states('sensor.0pvpc0ed35kt00kr_solar_power') not in
             ['unknown', 'unavailable', 'none', ''] }}
-        state: "{{ states('sensor.dein_noah_solar_power') | float(0) | round(0) }}"
+        state: >
+          {{ states('sensor.0pvpc0ed35kt00kr_solar_power') | float(0) | round(0) }}
 
       - name: NOAH Opt Ausgangsleistung
         unique_id: noah_opt_output_power
@@ -209,9 +209,10 @@ template:
         device_class: power
         state_class: measurement
         availability: >
-          {{ states('sensor.dein_noah_output_power') not in
+          {{ states('sensor.0pvpc0ed35kt00kr_output_power') not in
             ['unknown', 'unavailable', 'none', ''] }}
-        state: "{{ states('sensor.dein_noah_output_power') | float(0) | round(0) }}"
+        state: >
+          {{ states('sensor.0pvpc0ed35kt00kr_output_power') | float(0) | round(0) }}
 
       - name: NOAH Opt SOC
         unique_id: noah_opt_soc
@@ -219,9 +220,10 @@ template:
         device_class: battery
         state_class: measurement
         availability: >
-          {{ states('sensor.dein_noah_soc') not in
+          {{ states('sensor.0pvpc0ed35kt00kr_soc') not in
             ['unknown', 'unavailable', 'none', ''] }}
-        state: "{{ states('sensor.dein_noah_soc') | float(0) | round(1) }}"
+        state: >
+          {{ states('sensor.0pvpc0ed35kt00kr_soc') | float(0) | round(1) }}
 
       - name: NOAH Opt Ladeleistung
         unique_id: noah_opt_charge_power
@@ -229,9 +231,10 @@ template:
         device_class: power
         state_class: measurement
         availability: >
-          {{ states('sensor.dein_noah_charging_power') not in
+          {{ states('sensor.0pvpc0ed35kt00kr_charging_power') not in
             ['unknown', 'unavailable', 'none', ''] }}
-        state: "{{ states('sensor.dein_noah_charging_power') | float(0) | round(0) }}"
+        state: >
+          {{ states('sensor.0pvpc0ed35kt00kr_charging_power') | float(0) | round(0) }}
 
       - name: NOAH Opt Entladeleistung
         unique_id: noah_opt_discharge_power
@@ -239,27 +242,33 @@ template:
         device_class: power
         state_class: measurement
         availability: >
-          {{ states('sensor.dein_noah_discharge_power') not in
+          {{ states('sensor.0pvpc0ed35kt00kr_discharge_power') not in
             ['unknown', 'unavailable', 'none', ''] }}
-        state: "{{ states('sensor.dein_noah_discharge_power') | float(0) | round(0) }}"
+        state: >
+          {{ states('sensor.0pvpc0ed35kt00kr_discharge_power') | float(0) | round(0) }}
 
       - name: NOAH Opt Restprognose heute
         unique_id: noah_opt_forecast_remaining
         unit_of_measurement: kWh
         device_class: energy
-        state_class: measurement
         availability: >
-          {{ states('sensor.deine_forecast_solar_restprognose') not in
+          {{ states('sensor.energy_production_today_remaining') not in
             ['unknown', 'unavailable', 'none', ''] }}
-        state: "{{ states('sensor.deine_forecast_solar_restprognose') | float(0) | round(3) }}"
+        state: >
+          {{ states('sensor.energy_production_today_remaining') | float(0) | round(3) }}
 
-      # ---------- Aufbereitete Momentanwerte ----------
+
+      # -----------------------------------------------------------------------
+      # Aufbereitete Momentanwerte
+      # -----------------------------------------------------------------------
+
       - name: NOAH Opt Netzbezug
         unique_id: noah_opt_grid_import
         unit_of_measurement: W
         device_class: power
         state_class: measurement
-        availability: "{{ has_value('sensor.noah_opt_netzleistung') }}"
+        availability: >
+          {{ has_value('sensor.noah_opt_netzleistung') }}
         state: >
           {{ [states('sensor.noah_opt_netzleistung') | float(0), 0] | max | round(0) }}
 
@@ -268,7 +277,8 @@ template:
         unit_of_measurement: W
         device_class: power
         state_class: measurement
-        availability: "{{ has_value('sensor.noah_opt_netzleistung') }}"
+        availability: >
+          {{ has_value('sensor.noah_opt_netzleistung') }}
         state: >
           {{ [-(states('sensor.noah_opt_netzleistung') | float(0)), 0] | max | round(0) }}
 
@@ -297,7 +307,11 @@ template:
           {{ ((states('sensor.noah_opt_entladeleistung') | float(0))
               - (states('sensor.noah_opt_ladeleistung') | float(0))) | round(0) }}
 
-      # ---------- Prognose und Ladeplanung ----------
+
+      # -----------------------------------------------------------------------
+      # Prognose und Ladeplanung
+      # -----------------------------------------------------------------------
+
       - name: NOAH Opt Stunden bis Sonnenuntergang
         unique_id: noah_opt_hours_to_sunset
         unit_of_measurement: h
@@ -313,9 +327,10 @@ template:
       - name: NOAH Opt verfügbare Akkuenergie
         unique_id: noah_opt_energy_available
         unit_of_measurement: kWh
-        device_class: energy
+        device_class: energy_storage
         state_class: measurement
-        availability: "{{ has_value('sensor.noah_opt_soc') }}"
+        availability: >
+          {{ has_value('sensor.noah_opt_soc') }}
         state: >
           {% set cap = states('input_number.noah_battery_capacity_kwh') | float(0) %}
           {% set soc = states('sensor.noah_opt_soc') | float(0) %}
@@ -325,9 +340,9 @@ template:
       - name: NOAH Opt Ladebedarf
         unique_id: noah_opt_charge_need
         unit_of_measurement: kWh
-        device_class: energy
         state_class: measurement
-        availability: "{{ has_value('sensor.noah_opt_soc') }}"
+        availability: >
+          {{ has_value('sensor.noah_opt_soc') }}
         state: >
           {% set cap = states('input_number.noah_battery_capacity_kwh') | float(0) %}
           {% set target = states('input_number.noah_target_soc') | float(0) %}
@@ -340,7 +355,6 @@ template:
         unique_id: noah_opt_effective_forecast
         unit_of_measurement: kWh
         device_class: energy
-        state_class: measurement
         state: >
           {% set forecast = states('sensor.noah_opt_restprognose_heute') | float(0) %}
           {% set factor = states('input_number.noah_forecast_factor') | float(0.8) %}
@@ -350,7 +364,6 @@ template:
         unique_id: noah_opt_expected_load_energy
         unit_of_measurement: kWh
         device_class: energy
-        state_class: measurement
         state: >
           {% set hours = states('sensor.noah_opt_stunden_bis_sonnenuntergang') | float(0) %}
           {% set load = states('input_number.noah_expected_day_load_w') | float(0) %}
@@ -359,7 +372,6 @@ template:
       - name: NOAH Opt Prognosemarge
         unique_id: noah_opt_forecast_margin
         unit_of_measurement: kWh
-        device_class: energy
         state_class: measurement
         state: >
           {% set forecast = states('sensor.noah_opt_wirksame_restprognose') | float(0) %}
@@ -399,7 +411,11 @@ template:
           {% set charge = states('sensor.noah_opt_ladeleistung') | float(0) %}
           {{ (0 if need <= 0 else (9999 if charge < 10 else need * 1000 / charge * 60)) | round(0) }}
 
-      # ---------- Regler-Zwischenwerte ----------
+
+      # -----------------------------------------------------------------------
+      # Regler-Zwischenwerte
+      # -----------------------------------------------------------------------
+
       - name: NOAH Opt Eigenverbrauch-Soll
         unique_id: noah_opt_self_consumption_target
         unit_of_measurement: W
@@ -451,6 +467,7 @@ template:
             is_state('sun.sun', 'below_horizon')
             or (elevation < 3 and pv < 20)
           %}
+
           {% if not is_state('input_boolean.noah_optimizer_enabled', 'on') %}
             Aus
           {% elif selected != 'Automatik' %}
@@ -495,6 +512,7 @@ template:
             is_state('sun.sun', 'below_horizon')
             or (elevation < 3 and pv < 20)
           %}
+
           {% if selected == 'Manuell' %}
             {% set raw = manual %}
           {% elif selected == 'Eigenverbrauch' %}
@@ -517,6 +535,7 @@ template:
             {% set blend = [[margin / ([release, 0.05] | max), 0] | max, 1] | min %}
             {% set raw = charge_target + blend * (self_target - charge_target) %}
           {% endif %}
+
           {% set limited = [[raw, 0] | max, max_output] | min %}
           {{ ((limited / step) | round(0) * step) | round(0) }}
 
@@ -528,10 +547,14 @@ template:
             has_value('sensor.noah_opt_netzleistung')
             and has_value('sensor.noah_opt_pv_leistung')
             and has_value('sensor.noah_opt_ausgangsleistung')
-            and has_value('sensor.noah_opt_soc') %}
-          {% set actuator = states('number.dein_noah_system_output_power') not in
-            ['unknown', 'unavailable', 'none', ''] %}
+            and has_value('sensor.noah_opt_soc')
+          %}
+          {% set actuator =
+            states('number.0pvpc0ed35kt00kr_system_output_power') not in
+            ['unknown', 'unavailable', 'none', '']
+          %}
           {% set forecast = has_value('sensor.noah_opt_restprognose_heute') %}
+
           {% if not critical %}
             Messwerte fehlen
           {% elif not actuator %}
@@ -542,7 +565,9 @@ template:
             OK
           {% endif %}
 
+
   - binary_sensor:
+
       - name: NOAH Opt kritische Daten OK
         unique_id: noah_opt_critical_data_ok
         device_class: connectivity
@@ -555,7 +580,9 @@ template:
       - name: NOAH Opt Prognose verfügbar
         unique_id: noah_opt_forecast_ok
         device_class: connectivity
-        state: "{{ has_value('sensor.noah_opt_restprognose_heute') }}"
+        state: >
+          {{ has_value('sensor.noah_opt_restprognose_heute') }}
+
 
 sensor:
   - platform: filter
@@ -567,33 +594,53 @@ sensor:
         window_size: "00:05"
         precision: 0
 
+
 automation:
+
+  # ---------------------------------------------------------------------------
+  # Ausgangsleistung regeln
+  # ---------------------------------------------------------------------------
+
   - id: noah_optimizer_control
     alias: NOAH Optimierer – Ausgangsleistung regeln
     description: Setzt höchstens alle fünf Minuten einen gerasterten Sollwert.
     mode: single
+
     triggers:
       - trigger: time_pattern
         minutes: "/2"
+
       - trigger: homeassistant
         event: start
+
     conditions:
       - condition: state
         entity_id: input_boolean.noah_optimizer_enabled
         state: "on"
+
       - condition: state
         entity_id: binary_sensor.noah_opt_kritische_daten_ok
         state: "on"
+
       - condition: template
         value_template: >
-          {{ states('number.dein_noah_system_output_power') not in
+          {{ states('number.0pvpc0ed35kt00kr_system_output_power') not in
             ['unknown', 'unavailable', 'none', ''] }}
+
     actions:
       - variables:
-          target: "{{ states('sensor.noah_opt_ausgangssollwert') | int(0) }}"
-          last_target: "{{ states('input_number.noah_last_target_w') | int(0) }}"
-          actual_setpoint: "{{ states('number.dein_noah_system_output_power') | int(0) }}"
-          deadband: "{{ states('input_number.noah_command_deadband_w') | int(50) }}"
+          target: >
+            {{ states('sensor.noah_opt_ausgangssollwert') | int(0) }}
+
+          last_target: >
+            {{ states('input_number.noah_last_target_w') | int(0) }}
+
+          actual_setpoint: >
+            {{ states('number.0pvpc0ed35kt00kr_system_output_power') | int(0) }}
+
+          deadband: >
+            {{ states('input_number.noah_command_deadband_w') | int(50) }}
+
           minutes_since_command: >
             {% set last = states('input_datetime.noah_last_command') %}
             {% if last in ['unknown', 'unavailable', 'none', ''] %}
@@ -601,59 +648,81 @@ automation:
             {% else %}
               {{ ((as_timestamp(now()) - as_timestamp(last, 0)) / 60) | round(0) }}
             {% endif %}
-          change_required: "{{ (target - last_target) | abs >= deadband }}"
+
+          change_required: >
+            {{ (target - last_target) | abs >= deadband }}
+
           retry_required: >
             {{ minutes_since_command | float(9999) >= 20
               and (target - actual_setpoint) | abs >= deadband }}
+
       - condition: template
-        value_template: "{{ change_required or retry_required }}"
+        value_template: >
+          {{ change_required or retry_required }}
+
       - action: number.set_value
         target:
-          entity_id: number.dein_noah_system_output_power
+          entity_id: number.0pvpc0ed35kt00kr_system_output_power
         data:
-          value: "{{ target }}"
+          value: >
+            {{ target }}
+
       - action: input_number.set_value
         target:
           entity_id: input_number.noah_last_target_w
         data:
-          value: "{{ target }}"
+          value: >
+            {{ target }}
+
       - action: input_datetime.set_datetime
         target:
           entity_id: input_datetime.noah_last_command
         data:
-          datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+          datetime: >
+            {{ now().strftime('%Y-%m-%d %H:%M:%S') }}
+
+
+  # ---------------------------------------------------------------------------
+  # Failsafe bei Datenausfall
+  # ---------------------------------------------------------------------------
 
   - id: noah_optimizer_failsafe
     alias: NOAH Optimierer – Datenausfall
     description: Versucht bei längerem Ausfall, die Ausgangsleistung auf 0 W zu setzen.
     mode: restart
+
     triggers:
       - trigger: state
         entity_id: binary_sensor.noah_opt_kritische_daten_ok
         to: "off"
         for: "00:10:00"
+
     conditions:
       - condition: state
         entity_id: input_boolean.noah_optimizer_enabled
         state: "on"
+
     actions:
       - choose:
           - conditions:
               - condition: template
                 value_template: >
-                  {{ states('number.dein_noah_system_output_power') not in
+                  {{ states('number.0pvpc0ed35kt00kr_system_output_power') not in
                     ['unknown', 'unavailable', 'none', ''] }}
+
             sequence:
               - action: number.set_value
                 target:
-                  entity_id: number.dein_noah_system_output_power
+                  entity_id: number.0pvpc0ed35kt00kr_system_output_power
                 data:
                   value: 0
+
               - action: input_number.set_value
                 target:
                   entity_id: input_number.noah_last_target_w
                 data:
                   value: 0
+
       - action: persistent_notification.create
         data:
           notification_id: noah_optimizer_failsafe
@@ -663,13 +732,20 @@ automation:
             Die Regelung wurde nicht weitergeführt; soweit erreichbar,
             wurde die NOAH-Ausgangsleistung auf 0 W gesetzt.
 
+
+  # ---------------------------------------------------------------------------
+  # Datenausfall behoben
+  # ---------------------------------------------------------------------------
+
   - id: noah_optimizer_recovered
     alias: NOAH Optimierer – Daten wieder verfügbar
     mode: restart
+
     triggers:
       - trigger: state
         entity_id: binary_sensor.noah_opt_kritische_daten_ok
         to: "on"
+
     actions:
       - action: persistent_notification.dismiss
         data:
