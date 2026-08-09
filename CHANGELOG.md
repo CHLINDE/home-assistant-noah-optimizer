@@ -1,3 +1,33 @@
+## [2.0.0-beta.7]
+
+### Fixed
+
+- Corrected the battery energy-flow direction in the NOAH Optimizer dashboard.
+- Fixed Power Flow Card Plus battery mapping so charging power is displayed as energy flowing into the battery.
+- Fixed Power Flow Card Plus battery mapping so discharging power is displayed as energy flowing out of the battery.
+- Corrected the battery-flow mapping in the German dashboard template.
+- Corrected the battery-flow mapping in the English dashboard template.
+- Corrected the battery-flow mapping in the legacy YAML dashboard.
+- Updated related documentation to use the correct battery-flow direction.
+
+### Documentation
+
+- Updated the README for Beta 7.
+- Added the Beta 6 and Beta 7 dashboard changes to the version history.
+- Added third-party attribution for Noah-MQTT.
+- Added third-party attribution for Power Flow Card Plus.
+- Added third-party attribution for ApexCharts Card.
+- Clarified that dashboard dependencies are installed separately and are not bundled with the integration.
+- Updated `THIRD_PARTY.md` with information about external projects used by or interoperating with the integration.
+
+### Dashboard
+
+For Power Flow Card Plus, the battery mapping is now:
+
+```text
+consumption = discharging power
+production  = charging power
+
 ## [2.0.0-beta.6]
 
 ### Added
