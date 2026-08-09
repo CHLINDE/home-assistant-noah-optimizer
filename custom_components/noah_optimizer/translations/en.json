@@ -100,6 +100,23 @@
       "minutes_to_target": {
         "name": "Minutes until target SOC"
       },
+      "dynamic_soc_target": {
+        "name": "Dynamic SOC target"
+      },
+      "soc_deviation": {
+        "name": "SOC deviation"
+      },
+      "dynamic_required_charge_power": {
+        "name": "Dynamic required charging power"
+      },
+      "dynamic_soc_status": {
+        "name": "SOC schedule status",
+        "state": {
+          "ahead": "Ahead of schedule",
+          "on_track": "On schedule",
+          "behind": "Behind schedule"
+        }
+      },
       "self_consumption_target": {
         "name": "Self-consumption target"
       },
@@ -120,7 +137,8 @@
           "night": "Night mode",
           "target_soc_reached": "Target SOC reached",
           "no_forecast": "Conservative without forecast",
-          "blended_reserve": "Blended reserve"
+          "blended_reserve": "Blended reserve",
+          "soc_catchup": "SOC catch-up"
         }
       },
       "data_status": {
@@ -176,6 +194,9 @@
       },
       "command_deadband": {
         "name": "Control deadband"
+      },
+      "dynamic_soc_catchup_hours": {
+        "name": "SOC catch-up time"
       }
     },
     "select": {
@@ -195,6 +216,9 @@
       },
       "control_enabled": {
         "name": "Active NOAH control"
+      },
+      "dynamic_soc_enabled": {
+        "name": "Dynamic SOC control enabled"
       }
     },
     "binary_sensor": {

@@ -11,16 +11,9 @@ from homeassistant.components.sensor import (
     SensorEntityDescription,
     SensorStateClass,
 )
-from homeassistant.const import (
-    PERCENTAGE,
-    UnitOfEnergy,
-    UnitOfPower,
-    UnitOfTime,
-)
+from homeassistant.const import PERCENTAGE, UnitOfEnergy, UnitOfPower, UnitOfTime
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity_platform import (
-    AddConfigEntryEntitiesCallback,
-)
+from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import NoahOptimizerConfigEntry
 from .const import (
@@ -32,6 +25,7 @@ from .const import (
     CONTROLLER_NO_FORECAST,
     CONTROLLER_OFF,
     CONTROLLER_SELF_CONSUMPTION,
+    CONTROLLER_SOC_CATCHUP,
     CONTROLLER_TARGET_SOC_REACHED,
     DATA_AVAILABLE_BATTERY_ENERGY,
     DATA_BATTERY_POWER,
@@ -40,6 +34,9 @@ from .const import (
     DATA_CHARGING_POWER,
     DATA_CONTROLLER_MODE,
     DATA_DISCHARGE_POWER,
+    DATA_DYNAMIC_REQUIRED_CHARGE_POWER,
+    DATA_DYNAMIC_SOC_STATUS,
+    DATA_DYNAMIC_SOC_TARGET,
     DATA_EFFECTIVE_FORECAST,
     DATA_EXPECTED_LOAD_ENERGY,
     DATA_FORECAST_COVERAGE,
@@ -57,8 +54,12 @@ from .const import (
     DATA_REQUIRED_CHARGE_POWER,
     DATA_SELF_CONSUMPTION_TARGET,
     DATA_SOC,
+    DATA_SOC_DEVIATION,
     DATA_SOLAR_POWER,
     DATA_STATUS,
+    DYNAMIC_SOC_AHEAD,
+    DYNAMIC_SOC_BEHIND,
+    DYNAMIC_SOC_ON_TRACK,
     STATUS_ACTUATOR_UNAVAILABLE,
     STATUS_BATTERY_DATA_MISSING,
     STATUS_CRITICAL_DATA_MISSING,
@@ -68,24 +69,14 @@ from .const import (
 from .entity import NoahOptimizerEntity
 
 
-@dataclass(
-    frozen=True,
-    kw_only=True,
-)
-class NoahSensorDescription(
-    SensorEntityDescription
-):
+@dataclass(frozen=True, kw_only=True)
+class NoahSensorDescription(SensorEntityDescription):
     """Describe a NOAH Optimizer sensor."""
 
     data_key: str
 
 
 SENSORS: tuple[NoahSensorDescription, ...] = (
-
-    # ------------------------------------------------------------------
-    # Current source and energy-flow values
-    # ------------------------------------------------------------------
-
     NoahSensorDescription(
         key="grid_power",
         translation_key="grid_power",
@@ -94,7 +85,6 @@ SENSORS: tuple[NoahSensorDescription, ...] = (
         device_class=SensorDeviceClass.POWER,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-
     NoahSensorDescription(
         key="grid_import",
         translation_key="grid_import",
@@ -103,7 +93,6 @@ SENSORS: tuple[NoahSensorDescription, ...] = (
         device_class=SensorDeviceClass.POWER,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-
     NoahSensorDescription(
         key="grid_export",
         translation_key="grid_export",
@@ -112,7 +101,6 @@ SENSORS: tuple[NoahSensorDescription, ...] = (
         device_class=SensorDeviceClass.POWER,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-
     NoahSensorDescription(
         key="solar_power",
         translation_key="solar_power",
@@ -121,7 +109,6 @@ SENSORS: tuple[NoahSensorDescription, ...] = (
         device_class=SensorDeviceClass.POWER,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-
     NoahSensorDescription(
         key="output_power",
         translation_key="output_power",
@@ -130,7 +117,6 @@ SENSORS: tuple[NoahSensorDescription, ...] = (
         device_class=SensorDeviceClass.POWER,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-
     NoahSensorDescription(
         key="soc",
         translation_key="soc",
@@ -139,7 +125,6 @@ SENSORS: tuple[NoahSensorDescription, ...] = (
         device_class=SensorDeviceClass.BATTERY,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-
     NoahSensorDescription(
         key="charging_power",
         translation_key="charging_power",
@@ -148,7 +133,6 @@ SENSORS: tuple[NoahSensorDescription, ...] = (
         device_class=SensorDeviceClass.POWER,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-
     NoahSensorDescription(
         key="discharge_power",
         translation_key="discharge_power",
@@ -157,7 +141,6 @@ SENSORS: tuple[NoahSensorDescription, ...] = (
         device_class=SensorDeviceClass.POWER,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-
     NoahSensorDescription(
         key="battery_power",
         translation_key="battery_power",
@@ -166,7 +149,6 @@ SENSORS: tuple[NoahSensorDescription, ...] = (
         device_class=SensorDeviceClass.POWER,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-
     NoahSensorDescription(
         key="home_load",
         translation_key="home_load",
@@ -175,11 +157,6 @@ SENSORS: tuple[NoahSensorDescription, ...] = (
         device_class=SensorDeviceClass.POWER,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-
-    # ------------------------------------------------------------------
-    # Forecast source
-    # ------------------------------------------------------------------
-
     NoahSensorDescription(
         key="forecast_remaining",
         translation_key="forecast_remaining",
@@ -187,11 +164,6 @@ SENSORS: tuple[NoahSensorDescription, ...] = (
         native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
         device_class=SensorDeviceClass.ENERGY,
     ),
-
-    # ------------------------------------------------------------------
-    # Five-minute average
-    # ------------------------------------------------------------------
-
     NoahSensorDescription(
         key="grid_power_average",
         translation_key="grid_power_average",
@@ -200,11 +172,6 @@ SENSORS: tuple[NoahSensorDescription, ...] = (
         device_class=SensorDeviceClass.POWER,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-
-    # ------------------------------------------------------------------
-    # Forecast and charging calculations
-    # ------------------------------------------------------------------
-
     NoahSensorDescription(
         key="hours_to_sunset",
         translation_key="hours_to_sunset",
@@ -212,7 +179,6 @@ SENSORS: tuple[NoahSensorDescription, ...] = (
         native_unit_of_measurement=UnitOfTime.HOURS,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-
     NoahSensorDescription(
         key="available_battery_energy",
         translation_key="available_battery_energy",
@@ -221,7 +187,6 @@ SENSORS: tuple[NoahSensorDescription, ...] = (
         device_class=SensorDeviceClass.ENERGY_STORAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-
     NoahSensorDescription(
         key="charge_need",
         translation_key="charge_need",
@@ -229,7 +194,6 @@ SENSORS: tuple[NoahSensorDescription, ...] = (
         native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-
     NoahSensorDescription(
         key="effective_forecast",
         translation_key="effective_forecast",
@@ -237,7 +201,6 @@ SENSORS: tuple[NoahSensorDescription, ...] = (
         native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
         device_class=SensorDeviceClass.ENERGY,
     ),
-
     NoahSensorDescription(
         key="expected_load_energy",
         translation_key="expected_load_energy",
@@ -245,7 +208,6 @@ SENSORS: tuple[NoahSensorDescription, ...] = (
         native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
         device_class=SensorDeviceClass.ENERGY,
     ),
-
     NoahSensorDescription(
         key="forecast_margin",
         translation_key="forecast_margin",
@@ -253,7 +215,6 @@ SENSORS: tuple[NoahSensorDescription, ...] = (
         native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-
     NoahSensorDescription(
         key="forecast_coverage",
         translation_key="forecast_coverage",
@@ -261,7 +222,6 @@ SENSORS: tuple[NoahSensorDescription, ...] = (
         native_unit_of_measurement=PERCENTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-
     NoahSensorDescription(
         key="required_charge_power",
         translation_key="required_charge_power",
@@ -270,7 +230,6 @@ SENSORS: tuple[NoahSensorDescription, ...] = (
         device_class=SensorDeviceClass.POWER,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-
     NoahSensorDescription(
         key="minutes_to_target",
         translation_key="minutes_to_target",
@@ -278,11 +237,39 @@ SENSORS: tuple[NoahSensorDescription, ...] = (
         native_unit_of_measurement=UnitOfTime.MINUTES,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-
-    # ------------------------------------------------------------------
-    # Controller calculations
-    # ------------------------------------------------------------------
-
+    NoahSensorDescription(
+        key="dynamic_soc_target",
+        translation_key="dynamic_soc_target",
+        data_key=DATA_DYNAMIC_SOC_TARGET,
+        native_unit_of_measurement=PERCENTAGE,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    NoahSensorDescription(
+        key="soc_deviation",
+        translation_key="soc_deviation",
+        data_key=DATA_SOC_DEVIATION,
+        native_unit_of_measurement=PERCENTAGE,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    NoahSensorDescription(
+        key="dynamic_required_charge_power",
+        translation_key="dynamic_required_charge_power",
+        data_key=DATA_DYNAMIC_REQUIRED_CHARGE_POWER,
+        native_unit_of_measurement=UnitOfPower.WATT,
+        device_class=SensorDeviceClass.POWER,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    NoahSensorDescription(
+        key="dynamic_soc_status",
+        translation_key="dynamic_soc_status",
+        data_key=DATA_DYNAMIC_SOC_STATUS,
+        device_class=SensorDeviceClass.ENUM,
+        options=[
+            DYNAMIC_SOC_AHEAD,
+            DYNAMIC_SOC_ON_TRACK,
+            DYNAMIC_SOC_BEHIND,
+        ],
+    ),
     NoahSensorDescription(
         key="self_consumption_target",
         translation_key="self_consumption_target",
@@ -291,7 +278,6 @@ SENSORS: tuple[NoahSensorDescription, ...] = (
         device_class=SensorDeviceClass.POWER,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-
     NoahSensorDescription(
         key="charge_priority_target",
         translation_key="charge_priority_target",
@@ -300,7 +286,6 @@ SENSORS: tuple[NoahSensorDescription, ...] = (
         device_class=SensorDeviceClass.POWER,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-
     NoahSensorDescription(
         key="output_target",
         translation_key="output_target",
@@ -309,7 +294,6 @@ SENSORS: tuple[NoahSensorDescription, ...] = (
         device_class=SensorDeviceClass.POWER,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-
     NoahSensorDescription(
         key="controller_mode",
         translation_key="controller_mode",
@@ -325,13 +309,9 @@ SENSORS: tuple[NoahSensorDescription, ...] = (
             CONTROLLER_TARGET_SOC_REACHED,
             CONTROLLER_NO_FORECAST,
             CONTROLLER_BLEND,
+            CONTROLLER_SOC_CATCHUP,
         ],
     ),
-
-    # ------------------------------------------------------------------
-    # Diagnostic status
-    # ------------------------------------------------------------------
-
     NoahSensorDescription(
         key="data_status",
         translation_key="data_status",
@@ -354,7 +334,6 @@ async def async_setup_entry(
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     """Set up NOAH Optimizer sensors."""
-
     async_add_entities(
         NoahOptimizerSensor(
             entry.runtime_data,
@@ -365,52 +344,30 @@ async def async_setup_entry(
     )
 
 
-class NoahOptimizerSensor(
-    NoahOptimizerEntity,
-    SensorEntity,
-):
+class NoahOptimizerSensor(NoahOptimizerEntity, SensorEntity):
     """Represent a NOAH Optimizer sensor."""
 
     entity_description: NoahSensorDescription
 
-    def __init__(
-        self,
-        coordinator,
-        entry,
-        description: NoahSensorDescription,
-    ) -> None:
+    def __init__(self, coordinator, entry, description: NoahSensorDescription) -> None:
         """Initialize the sensor."""
-
-        super().__init__(
-            coordinator,
-            entry,
-        )
-
+        super().__init__(coordinator, entry)
         self.entity_description = description
-
-        self._attr_unique_id = (
-            f"{entry.entry_id}_{description.key}"
-        )
+        self._attr_unique_id = f"{entry.entry_id}_{description.key}"
 
     @property
     def native_value(self) -> Any:
         """Return the current sensor value."""
-
-        return self.coordinator.data.get(
-            self.entity_description.data_key
-        )
+        return self.coordinator.data.get(self.entity_description.data_key)
 
     @property
     def available(self) -> bool:
         """Return whether this sensor has valid data."""
-
         if self.entity_description.data_key == DATA_STATUS:
             return super().available
 
         return (
             super().available
-            and self.coordinator.data.get(
-                self.entity_description.data_key
-            )
+            and self.coordinator.data.get(self.entity_description.data_key)
             is not None
         )

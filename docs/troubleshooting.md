@@ -1,7 +1,7 @@
 # Fehlerbehebung
 
-Dieses Dokument behandelt zuerst die HACS-Integration und anschließend die
-ältere Legacy-YAML-Version.
+Dieses Dokument bezieht sich primär auf die HACS-Integration ab
+`2.0.0-beta.8`.
 
 ## 1. Integration wird nicht geladen
 
@@ -17,7 +17,7 @@ Zusätzlich prüfen:
 
 - HACS-Installation vollständig
 - Home Assistant nach dem Update neu gestartet
-- `manifest.json` auf der erwarteten Beta-Version
+- `manifest.json` auf `2.0.0-beta.8`
 - alle Quell-Entitäten vorhanden
 - keine Python-Fehler im Protokoll
 
@@ -41,58 +41,182 @@ unavailable
 
 sein.
 
-## 3. Stellgröße nicht verfügbar
+## 3. „Stellgröße nicht verfügbar“
 
-Die konfigurierte NOAH-System-Output-Power-Entität muss:
+Die konfigurierte `NOAH System Output Power`-Entität muss:
 
-- eine `number`-Entität sein
-- einen numerischen Zustand besitzen
-- in W oder kW arbeiten
-- über `number.set_value` beschreibbar sein
+- vorhanden sein
+- verfügbar sein
+- numerisch sein
+- als `number` beschreibbar sein
+- W oder kW verwenden
 
-Unter **Werkzeuge → Aktionen** testweise `number.set_value` ausführen.
+Unter **Werkzeuge → Aktionen** mit `number.set_value` testen.
 
-Ein normaler `sensor.*_output_power` ist nur ein Messwert und keine
-beschreibbare Stellgröße.
+Ein `sensor.*_output_power` ist nur ein Messwert und keine Stellgröße.
 
 ## 4. Netzbezug und Einspeisung sind vertauscht
 
-Erwartete Konvention:
+Erwartet wird:
 
 ```text
 positiv = Netzbezug
 negativ = Netzeinspeisung
 ```
 
-Test:
+Bei umgekehrter Konvention die Integration mit **Netzvorzeichen umkehren**
+einrichten.
 
-1. Einen größeren Verbraucher einschalten.
-2. Die saldierte Netzleistung muss deutlich positiv werden.
-3. Bei PV-Überschuss muss sie negativ werden.
+## 5. Batteriefluss im Dashboard ist falsch herum
 
-Bei umgekehrter Konvention die Integration mit aktivierter Option
-**Netzvorzeichen umkehren** einrichten.
-
-## 5. Hauslast wirkt unplausibel
-
-Ungefähr gilt:
+Für Power Flow Card Plus muss gelten:
 
 ```text
-Hauslast = Netzleistung + NOAH-Ausgangsleistung
+consumption = Entladeleistung
+production  = Ladeleistung
 ```
+
+Im HACS-Dashboard:
+
+```yaml
+battery:
+  entity:
+    consumption: __DISCHARGING_POWER__
+    production: __CHARGING_POWER__
+```
+
+Das bedeutet:
+
+```text
+Ladeleistung    -> Energie fließt in den Akku
+Entladeleistung -> Energie fließt aus dem Akku
+```
+
+Beta 8 korrigiert beim bestehenden Dashboard zusätzlich die exakte alte
+Beta-6-Zuordnung, falls sie noch vorhanden ist.
+
+## 6. Dynamisches SOC-Soll ist `unavailable`
+
+Die dynamischen SOC-Werte benötigen eine verfügbare Forecast.Solar-
+Restprognose.
+
+Prüfen:
+
+- `Restprognose heute` ist verfügbar
+- Einheit ist `Wh` oder `kWh`
+- Sun-Integration liefert `sun.sun`
+- Ziel-SOC, Mindest-SOC und Akkukapazität sind plausibel
+
+Fehlt die Prognose, greift die dynamische SOC-Steuerung nicht ein.
+
+## 7. SOC-Ladeplan zeigt „Hinter Ladeplan“
+
+Das bedeutet:
+
+```text
+Ist-SOC < dynamisches SOC-Soll - 2 Prozentpunkte
+```
+
+Das ist zunächst nur ein Diagnosewert.
+
+Nur wenn zusätzlich:
+
+```text
+Dynamische SOC-Steuerung aktiv = Ein
+Betriebsart = Automatik
+```
+
+ist, kann der Zustand den Ausgangssollwert beeinflussen.
+
+## 8. Dynamische SOC-Steuerung ist an, aber nichts ändert sich
+
+Das kann korrekt sein. Die Funktion greift nur ein, wenn gleichzeitig:
+
+- Automatik aktiv ist
+- Forecast verfügbar ist
+- es Tag ist
+- SOC über Mindest-SOC liegt
+- SOC unter Ziel-SOC liegt
+- SOC mehr als 2 Prozentpunkte hinter dem Ladeplan liegt
+
+Steht `SOC-Ladeplan` auf **Im Ladeplan** oder **Vor Ladeplan**, bleibt die
+bestehende Automatik zuständig.
+
+## 9. SOC-Nachladung wirkt zu stark
+
+Parameter **SOC-Nachholzeit** erhöhen.
 
 Beispiel:
 
 ```text
-800 W Netzbezug
-+ 200 W NOAH-Ausgang
-= 1000 W Hauslast
+2,0 h -> 3,0 h
 ```
 
-Kurzzeitige Abweichungen können durch unterschiedliche Aktualisierungszeiten
-der Quellsensoren entstehen.
+Dadurch wird der Rückstand auf einen längeren Zeitraum verteilt und die
+berechnete dynamische Ladeleistung sinkt.
 
-## 6. Optimizer berechnet, steuert aber nicht
+## 10. SOC-Nachladung wirkt zu schwach
+
+Parameter **SOC-Nachholzeit** reduzieren.
+
+Beispiel:
+
+```text
+2,0 h -> 1,0 h
+```
+
+Nicht sofort extrem kleine Werte verwenden. Zunächst die Sensoren und das
+Reglerverhalten beobachten.
+
+## 11. Reglermodus „SOC-Nachladung“ erscheint nicht
+
+Der Modus erscheint nur bei aktivem Eingriff der neuen Funktion.
+
+Prüfen:
+
+```text
+Optimierer-Berechnung aktiv = Ein
+Dynamische SOC-Steuerung aktiv = Ein
+Betriebsart = Automatik
+SOC-Ladeplan = Hinter Ladeplan
+```
+
+Außerdem müssen Tag, Forecast und SOC-Grenzen die Aktivierung erlauben.
+
+## 12. Dynamische Sensoren rechnen, obwohl der Schalter aus ist
+
+Das ist beabsichtigt.
+
+Beta 8 berechnet:
+
+```text
+Dynamisches SOC-Soll
+SOC-Abweichung
+SOC-Ladeplan
+Dynamisch erforderliche Ladeleistung
+```
+
+auch bei ausgeschalteter dynamischer SOC-Steuerung.
+
+Dadurch kann die Berechnung zunächst gefahrlos beobachtet werden.
+
+## 13. Eigenverbrauch, Ladepriorität oder Manuell verändern sich nicht
+
+Das ist ebenfalls beabsichtigt.
+
+Beta 8 beeinflusst ausschließlich die Betriebsart **Automatik**.
+
+Die explizit gewählten Betriebsarten:
+
+```text
+Eigenverbrauch
+Ladepriorität
+Manuell
+```
+
+behalten ihr bisheriges Verhalten.
+
+## 14. Optimizer berechnet, steuert aber nicht
 
 Prüfen:
 
@@ -108,8 +232,6 @@ control_status
 ```
 
 prüfen.
-
-Typische Ursachen:
 
 ### `disabled`
 
@@ -127,8 +249,6 @@ Der alte YAML-Optimizer ist noch aktiv:
 input_boolean.noah_optimizer_enabled = on
 ```
 
-Diesen zuerst ausschalten.
-
 ### `critical_data_missing`
 
 Mindestens ein kritischer Messwert fehlt.
@@ -139,38 +259,26 @@ Die beschreibbare Stellgröße ist nicht verfügbar.
 
 ### `rate_limited`
 
-Normaler Zustand direkt nach einem Stellbefehl. Der Controller wartet den
-Mindestabstand ab.
+Normaler Zustand direkt nach einem Stellbefehl.
 
 ### `waiting_for_retry`
 
-Soll und tatsächliche Stellgröße weichen noch ab; der Controller wartet auf
-den Wiederholungszeitpunkt.
+Sollwert und Stellgröße weichen noch ab; der Controller wartet auf den
+Wiederholungszeitpunkt.
 
 ### `in_sync`
 
-Normaler Ruhezustand. Sollwert und Stellgröße liegen innerhalb der
-Schalt-Hysterese.
+Sollwert und Stellgröße liegen innerhalb der Hysterese.
 
 ### `command_failed`
 
-Der Aufruf von `number.set_value` ist fehlgeschlagen. Protokoll prüfen.
+`number.set_value` ist fehlgeschlagen. Protokoll prüfen.
 
 ### `failsafe`
 
 Kritische Messdaten haben zu lange gefehlt.
 
-## 7. Dashboard erscheint nicht in der Seitenleiste
-
-Bei einer Neuinstallation muss im Config Flow:
-
-```text
-Dashboard in der Seitenleiste anzeigen
-```
-
-aktiviert sein.
-
-Bei einem Upgrade von Beta 5 verwendet Beta 6 standardmäßig `Ein`.
+## 15. Dashboard erscheint nicht
 
 Im Protokoll nach:
 
@@ -186,21 +294,21 @@ Mögliche Ursache ist ein bereits belegter Pfad:
 /noah-optimizer
 ```
 
-## 8. Dashboard ist leer oder meldet unbekannte Entitäten
+## 16. Beta-8-Dashboardelemente fehlen nach dem Update
 
-Beta 6 löst die Entity-IDs über die Entity Registry auf.
+Beta 8 führt eine gezielte Dashboard-Migration aus.
 
-Falls das Anlegen fehlschlägt, im Protokoll nach:
+Prüfen:
 
-```text
-Could not resolve dashboard entity
-```
+- Home Assistant nach HACS-Update vollständig neu gestartet
+- tatsächlich `2.0.0-beta.8` installiert
+- Protokoll auf `noah_optimizer`-Fehler prüfen
 
-suchen.
+Eigene starke Änderungen an den Standardkarten können verhindern, dass ein
+bestimmter Standardblock eindeutig erkannt und automatisch ergänzt wird. Die
+übrige Dashboard-Konfiguration wird bewusst nicht überschrieben.
 
-Prüfen, ob alle Integration-Entitäten tatsächlich angelegt wurden.
-
-## 9. Power Flow Card Plus fehlt
+## 17. Power Flow Card Plus fehlt
 
 Fehler wie:
 
@@ -213,7 +321,7 @@ Frontend geladen ist.
 
 In HACS installieren und Browser/App vollständig neu laden.
 
-## 10. ApexCharts Card fehlt
+## 18. ApexCharts Card fehlt
 
 Fehler wie:
 
@@ -221,55 +329,9 @@ Fehler wie:
 Custom element doesn't exist: apexcharts-card
 ```
 
-entsprechend durch Installation von ApexCharts Card in HACS beheben.
+entsprechend durch Installation von ApexCharts Card beheben.
 
-## 11. Lade- und Entladerichtung im Energiefluss
-
-Im HACS-Dashboard gilt:
-
-```text
-battery.consumption = Entladeleistung
-battery.production  = Ladeleistung
-```
-
-Für das Netz:
-
-```text
-grid.consumption = Netzbezug
-grid.production  = Netzeinspeisung
-```
-
-Power Flow Card Plus zeigt mit `display_state: two_way` beide Richtungen
-gleichzeitig.
-
-## 12. Dashboardänderungen verschwinden
-
-Beta 6 schreibt den Standardinhalt nur, wenn noch keine gespeicherte
-NOAH-Dashboard-Konfiguration existiert.
-
-Ein Neustart oder Integration-Reload darf Benutzeränderungen nicht
-überschreiben.
-
-Tritt das dennoch auf:
-
-1. Protokoll prüfen.
-2. Sicherstellen, dass nur eine Version der Custom Integration vorhanden ist.
-3. Prüfen, ob der Dashboard-Speicher manuell gelöscht wurde.
-
-## 13. Falsche Dashboard-Sprache
-
-Die Sprache wird nur bei der erstmaligen Erzeugung des Standard-Dashboards
-ausgewählt.
-
-```text
-Deutsch -> deutsche Vorlage
-sonst   -> englische Vorlage
-```
-
-Ein späterer Home-Assistant-Sprachwechsel ersetzt ein bereits gespeichertes
-Dashboard absichtlich nicht.
-
-## 14. Failsafe
+## 19. Failsafe
 
 Fehlen kritische Daten zehn Minuten:
 
@@ -277,46 +339,9 @@ Fehlen kritische Daten zehn Minuten:
 - bei erreichbarer Stellgröße wird `0 W` angefordert
 - bei nicht erreichbarer Stellgröße bleibt die Warnung trotzdem bestehen
 
-Nach Wiederkehr der Daten muss die Warnung wieder verschwinden.
+Nach Wiederkehr der Daten wird der Failsafe zurückgesetzt.
 
-## 15. Legacy-YAML: Entitäten fehlen
-
-Für die alte Package-Version prüfen:
-
-```text
-/config/packages/noah_optimizer.yaml
-```
-
-und in `configuration.yaml`:
-
-```yaml
-homeassistant:
-  packages: !include_dir_named packages
-```
-
-Danach unter **Werkzeuge → YAML** die Konfiguration prüfen und neu starten.
-
-## 16. Legacy-YAML: Energiefluss zeigt Batterie falsch herum
-
-Für das alte Dashboard muss Power Flow Card Plus so konfiguriert sein:
-
-```yaml
-battery:
-  entity:
-    consumption: sensor.noah_opt_ladeleistung
-    production: sensor.noah_opt_entladeleistung
-  state_of_charge: sensor.noah_opt_soc
-  display_state: two_way
-```
-
-Nicht vertauschen:
-
-```text
-consumption = Laden
-production  = Entladen
-```
-
-## 17. Legacy-YAML und HACS gleichzeitig aktiv
+## 20. Legacy-YAML und HACS gleichzeitig aktiv
 
 Das ist nicht zulässig.
 
@@ -328,5 +353,4 @@ input_boolean.noah_optimizer_enabled = Aus
 
 setzen.
 
-Die HACS-Integration enthält zusätzlich eine Software-Sperre, die normale
-Stellbefehle blockiert, solange dieser Legacy-Helfer `on` ist.
+Die Beta-8-Dynamik wird nicht in die Legacy-YAML-Regelung zurückportiert.
