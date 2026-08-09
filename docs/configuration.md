@@ -380,8 +380,8 @@ consumption = Netzbezug
 production  = Netzeinspeisung
 
 Battery:
-consumption = Ladeleistung
-production  = Entladeleistung
+consumption = Entladeleistung
+production  = Ladeleistung
 ```
 
 ## 9. Legacy-YAML

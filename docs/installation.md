@@ -2,7 +2,7 @@
 
 Diese Anleitung beschreibt die Installation des **Home Assistant Growatt NOAH Optimizers**.
 
-Ab Version `2.0.0-beta.6` ist die HACS-Integration der empfohlene
+Ab Version `2.0.0-beta.7` ist die HACS-Integration der empfohlene
 Installationsweg. Die ältere YAML-Package-Version wird weiter unten separat
 beschrieben.
 

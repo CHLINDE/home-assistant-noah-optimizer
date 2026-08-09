@@ -228,8 +228,8 @@ entsprechend durch Installation von ApexCharts Card in HACS beheben.
 Im HACS-Dashboard gilt:
 
 ```text
-battery.consumption = Ladeleistung
-battery.production  = Entladeleistung
+battery.consumption = Entladeleistung
+battery.production  = Ladeleistung
 ```
 
 Für das Netz:
