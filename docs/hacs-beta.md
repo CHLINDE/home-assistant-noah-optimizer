@@ -1,6 +1,114 @@
 # HACS Beta
 
-Current beta: `2.0.0-beta.7`
+Current beta: `2.0.0-beta.8`
+
+## Direct HACS repository button
+
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=CHLINDE&repository=home-assistant-noah-optimizer&category=integration)
+
+The button uses My Home Assistant to open this custom integration repository in
+HACS.
+
+## Dynamic SOC plan
+
+Starting with `2.0.0-beta.8`, the integration calculates a dynamic minimum SOC
+for the current point in time.
+
+The goal is to answer:
+
+> How much SOC should the battery already have now so that the configured
+> target SOC can still be reached by sunset with the conservatively expected
+> remaining PV energy?
+
+The calculation considers:
+
+- effective remaining PV forecast
+- expected household energy demand until sunset
+- additional energy reserve
+- usable battery capacity
+- charging efficiency
+- minimum SOC
+- target SOC
+
+Simplified:
+
+```text
+PV energy available for battery
+= effective remaining forecast
+  - expected household energy
+  - additional energy reserve
+
+possible SOC gain
+= available PV energy × charging efficiency
+  / battery capacity × 100
+
+dynamic SOC target
+= target SOC - possible SOC gain
+```
+
+The dynamic SOC target is clamped between minimum SOC and target SOC.
+
+### SOC deviation
+
+```text
+SOC deviation = actual SOC - dynamic SOC target
+```
+
+A tolerance of 2 percentage points is used:
+
+```text
+> +2 percentage points = ahead
+-2 ... +2             = on_track
+< -2                  = behind
+```
+
+### Dynamic catch-up power
+
+When the battery is behind schedule, Beta 8 calculates the charging power
+required to recover the SOC shortfall within the configured **SOC catch-up
+time**.
+
+Default catch-up time:
+
+```text
+2.0 h
+```
+
+The effective catch-up window is never longer than the remaining time until
+sunset.
+
+### Safe opt-in
+
+The new switch:
+
+```text
+Dynamic SOC control
+```
+
+is disabled by default.
+
+The dynamic SOC sensors are calculated even when this switch is off, allowing
+the feature to be observed before it influences the output target.
+
+Dynamic SOC control can affect the output target only when:
+
+- optimizer calculation is enabled
+- operating mode is `automatic`
+- dynamic SOC control is enabled
+- forecast data is available
+- it is daytime
+- SOC is above minimum SOC
+- SOC is below target SOC
+- the battery is more than 2 percentage points behind the dynamic SOC target
+
+Manual, self-consumption, and charge-priority modes are not changed by the new
+feature.
+
+When active, the controller mode is:
+
+```text
+soc_catchup
+```
 
 ## Automatic dashboard
 
@@ -9,9 +117,9 @@ dashboard panel named **NOAH Optimizer**.
 
 The panel is shown in the sidebar by default.
 
-For new installations, sidebar visibility can be selected during the
-integration setup. When upgrading from a version that does not yet contain
-this setting, the missing setting defaults to enabled.
+For new installations, sidebar visibility can be selected during setup. When
+upgrading from a version that did not yet contain the setting, the missing
+value defaults to enabled.
 
 The dashboard resolves integration entities dynamically through Home
 Assistant's entity registry, so area-based prefixes and user-renamed entity IDs
@@ -20,17 +128,21 @@ do not need to be known in advance.
 The dashboard configuration is stored by the integration itself. It is not
 created through a second Home Assistant `DashboardsCollection`.
 
-The default configuration is written only when no stored NOAH dashboard
-configuration exists. User changes are therefore preserved across Home
-Assistant restarts and integration reloads.
-
 The initial dashboard language follows the Home Assistant language:
 
 - German -> `dashboard_de.yaml`
 - all other languages -> `dashboard_en.yaml`
 
-Changing the Home Assistant language later does not overwrite an existing
-dashboard.
+### Beta 8 dashboard migration
+
+Beta 8 introduces dashboard template version 8.
+
+Existing Beta 6 and Beta 7 dashboards are migrated selectively rather than
+replaced. The migration can add the new dynamic SOC controls and sensors while
+preserving unrelated user changes.
+
+If the exact old Beta 6 battery mapping is still present, it is corrected to
+the Beta 7 mapping during migration.
 
 ### Dashboard requirements
 
@@ -46,49 +158,26 @@ The optimizer itself continues to operate if they are missing.
 
 ## Dashboard energy flow
 
-The dashboard displays grid and battery power as separate directional flows.
-
 ### Grid
-
-For the grid, Power Flow Card Plus uses:
 
 ```text
 consumption = grid import
 production  = grid export
 ```
 
-This results in:
-
-```text
-Grid import -> energy flows from the grid to the home
-Grid export -> energy flows from the home to the grid
-```
-
 ### NOAH battery
-
-Starting with `2.0.0-beta.7`, the battery mapping is:
 
 ```text
 consumption = discharging power
 production  = charging power
 ```
 
-This results in the correct visual direction:
+This results in:
 
 ```text
 Charging power    -> energy flows into the NOAH battery
 Discharging power -> energy flows out of the NOAH battery
 ```
-
-Beta 7 corrects the reversed battery-flow visualization that was present in
-Beta 6.
-
-The correction applies to:
-
-- `dashboard_de.yaml`
-- `dashboard_en.yaml`
-- the legacy YAML dashboard
-- the related documentation
 
 ## Required source entities
 
@@ -133,46 +222,21 @@ negative = grid export
 If the source sensor uses the opposite convention, enable
 `Invert grid power sign` during setup.
 
-## Optimizer calculation
-
-The integration calculates, among other values:
-
-- grid import and grid export
-- home load
-- battery power
-- five-minute grid power average
-- hours until sunset
-- available battery energy
-- required charging energy
-- effective remaining PV forecast
-- expected household energy demand
-- forecast margin and forecast coverage
-- required average charging power
-- estimated time until target SOC
-- self-consumption target
-- charge-priority target
-- controller mode
-- final NOAH output target
-
-The calculation logic was compared with the legacy YAML optimizer in Beta 4.
-
-With identical configuration parameters, the relevant calculated values,
-controller mode, and final output target matched the YAML implementation.
-
 ## Active control
 
 Starting with Beta 5, the integration can optionally write the calculated
 output target to the configured NOAH System Output Power entity using Home
 Assistant's `number.set_value` service.
 
-Two separate switches are provided:
+Three switches are now available:
 
 - `Optimizer calculation enabled`
 - `Active NOAH control`
+- `Dynamic SOC control`
 
-Active NOAH control is disabled by default.
+Active NOAH control and dynamic SOC control are disabled by default.
 
-The controller includes:
+The active controller includes:
 
 - configurable command deadband
 - minimum interval between normal output commands
@@ -181,7 +245,9 @@ The controller includes:
 - persistent Home Assistant failsafe notification
 - legacy YAML controller interlock
 
-Beta 7 does not change the active controller logic.
+Beta 8 does not change the low-level write controller in `control.py`. The new
+logic changes only the calculated target when the dynamic feature is explicitly
+enabled.
 
 ## Legacy YAML interlock
 
@@ -192,9 +258,6 @@ input_boolean.noah_optimizer_enabled
 ```
 
 If the entity exists and is `on`, normal HACS output commands are blocked.
-
-Before enabling HACS active control, the legacy YAML optimizer must be
-disabled.
 
 ## Failsafe
 
@@ -230,9 +293,6 @@ Typical `control_status` values:
 - `command_failed`
 - `failsafe`
 
-`in_sync` is the normal idle state when the calculated target and the current
-NOAH setpoint are within the configured command deadband.
-
 ## Version history
 
 ### 2.0.0-beta.1
@@ -240,128 +300,57 @@ NOAH setpoint are within the configured command deadband.
 Observation-only foundation with source entity selection, unit normalization,
 basic energy-flow calculations, and availability checks.
 
-This version did not send commands to the NOAH.
-
 ### 2.0.0-beta.2
 
 Improved the Home Assistant integration structure and verified the HACS update
 path.
 
-Changes included:
-
-- integration type changed from `helper` to `device`
-- improved visibility under Home Assistant Devices & services
-- existing configuration entries preserved during updates
-- selected source entities preserved during updates
-
-This version remained observation-only.
-
 ### 2.0.0-beta.3
 
-Ported the legacy YAML optimizer calculation logic to Python.
-
-Added calculations for:
-
-- required charging energy
-- effective remaining forecast
-- expected household energy demand
-- forecast margin
-- forecast coverage
-- required average charging power
-- self-consumption target
-- charge-priority target
-- controller mode
-- final output target
-
-This version was still observation-only.
+Ported the legacy YAML optimizer calculation logic to Python. This version was
+still observation-only.
 
 ### 2.0.0-beta.4
 
 Fixed the missing `select.py` platform and completed the 1:1 calculation
 comparison against the legacy YAML optimizer.
 
-With identical configuration parameters, the relevant calculation results,
-controller mode, and final output target matched the YAML implementation.
-
-This version remained observation-only.
-
 ### 2.0.0-beta.5
 
-Added optional active output control.
-
-Features included:
-
-- separate optimizer calculation and active-control switches
-- command deadband
-- minimum interval between normal output commands
-- retry handling
-- failsafe behavior
-- persistent Home Assistant notification
-- controller diagnostics
-- protection against simultaneous control by the legacy YAML optimizer
-
-Active control remained disabled by default.
+Added optional active output control, rate limiting, retry handling, failsafe
+behavior, controller diagnostics, and protection against simultaneous control
+by the legacy YAML optimizer.
 
 ### 2.0.0-beta.6
 
-Added the integration-managed Lovelace dashboard panel.
-
-Features included:
-
-- sidebar visibility enabled by default
-- optional sidebar selection during initial setup
-- dynamic entity resolution
-- German and English default templates
-- separate grid import/export display
-- separate battery charging/discharging display
-- controller status and command diagnostics
-- forecast and controller charts
-- calibration and diagnostic controls
-- preservation of user dashboard changes across restarts and reloads
-
-Dashboard requirements:
-
-- Power Flow Card Plus
-- ApexCharts Card
+Added the integration-managed Lovelace dashboard panel with dynamic entity
+resolution, German and English templates, energy-flow visualization, charts,
+calibration controls, and diagnostics.
 
 ### 2.0.0-beta.7
 
-Corrected the battery energy-flow direction in the dashboard.
+Corrected the battery energy-flow direction in Power Flow Card Plus and the
+related documentation.
 
-In Beta 6, charging and discharging power were assigned to the wrong visual
-directions in Power Flow Card Plus.
+### 2.0.0-beta.8
 
-Beta 7 fixes the battery mapping to:
+Adds the dynamic SOC plan with:
 
-```text
-consumption = discharging power
-production  = charging power
-```
-
-This ensures:
-
-```text
-Charging power    -> energy flows into the battery
-Discharging power -> energy flows out of the battery
-```
-
-The correction was applied to:
-
-- German dashboard template
-- English dashboard template
-- legacy YAML dashboard
-- README
-- configuration documentation
-- troubleshooting documentation
-- HACS beta documentation
-
-Beta 7 does not change the optimizer calculation or active control logic.
+- dynamic minimum SOC target
+- SOC deviation
+- ahead/on-track/behind status
+- dynamic catch-up charging power
+- configurable SOC catch-up time
+- separate opt-in dynamic SOC switch
+- `soc_catchup` controller mode
+- dynamic SOC dashboard chart and diagnostics
+- selective migration of existing dashboard configurations
+- My Home Assistant HACS repository button in the documentation
 
 ## Current limitations
 
 The beta does not yet include:
 
-- dynamic SOC target curves
 - learned household load
 - multiple independent NOAH systems
 

@@ -1,6 +1,6 @@
 views:
   - title: Battery charge optimization
-    path: optimierung
+    path: optimization
     icon: mdi:solar-power
     type: sections
     max_columns: 3
@@ -19,14 +19,12 @@ views:
                 icon: mdi:transmission-tower
                 display_state: two_way
                 color_circle: color_dynamically
-
               solar:
                 entity: __SOLAR_POWER__
                 name: PV
                 icon: mdi:solar-power
                 color_icon: true
                 color_value: true
-
               battery:
                 entity:
                   consumption: __DISCHARGING_POWER__
@@ -38,16 +36,13 @@ views:
                 color_circle: color_dynamically
                 color_icon: color_dynamically
                 color_state_of_charge_value: color_dynamically
-
               home:
                 entity: __HOME_LOAD__
                 name: Home
                 icon: mdi:home
                 override_state: true
                 color_icon: true
-
             clickable_entities: true
-
             display_zero_lines:
               mode: grey_out
               transparency: 50
@@ -55,7 +50,6 @@ views:
                 - 189
                 - 189
                 - 189
-
             use_new_flow_rate_model: true
             base_decimals: 0
             kilo_decimals: 1
@@ -78,12 +72,12 @@ views:
                 'night': 'Night mode',
                 'target_soc_reached': 'Target SOC reached',
                 'no_forecast': 'Conservative without forecast',
-                'blended_reserve': 'Blended reserve'
+                'blended_reserve': 'Blended reserve',
+                'soc_catchup': 'SOC catch-up'
               } %}
 
               {% set ctrl = '__CONTROL_ENABLED__' %}
               {% set status = state_attr(ctrl, 'control_status') %}
-
               {% set status_text = {
                 'disabled': 'Disabled',
                 'optimizer_disabled': 'Calculation disabled',
@@ -95,12 +89,11 @@ views:
                 'waiting_for_retry': 'Waiting for retry',
                 'in_sync': 'In sync',
                 'command_sent': 'Command sent',
-                'failsafe': 'Failsafe active',
-                'command_failed': 'Command failed'
+                'command_failed': 'Command failed',
+                'failsafe': 'Failsafe active'
               } %}
 
               {% set data_status = states('__DATA_STATUS__') %}
-
               {% set data_status_text = {
                 'ok': 'OK',
                 'critical_data_missing': 'Critical data missing',
@@ -109,26 +102,38 @@ views:
                 'actuator_unavailable': 'Output control unavailable'
               } %}
 
+              {% set soc_plan = states('__DYNAMIC_SOC_STATUS__') %}
+              {% set soc_plan_text = {
+                'ahead': 'Ahead of schedule',
+                'on_track': 'On schedule',
+                'behind': 'Behind schedule'
+              } %}
+
               {% set last_target = state_attr(ctrl, 'last_command_target') %}
               {% set last_time = state_attr(ctrl, 'last_command_at') %}
 
               ## {{ mode_text.get(mode, mode) }}
 
-              **Controller:** {{ status_text.get(status, status | default('–', true)) }}
-              **Data status:** {{ data_status_text.get(data_status, data_status) }}
-              **Target:** {{ states('__OUTPUT_TARGET__') }} W
-              **Output:** {{ states('__OUTPUT_POWER__') }} W
-              **Grid power:** {{ states('__GRID_POWER__') }} W
-              **Battery charging power:** {{ states('__CHARGING_POWER__') }} W
-              **Battery state of charge:** {{ states('__SOC__') }} %
-              **Effective remaining forecast:** {{ states('__EFFECTIVE_FORECAST__') }} kWh
-              **Required charging energy:** {{ states('__CHARGE_NEED__') }} kWh
+              **Controller:** {{ status_text.get(status, status | default('–', true)) }}  
+              **Data status:** {{ data_status_text.get(data_status, data_status) }}  
+              **Target:** {{ states('__OUTPUT_TARGET__') }} W  
+              **Output:** {{ states('__OUTPUT_POWER__') }} W  
+              **Grid power:** {{ states('__GRID_POWER__') }} W  
+              **Battery charging power:** {{ states('__CHARGING_POWER__') }} W  
+              **Battery discharging power:** {{ states('__DISCHARGING_POWER__') }} W  
+              **Battery state of charge:** {{ states('__SOC__') }} %  
+              **Dynamic SOC target:** {{ states('__DYNAMIC_SOC_TARGET__') }} %  
+              **SOC deviation:** {{ states('__SOC_DEVIATION__') }} %  
+              **SOC schedule:** {{ soc_plan_text.get(soc_plan, soc_plan) }}  
+              **Dynamic required charging power:** {{ states('__DYNAMIC_REQUIRED_CHARGE_POWER__') }} W  
+              **Effective remaining forecast:** {{ states('__EFFECTIVE_FORECAST__') }} kWh  
+              **Required charging energy:** {{ states('__CHARGE_NEED__') }} kWh  
               **Forecast margin:** {{ states('__FORECAST_MARGIN__') }} kWh
 
               {% if last_target is not none %}
-              **Last command target:** {{ last_target | round(0) }} W
+              **Last command target:** {{ last_target | round(0) }} W  
               {% else %}
-              **Last command target:** No command sent yet
+              **Last command target:** No command sent yet  
               {% endif %}
 
               {% if last_time %}
@@ -162,7 +167,6 @@ views:
                 group_by:
                   duration: 5min
                   func: avg
-
               - entity: __CHARGE_NEED__
                 name: Required charging energy
                 yaxis_id: energy
@@ -171,7 +175,6 @@ views:
                 group_by:
                   duration: 5min
                   func: avg
-
               - entity: __EXPECTED_LOAD_ENERGY__
                 name: Expected household energy
                 yaxis_id: energy
@@ -180,7 +183,6 @@ views:
                 group_by:
                   duration: 5min
                   func: avg
-
               - entity: __FORECAST_MARGIN__
                 name: Forecast margin
                 yaxis_id: energy
@@ -235,7 +237,6 @@ views:
                   red: 0
                   yellow: 20
                   green: 60
-
               - type: gauge
                 entity: __FORECAST_COVERAGE__
                 name: Forecast coverage
@@ -246,7 +247,6 @@ views:
                   red: 0
                   yellow: 60
                   green: 100
-
               - type: gauge
                 entity: __OUTPUT_TARGET__
                 name: Output target
@@ -257,7 +257,6 @@ views:
                   green: 0
                   yellow: 400
                   red: 700
-
               - type: gauge
                 entity: __GRID_IMPORT__
                 name: Grid import
@@ -268,6 +267,52 @@ views:
                   green: 0
                   yellow: 200
                   red: 600
+
+          - type: custom:apexcharts-card
+            section_mode: true
+            header:
+              show: true
+              title: Dynamic SOC charging schedule
+              show_states: true
+              colorize_states: true
+            graph_span: 24h
+            span:
+              start: day
+            now:
+              show: true
+              label: Now
+            yaxis:
+              - id: soc
+                min: 0
+                max: 100
+                decimals: 0
+            series:
+              - entity: __SOC__
+                name: Actual SOC
+                yaxis_id: soc
+                type: line
+                stroke_width: 2
+                group_by:
+                  duration: 5min
+                  func: avg
+              - entity: __DYNAMIC_SOC_TARGET__
+                name: Dynamic target
+                yaxis_id: soc
+                type: line
+                curve: stepline
+                stroke_width: 3
+                group_by:
+                  duration: 5min
+                  func: avg
+              - entity: __TARGET_SOC__
+                name: Target SOC
+                yaxis_id: soc
+                type: line
+                curve: stepline
+                stroke_width: 1
+                group_by:
+                  duration: 5min
+                  func: avg
 
           - type: custom:apexcharts-card
             section_mode: true
@@ -299,7 +344,6 @@ views:
                 group_by:
                   duration: 5min
                   func: avg
-
               - entity: __OUTPUT_POWER__
                 name: Output
                 yaxis_id: power
@@ -308,7 +352,6 @@ views:
                 group_by:
                   duration: 5min
                   func: avg
-
               - entity: __GRID_IMPORT__
                 name: Grid import
                 yaxis_id: power
@@ -317,7 +360,6 @@ views:
                 group_by:
                   duration: 5min
                   func: avg
-
               - entity: __GRID_EXPORT__
                 name: Grid export
                 yaxis_id: power
@@ -326,7 +368,6 @@ views:
                 group_by:
                   duration: 5min
                   func: avg
-
               - entity: __BATTERY_POWER__
                 name: Battery power
                 yaxis_id: power
@@ -335,7 +376,6 @@ views:
                 group_by:
                   duration: 5min
                   func: avg
-
               - entity: __SOC__
                 name: SOC
                 yaxis_id: soc
@@ -369,6 +409,14 @@ views:
                 name: Minutes until target SOC
               - entity: __AVAILABLE_BATTERY_ENERGY__
                 name: Available battery energy
+              - entity: __DYNAMIC_SOC_TARGET__
+                name: Dynamic SOC target
+              - entity: __SOC_DEVIATION__
+                name: SOC deviation
+              - entity: __DYNAMIC_SOC_STATUS__
+                name: SOC schedule status
+              - entity: __DYNAMIC_REQUIRED_CHARGE_POWER__
+                name: Dynamic required charging power
 
       - type: grid
         cards:
@@ -380,6 +428,8 @@ views:
                 name: Optimizer calculation enabled
               - entity: __CONTROL_ENABLED__
                 name: Active NOAH control
+              - entity: __DYNAMIC_SOC_ENABLED__
+                name: Dynamic SOC control enabled
               - entity: __OPTIMIZER_MODE__
                 name: Operating mode
               - entity: __TARGET_SOC__
@@ -417,7 +467,6 @@ views:
                 group_by:
                   duration: 5min
                   func: avg
-
               - entity: __OUTPUT_POWER__
                 name: Actual output
                 yaxis_id: power
@@ -426,7 +475,6 @@ views:
                 group_by:
                   duration: 5min
                   func: avg
-
               - entity: __SELF_CONSUMPTION_TARGET__
                 name: Self-consumption target
                 yaxis_id: power
@@ -435,7 +483,6 @@ views:
                 group_by:
                   duration: 5min
                   func: avg
-
               - entity: __CHARGE_PRIORITY_TARGET__
                 name: Charge-priority target
                 yaxis_id: power
@@ -444,9 +491,16 @@ views:
                 group_by:
                   duration: 5min
                   func: avg
-
               - entity: __REQUIRED_CHARGE_POWER__
                 name: Required charging power
+                yaxis_id: power
+                type: line
+                stroke_width: 1
+                group_by:
+                  duration: 5min
+                  func: avg
+              - entity: __DYNAMIC_REQUIRED_CHARGE_POWER__
+                name: Dynamic catch-up power
                 yaxis_id: power
                 type: line
                 stroke_width: 1
@@ -480,3 +534,5 @@ views:
                 name: Output step size
               - entity: __COMMAND_DEADBAND__
                 name: Control deadband
+              - entity: __DYNAMIC_SOC_CATCHUP_HOURS__
+                name: SOC catch-up time

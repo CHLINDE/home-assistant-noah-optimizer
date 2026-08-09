@@ -100,6 +100,23 @@
       "minutes_to_target": {
         "name": "Minuten bis Ziel-SOC"
       },
+      "dynamic_soc_target": {
+        "name": "Dynamisches SOC-Soll"
+      },
+      "soc_deviation": {
+        "name": "SOC-Abweichung"
+      },
+      "dynamic_required_charge_power": {
+        "name": "Dynamisch erforderliche Ladeleistung"
+      },
+      "dynamic_soc_status": {
+        "name": "SOC-Ladeplan",
+        "state": {
+          "ahead": "Vor Ladeplan",
+          "on_track": "Im Ladeplan",
+          "behind": "Hinter Ladeplan"
+        }
+      },
       "self_consumption_target": {
         "name": "Eigenverbrauch-Soll"
       },
@@ -120,7 +137,8 @@
           "night": "Nachtbetrieb",
           "target_soc_reached": "Ziel-SOC erreicht",
           "no_forecast": "Konservativ ohne Prognose",
-          "blended_reserve": "Gleitende Reserve"
+          "blended_reserve": "Gleitende Reserve",
+          "soc_catchup": "SOC-Nachladung"
         }
       },
       "data_status": {
@@ -176,6 +194,9 @@
       },
       "command_deadband": {
         "name": "Schalt-Hysterese"
+      },
+      "dynamic_soc_catchup_hours": {
+        "name": "SOC-Nachholzeit"
       }
     },
     "select": {
@@ -195,6 +216,9 @@
       },
       "control_enabled": {
         "name": "NOAH-Steuerung aktiv"
+      },
+      "dynamic_soc_enabled": {
+        "name": "Dynamische SOC-Steuerung aktiv"
       }
     },
     "binary_sensor": {

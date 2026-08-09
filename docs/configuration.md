@@ -1,30 +1,58 @@
 # Konfiguration
 
-Dieses Dokument beschreibt die Parameter, Betriebsarten und Statuswerte der
-HACS-Integration **Growatt NOAH Optimizer**.
+Dieses Dokument beschreibt die HACS-Integration **Growatt NOAH Optimizer** ab
+Version `2.0.0-beta.8`.
 
-Die tatsächlichen Entity-IDs können je nach Bereichszuordnung oder manueller
-Umbenennung unterschiedlich sein. Deshalb werden hier vor allem die
-angezeigten Entitätsnamen verwendet.
+Die tatsächlichen Entity-IDs können durch Bereichsnamen oder manuelle
+Umbenennungen abweichen. Die Integration und das automatische Dashboard lösen
+die eigenen Entitäten über stabile Unique IDs auf.
 
 ## 1. Schalter
 
 ### Optimierer-Berechnung aktiv
 
-Aktiviert die Berechnung der Optimizer-Sollwerte.
+Aktiviert die Berechnung des Ausgangssollwerts.
 
-Ist dieser Schalter aus, wird der Reglermodus auf den ausgeschalteten Zustand
-gesetzt und die aktive Steuerung darf keine normalen Stellbefehle senden.
+Ist dieser Schalter aus, wird der Reglermodus auf `off` gesetzt und es werden
+keine normalen Stellbefehle ausgeführt.
 
 ### NOAH-Steuerung aktiv
 
-Gibt das aktive Schreiben auf die konfigurierte NOAH-System-Output-Power-
+Gibt das aktive Schreiben auf die konfigurierte `NOAH System Output Power`-
 Entität frei.
 
-Dieser Schalter ist standardmäßig aus.
+Standard:
 
-Die beiden Schalter sind absichtlich getrennt. Dadurch kann die komplette
-Berechnung geprüft werden, ohne den NOAH zu steuern.
+```text
+Aus
+```
+
+Berechnung und aktive Stellregelung sind absichtlich getrennt.
+
+### Dynamische SOC-Steuerung aktiv
+
+Neu in Beta 8.
+
+Die dynamische SOC-Berechnung läuft unabhängig von diesem Schalter, sodass die
+neuen Sensoren zunächst beobachtet werden können.
+
+Erst bei:
+
+```text
+Dynamische SOC-Steuerung aktiv = Ein
+Betriebsart = Automatik
+```
+
+kann ein SOC-Rückstand den Ausgangssollwert beeinflussen.
+
+Standard:
+
+```text
+Aus
+```
+
+Die Betriebsarten **Manuell**, **Eigenverbrauch** und **Ladepriorität** werden
+durch diesen Schalter nicht verändert.
 
 ## 2. Betriebsarten
 
@@ -48,14 +76,16 @@ Der Optimizer wählt seinen internen Reglermodus abhängig von:
 - erwarteter Hauslast
 - Netzbezug beziehungsweise Einspeisung
 - verbleibender Zeit bis Sonnenuntergang
+- optional dem dynamischen SOC-Ladeplan
 
-Mögliche Reglermodi sind:
+Mögliche interne Reglermodi sind:
 
 ```text
 Aus
 Manuell
 Eigenverbrauch
 Ladepriorität
+SOC-Nachladung
 Mindest-SOC
 Nachtbetrieb
 Ziel-SOC erreicht
@@ -66,7 +96,7 @@ Gleitende Reserve
 ### Eigenverbrauch
 
 Die Ausgangsleistung wird so berechnet, dass der Netzbezug möglichst klein
-bleibt und der eingestellte Rest-Netzbezug berücksichtigt wird.
+bleibt und der gewünschte Rest-Netzbezug berücksichtigt wird.
 
 ### Ladepriorität
 
@@ -77,7 +107,112 @@ reserviert. Die Ausgangsleistung wird entsprechend begrenzt.
 
 Der Parameter **Manuelle Ausgangsleistung** wird als Sollwert verwendet.
 
-## 3. Parameter
+## 3. Dynamischer SOC-Ladeplan
+
+Beta 8 berechnet, welchen SOC der Speicher **jetzt mindestens haben sollte**,
+damit der Ziel-SOC bis Sonnenuntergang mit der konservativ noch erwarteten
+PV-Energie erreichbar bleibt.
+
+### 3.1 Verfügbare PV-Energie für den Akku
+
+```text
+PV-Energie für Akku
+= wirksame Restprognose
+  - erwarteter Hausenergiebedarf
+  - zusätzliche Energiereserve
+```
+
+Negative Ergebnisse werden auf `0 kWh` begrenzt.
+
+### 3.2 Möglicher SOC-Zuwachs
+
+```text
+Speicherbare Energie
+= PV-Energie für Akku × Ladewirkungsgrad
+
+Möglicher SOC-Zuwachs
+= Speicherbare Energie / nutzbare Akkukapazität × 100
+```
+
+### 3.3 Dynamisches SOC-Soll
+
+```text
+Dynamisches SOC-Soll
+= Ziel-SOC - möglicher SOC-Zuwachs
+```
+
+Der Wert wird begrenzt auf:
+
+```text
+Mindest-SOC <= dynamisches SOC-Soll <= Ziel-SOC
+```
+
+Je mehr nutzbare PV-Energie noch erwartet wird, desto niedriger darf der Akku
+aktuell stehen. Nimmt die Restprognose im Tagesverlauf ab, steigt das
+dynamische SOC-Soll automatisch Richtung Ziel-SOC.
+
+### 3.4 SOC-Abweichung
+
+```text
+SOC-Abweichung
+= Ist-SOC - dynamisches SOC-Soll
+```
+
+Beta 8 verwendet eine feste Toleranz von 2 Prozentpunkten:
+
+```text
+mehr als +2 %-Punkte  = Vor Ladeplan
+-2 bis +2 %-Punkte    = Im Ladeplan
+weniger als -2 %-Punkte = Hinter Ladeplan
+```
+
+### 3.5 Dynamisch erforderliche Ladeleistung
+
+Liegt der Speicher hinter dem Ladeplan, wird die zum Aufholen des Rückstands
+benötigte Ladeleistung berechnet.
+
+```text
+Fehlende Batterieenergie
+= Akkukapazität × SOC-Rückstand / 100
+
+Benötigte PV-Energie
+= fehlende Batterieenergie / Ladewirkungsgrad
+
+Dynamische Ladeleistung
+= benötigte PV-Energie / Nachholzeit
+```
+
+Die verwendete Nachholzeit ist auf die noch verbleibende Zeit bis
+Sonnenuntergang begrenzt.
+
+### 3.6 Einfluss auf die Regelung
+
+Nur wenn alle folgenden Bedingungen erfüllt sind, wird der neue Reglermodus
+**SOC-Nachladung** aktiv:
+
+- Optimierer-Berechnung ist aktiv
+- Betriebsart ist **Automatik**
+- Dynamische SOC-Steuerung ist aktiv
+- Forecast.Solar ist verfügbar
+- es ist Tag
+- SOC liegt über dem Mindest-SOC
+- SOC liegt unter dem Ziel-SOC
+- der Speicher liegt mehr als 2 Prozentpunkte hinter dem dynamischen SOC-Soll
+
+Dann wird für die Batterieladung mindestens der größere Wert aus:
+
+```text
+bisher erforderliche mittlere Ladeleistung
+oder
+dynamisch erforderliche Ladeleistung
+```
+
+reserviert.
+
+Der NOAH-Ausgang wird entsprechend reduziert, ohne negative Ausgangsleistung
+anzufordern.
+
+## 4. Parameter
 
 ### Nutzbare Akkukapazität
 
@@ -87,15 +222,7 @@ Standard:
 2,048 kWh
 ```
 
-Gesamte nutzbare Kapazität aller angeschlossenen NOAH-Module.
-
-Beispiele:
-
-```text
-1 Modul: 2,048 kWh
-2 Module: 4,096 kWh
-3 Module: 6,144 kWh
-```
+Gesamte nutzbare Kapazität der angeschlossenen NOAH-Speicher.
 
 ### Ziel-SOC bei Sonnenuntergang
 
@@ -105,8 +232,6 @@ Standard:
 95 %
 ```
 
-SOC, den die Ladeplanung bis Sonnenuntergang anstrebt.
-
 ### Mindest-SOC
 
 Standard:
@@ -114,9 +239,6 @@ Standard:
 ```text
 10 %
 ```
-
-Unterhalb beziehungsweise beim Erreichen dieses Werts wird in der Automatik
-keine normale Entladung mehr angefordert.
 
 ### Angenommener Ladewirkungsgrad
 
@@ -126,8 +248,6 @@ Standard:
 0,90
 ```
 
-Wirkungsgrad für die Berechnung der bis zum Ziel-SOC benötigten Ladeenergie.
-
 ### Prognose-Sicherheitsfaktor
 
 Standard:
@@ -135,8 +255,6 @@ Standard:
 ```text
 0,80
 ```
-
-Multipliziert die noch erwartete PV-Energie.
 
 Beispiel:
 
@@ -146,8 +264,6 @@ Faktor:        0,80
 wirksam:       4,0 kWh
 ```
 
-Ein höherer Wert vertraut stärker auf die Forecast.Solar-Prognose.
-
 ### Zusätzliche Energiereserve
 
 Standard:
@@ -155,8 +271,6 @@ Standard:
 ```text
 0,25 kWh
 ```
-
-Zusätzliche Sicherheitsreserve in der Energieplanung.
 
 ### Freigabemarge
 
@@ -166,9 +280,6 @@ Standard:
 0,50 kWh
 ```
 
-Positive Prognosemarge, ab der die Automatik vollständig in Richtung
-Eigenverbrauch freigeben kann.
-
 ### Erwartete mittlere Hauslast
 
 Standard:
@@ -176,9 +287,6 @@ Standard:
 ```text
 250 W
 ```
-
-Wird verwendet, um aus der verbleibenden Zeit bis Sonnenuntergang einen
-erwarteten Energiebedarf des Hauses abzuschätzen.
 
 ### Gewünschter Rest-Netzbezug
 
@@ -188,9 +296,6 @@ Standard:
 50 W
 ```
 
-Kleine positive Netzreserve, die unnötiges Pendeln zwischen Bezug und
-Einspeisung reduzieren soll.
-
 ### Maximale Ausgangsleistung
 
 Standard:
@@ -198,8 +303,6 @@ Standard:
 ```text
 800 W
 ```
-
-Obergrenze für den berechneten Ausgangssollwert.
 
 ### Maximale Ausgangsleistung nachts
 
@@ -209,8 +312,6 @@ Standard:
 400 W
 ```
 
-Separate Obergrenze für den Nachtbetrieb.
-
 ### Manuelle Ausgangsleistung
 
 Standard:
@@ -218,8 +319,6 @@ Standard:
 ```text
 200 W
 ```
-
-Sollwert in der Betriebsart **Manuell**.
 
 ### Stellgrößenraster
 
@@ -229,8 +328,6 @@ Standard:
 50 W
 ```
 
-Der endgültige Sollwert wird auf dieses Raster gerundet.
-
 ### Schalt-Hysterese
 
 Standard:
@@ -239,32 +336,53 @@ Standard:
 50 W
 ```
 
-Erst eine ausreichend große Differenz zwischen Soll- und Referenzwert löst
-einen normalen neuen Stellbefehl aus.
+### SOC-Nachholzeit
 
-## 4. Wichtige berechnete Sensoren
+Neu in Beta 8.
+
+Standard:
+
+```text
+2,0 h
+```
+
+Bereich:
+
+```text
+0,5 ... 6,0 h
+```
+
+Ein kleinerer Wert reagiert aggressiver auf einen SOC-Rückstand. Ein größerer
+Wert verteilt das Nachladen über einen längeren Zeitraum.
+
+## 5. Wichtige berechnete Sensoren
 
 ### Netzleistung
 
-Vorzeichenkonvention:
-
 ```text
 positiv = Netzbezug
-negativ = Einspeisung
+negativ = Netzeinspeisung
 ```
 
 ### Netzbezug / Netzeinspeisung
 
-Aus der saldierten Netzleistung abgeleitete, getrennte positive Sensoren.
+Aus der saldierten Netzleistung abgeleitete positive Richtungswerte.
 
 ### Hauslast
 
-Aus Netzleistung und NOAH-Ausgangsleistung berechnete aktuelle Hauslast.
+Näherungsweise:
+
+```text
+Hauslast = Netzleistung + NOAH-Ausgangsleistung
+```
 
 ### Batterieleistung
 
-Kombinierter Batteriefluss. Für das Dashboard werden zusätzlich die getrennten
-Sensoren **Ladeleistung** und **Entladeleistung** verwendet.
+Kombinierter Batteriefluss. Positive Werte entsprechen Entladung, negative
+Werte Ladung.
+
+Für das Dashboard werden zusätzlich die getrennten Sensoren **Ladeleistung**
+und **Entladeleistung** verwendet.
 
 ### Netzleistung 5 min
 
@@ -286,25 +404,44 @@ Hauslast.
 
 ### Prognosemarge
 
-Verbleibende Energiemarge nach Ladebedarf, erwarteter Hausenergie und Reserve.
+Verbleibende Energiemarge nach Ladebedarf, erwartetem Hausenergiebedarf und
+zusätzlicher Reserve.
 
 ### Prognosedeckung
 
 Prozentuale Deckung des erwarteten Restbedarfs durch die wirksame Prognose.
 
-### Erforderliche mittlere Ladeleistung
+### Dynamisches SOC-Soll
 
-Mittlere Ladeleistung, die bis Sonnenuntergang noch benötigt wird, um den
-Ziel-SOC zu erreichen.
+SOC, den der Speicher zum aktuellen Zeitpunkt mindestens haben sollte.
+
+### SOC-Abweichung
+
+Ist-SOC minus dynamisches SOC-Soll.
+
+### SOC-Ladeplan
+
+Enum-Sensor mit:
+
+```text
+ahead     = Vor Ladeplan
+on_track  = Im Ladeplan
+behind    = Hinter Ladeplan
+```
+
+### Dynamisch erforderliche Ladeleistung
+
+Zusätzliche Ladeleistung zum Aufholen eines SOC-Rückstands innerhalb der
+konfigurierten SOC-Nachholzeit.
 
 ### Ausgangssollwert
 
 Endgültiger berechneter NOAH-Sollwert nach Betriebsart, Grenzwerten,
-Hysterese-Vorbereitung und Stellgrößenraster.
+dynamischer SOC-Regelung und Stellgrößenraster.
 
-## 5. Controllerdiagnose
+## 6. Controllerdiagnose
 
-Der Schalter **NOAH-Steuerung aktiv** stellt Attribute bereit:
+Der Schalter **NOAH-Steuerung aktiv** stellt bereit:
 
 ```text
 control_status
@@ -329,18 +466,18 @@ Typische `control_status`-Werte:
 | `command_failed` | Stellbefehl fehlgeschlagen |
 | `failsafe` | Failsafe aktiv |
 
-## 6. Failsafe
+## 7. Failsafe
 
 Fehlen kritische Messwerte zehn Minuten ununterbrochen, während die aktive
 Steuerung eingeschaltet ist:
 
 1. Home Assistant erzeugt eine persistente Benachrichtigung.
 2. Ist die Stellgröße erreichbar, versucht die Integration `0 W` zu setzen.
-3. Ist sie nicht erreichbar, bleibt die Warnung trotzdem bestehen.
+3. Ist sie nicht erreichbar, wird die Warnung trotzdem erzeugt.
 4. Nach Wiederkehr der Daten werden Failsafe-Zustand und Benachrichtigung
    zurückgesetzt.
 
-## 7. Legacy-Sperre
+## 8. Legacy-Sperre
 
 Existiert:
 
@@ -353,26 +490,9 @@ und steht auf `on`, blockiert die HACS-Steuerung normale Ausgangsbefehle.
 Legacy-YAML-Optimizer und HACS-Controller dürfen nicht gleichzeitig aktiv
 denselben NOAH steuern.
 
-## 8. Dashboard-Konfiguration
+## 9. Dashboard
 
-Beta 6 erzeugt beim ersten Start ein eigenes Dashboard.
-
-Die Standardvorlage wird nur verwendet, wenn noch keine gespeicherte
-NOAH-Dashboard-Konfiguration existiert.
-
-Benutzeränderungen werden deshalb bei Neustarts oder Integration-Reloads
-nicht überschrieben.
-
-Die Standardvorlage wird bei der ersten Erzeugung nach der
-Home-Assistant-Sprache gewählt:
-
-```text
-Deutsch -> dashboard_de.yaml
-sonst   -> dashboard_en.yaml
-```
-
-Für Power Flow Card Plus werden Netz und Batterie mit getrennten Richtungen
-dargestellt:
+Das automatische Dashboard verwendet für Power Flow Card Plus:
 
 ```text
 Grid:
@@ -384,10 +504,17 @@ consumption = Entladeleistung
 production  = Ladeleistung
 ```
 
-## 9. Legacy-YAML
+Damit entspricht die animierte Richtung dem realen Energiefluss.
 
-Die ältere Package-Variante verwendet weiterhin `input_*`-Helfer und
-`sensor.noah_opt_*`-Entitäten.
+Beta 8 ergänzt außerdem:
 
-Für neue Installationen wird die HACS-Integration empfohlen. Details zur
-Legacy-Installation stehen in `installation.md`.
+- Dynamische SOC-Steuerung aktiv
+- Dynamisches SOC-Soll
+- SOC-Abweichung
+- SOC-Ladeplan
+- Dynamisch erforderliche Ladeleistung
+- SOC-Nachholzeit
+- Diagramm mit Ist-SOC, dynamischem SOC-Soll und Ziel-SOC
+
+Ein bestehendes Dashboard wird gezielt migriert und nicht vollständig durch
+die Standardvorlage ersetzt.

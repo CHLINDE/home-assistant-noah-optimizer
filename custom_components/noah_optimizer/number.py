@@ -9,15 +9,9 @@ from homeassistant.components.number import (
     NumberEntityDescription,
     NumberMode,
 )
-from homeassistant.const import (
-    PERCENTAGE,
-    UnitOfEnergy,
-    UnitOfPower,
-)
+from homeassistant.const import PERCENTAGE, UnitOfEnergy, UnitOfPower, UnitOfTime
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity_platform import (
-    AddConfigEntryEntitiesCallback,
-)
+from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import NoahOptimizerConfigEntry
 from .const import (
@@ -25,6 +19,7 @@ from .const import (
     OPT_CHARGE_EFFICIENCY,
     OPT_COMMAND_DEADBAND,
     OPT_COMMAND_STEP,
+    OPT_DYNAMIC_SOC_CATCHUP_HOURS,
     OPT_EXPECTED_DAY_LOAD,
     OPT_FORECAST_FACTOR,
     OPT_FORECAST_SAFETY,
@@ -200,6 +195,17 @@ NUMBERS: tuple[NoahNumberDescription, ...] = (
         native_unit_of_measurement=UnitOfPower.WATT,
         mode=NumberMode.BOX,
     ),
+    NoahNumberDescription(
+        key="dynamic_soc_catchup_hours",
+        translation_key="dynamic_soc_catchup_hours",
+        option_key=OPT_DYNAMIC_SOC_CATCHUP_HOURS,
+        default=2.0,
+        native_min_value=0.5,
+        native_max_value=6.0,
+        native_step=0.5,
+        native_unit_of_measurement=UnitOfTime.HOURS,
+        mode=NumberMode.BOX,
+    ),
 )
 
 
@@ -209,7 +215,6 @@ async def async_setup_entry(
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     """Set up number entities."""
-
     async_add_entities(
         NoahOptimizerNumber(
             entry.runtime_data,
@@ -220,46 +225,27 @@ async def async_setup_entry(
     )
 
 
-class NoahOptimizerNumber(
-    NoahOptimizerEntity,
-    NumberEntity,
-):
+class NoahOptimizerNumber(NoahOptimizerEntity, NumberEntity):
     """Represent an optimizer setting."""
 
     entity_description: NoahNumberDescription
 
-    def __init__(
-        self,
-        coordinator,
-        entry,
-        description: NoahNumberDescription,
-    ) -> None:
+    def __init__(self, coordinator, entry, description: NoahNumberDescription) -> None:
         """Initialize the entity."""
-
         super().__init__(coordinator, entry)
-
         self.entry = entry
         self.entity_description = description
-        self._attr_unique_id = (
-            f"{entry.entry_id}_{description.key}"
-        )
+        self._attr_unique_id = f"{entry.entry_id}_{description.key}"
 
     @property
     def native_value(self) -> float:
         """Return the configured value."""
-
         return float(
-            self.coordinator.get_option(
-                self.entity_description.option_key
-            )
+            self.coordinator.get_option(self.entity_description.option_key)
         )
 
-    async def async_set_native_value(
-        self,
-        value: float,
-    ) -> None:
+    async def async_set_native_value(self, value: float) -> None:
         """Update the optimizer option."""
-
         await self.coordinator.async_set_option(
             self.entity_description.option_key,
             value,

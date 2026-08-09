@@ -1,32 +1,68 @@
+## [2.0.0-beta.8]
+
+### Added
+
+- Dynamic SOC target calculated from the remaining PV forecast, expected household demand, energy reserve, battery capacity, charging efficiency, minimum SOC, and target SOC
+- SOC deviation sensor showing actual SOC minus the dynamic SOC target
+- Dynamic SOC plan status with `ahead`, `on_track`, and `behind` states
+- Dynamic required charging power for catching up when the battery falls behind the SOC plan
+- Separate opt-in switch for dynamic SOC control
+- Configurable SOC catch-up time, defaulting to 2 hours
+- New `soc_catchup` controller mode
+- Dynamic SOC planning information in the automatic Lovelace dashboard
+- Actual-SOC, dynamic-target-SOC, and configured target-SOC chart
+- Targeted dashboard migration for existing Beta 6 and Beta 7 installations
+
+### Changed
+
+- Automatic mode can reserve additional PV power for battery charging when dynamic SOC control is enabled and the battery is more than 2 percentage points behind the dynamic SOC target
+- Dynamic SOC calculations remain visible even while dynamic SOC control is disabled
+- Manual, self-consumption, and charge-priority operating modes remain unaffected by the new dynamic SOC control
+- Dashboard template storage version increased to 8
+- Existing dashboards are migrated selectively instead of being replaced
+- Beta 6 battery-flow mapping is corrected during dashboard migration when the old exact mapping is still present
+- Documentation updated for the dynamic SOC feature and Beta 8 installation
+- README now includes a My Home Assistant button for opening the repository directly in HACS
+
+### Safety
+
+Dynamic SOC control is disabled by default.
+
+Updating from Beta 7 does not automatically change the existing optimizer
+output behavior. The new dynamic SOC sensors can be monitored first and the
+feature can then be enabled explicitly.
+
+The active NOAH control safety mechanisms introduced in Beta 5 remain
+unchanged.
+
+---
+
 ## [2.0.0-beta.7]
 
 ### Fixed
 
-- Corrected the battery energy-flow direction in the NOAH Optimizer dashboard.
-- Fixed Power Flow Card Plus battery mapping so charging power is displayed as energy flowing into the battery.
-- Fixed Power Flow Card Plus battery mapping so discharging power is displayed as energy flowing out of the battery.
-- Corrected the battery-flow mapping in the German dashboard template.
-- Corrected the battery-flow mapping in the English dashboard template.
-- Corrected the battery-flow mapping in the legacy YAML dashboard.
-- Updated related documentation to use the correct battery-flow direction.
+- Corrected the battery energy-flow direction in the NOAH Optimizer dashboard
+- Fixed Power Flow Card Plus battery mapping so charging power is displayed as energy flowing into the battery
+- Fixed Power Flow Card Plus battery mapping so discharging power is displayed as energy flowing out of the battery
+- Corrected the battery-flow mapping in the German dashboard template
+- Corrected the battery-flow mapping in the English dashboard template
+- Corrected the battery-flow mapping in the legacy YAML dashboard
+- Updated related documentation to use the correct battery-flow direction
 
 ### Documentation
 
-- Updated the README for Beta 7.
-- Added the Beta 6 and Beta 7 dashboard changes to the version history.
-- Added third-party attribution for Noah-MQTT.
-- Added third-party attribution for Power Flow Card Plus.
-- Added third-party attribution for ApexCharts Card.
-- Clarified that dashboard dependencies are installed separately and are not bundled with the integration.
-- Updated `THIRD_PARTY.md` with information about external projects used by or interoperating with the integration.
+- Updated the README for Beta 7
+- Added third-party attribution for Noah-MQTT
+- Added third-party attribution for Power Flow Card Plus
+- Added third-party attribution for ApexCharts Card
+- Clarified that dashboard dependencies are installed separately and are not bundled with the integration
 
-### Dashboard
+### Safety
 
-For Power Flow Card Plus, the battery mapping is now:
+This release did not change the active optimizer control logic introduced in
+Beta 5.
 
-```text
-consumption = discharging power
-production  = charging power
+---
 
 ## [2.0.0-beta.6]
 
@@ -58,6 +94,8 @@ The enhanced dashboard uses:
 
 The optimizer integration itself continues to work if these dashboard cards are not installed.
 
+---
+
 ## [2.0.0-beta.5]
 
 ### Added
@@ -81,6 +119,8 @@ the NOAH System Output Power entity.
 The legacy YAML optimizer and the HACS optimizer must never control the
 same NOAH simultaneously.
 
+---
+
 ## [2.0.0-beta.4]
 
 ### Fixed
@@ -92,6 +132,8 @@ same NOAH simultaneously.
 
 This release remains observation-only and does not write to the
 NOAH System Output Power entity.
+
+---
 
 ## [2.0.0-beta.3]
 
@@ -127,6 +169,8 @@ Version 2.0.0-beta.3 remains observation-only.
 It calculates the desired NOAH output power but does not write the
 calculated value to the NOAH System Output Power entity.
 
+---
+
 ## [2.0.0-beta.2]
 
 ### Fixed
@@ -142,6 +186,8 @@ calculated value to the NOAH System Output Power entity.
 ### Safety
 
 This release remains observation-only and does not send commands to the NOAH.
+
+---
 
 ## [2.0.0-beta.1]
 
@@ -168,10 +214,5 @@ The existing YAML optimizer can remain active during testing.
 
 ### Not yet included
 
-- active optimizer control
-- forecast-based output calculation
-- configurable optimizer parameters
-- dynamic SOC target curve
 - learned home load
-- failsafe
 - multi-system support

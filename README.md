@@ -6,55 +6,38 @@ Prognosebasierte Steuerung der Ausgangsleistung eines Growatt NOAH 2000
 > **Status:** Beta. Die aktive Steuerung kann die NOAH-Ausgangsleistung
 > verändern und sollte während der Testphase überwacht werden.
 
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=CHLINDE&repository=home-assistant-noah-optimizer&category=integration)
+
 ## Ziele
 
 - Netzbezug reduzieren
-- PV-Einspeisung bei nicht vollem Akku reduzieren
+- unnötige PV-Einspeisung bei noch aufnahmefähigem Speicher reduzieren
 - Akku bis zum Abend auf einen konfigurierbaren Ziel-SOC laden
 - Nachtentladung bis zu einem Mindest-SOC ermöglichen
-- Wetterprognose über Forecast.Solar berücksichtigen
-- vollständige Dashboardübersicht bereitstellen
-- Energiefluss, Ladeplanung und Reglerverhalten transparent darstellen
+- Forecast.Solar in die Ladeplanung einbeziehen
+- dynamischen SOC-Ladeplan aus der verbleibenden PV-Prognose ableiten
+- Regelzustand, Prognose und Energiefluss in einem Dashboard darstellen
 
----
+## HACS-Integration
 
-## Dashboard
+Eine HACS-kompatible Custom Integration ist als Beta verfügbar.
 
-Der NOAH Optimizer stellt ab Beta 6 ein eigenes Home-Assistant-Dashboard
-bereit.
+Aktuelle Beta:
 
-Das Dashboard enthält unter anderem:
+```text
+2.0.0-beta.8
+```
 
-- aktuellen Energiefluss
-- Netzbezug und Netzeinspeisung
-- PV-Leistung
-- Hauslast
-- Lade- und Entladeleistung des NOAH
-- Akku-SOC
-- Ausgangssollwert
-- Reglermodus
-- Controllerstatus
-- Prognosedeckung
-- Energieplanung bis Sonnenuntergang
-- Leistungsverläufe
-- Reglerverhalten
-- Optimizer-Einstellungen
-- Kalibrierparameter
-- Diagnosewerte
+Ab Beta 5 kann die Integration den berechneten Sollwert optional aktiv an
+`NOAH System Output Power` übertragen.
 
-### Browseransicht
+Ab Beta 6 wird zusätzlich ein eigenes Lovelace-Dashboard erzeugt.
 
-![NOAH Optimizer Dashboard im Browser](screenshots/noah_dashboard_browser.png)
+Beta 7 korrigiert die Batterie-Flussrichtung im Dashboard.
 
-### Mobile Ansicht
-
-![NOAH Optimizer Dashboard auf dem iPhone](screenshots/noah_dashboard_iPhone.jpeg)
-
-> **Hinweis:** Die vorhandenen Screenshots können noch eine frühere
-> Dashboard-Version zeigen. Das automatisch erzeugte Dashboard wurde ab
-> Beta 6 vollständig an die HACS-Integration angepasst.
-
----
+Beta 8 ergänzt einen dynamischen SOC-Ladeplan. Die neue Regelungsfunktion ist
+nach dem Update standardmäßig ausgeschaltet und kann zunächst rein beobachtet
+werden.
 
 ## Voraussetzungen
 
@@ -67,38 +50,24 @@ Das Dashboard enthält unter anderem:
 - saldierter Netzleistungssensor
 - beschreibbare `number`-Entität für NOAH System Output Power
 
-### Home-Assistant-Komponenten
+Für das erweiterte Dashboard zusätzlich:
 
-- [HACS](https://www.hacs.xyz/)
-- [Noah-MQTT](https://github.com/mtrossbach/noah-mqtt)
-- [Forecast.Solar](https://www.home-assistant.io/integrations/forecast_solar/)
+- Power Flow Card Plus
+- ApexCharts Card
 
-### Erforderliche HACS-Dashboardkarten
+Die beiden Custom Cards werden nicht automatisch installiert. Der Optimizer
+selbst funktioniert auch ohne sie.
 
-Für das vollständige Dashboard werden zusätzlich benötigt:
+## Installation über HACS
 
-- [Power Flow Card Plus](https://github.com/flixlix/power-flow-card-plus)
-- [ApexCharts Card](https://github.com/RomRider/apexcharts-card)
+### Direkt in HACS öffnen
 
-Die beiden Custom Cards werden nicht automatisch installiert.
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=CHLINDE&repository=home-assistant-noah-optimizer&category=integration)
 
-Der Optimizer selbst funktioniert auch ohne diese Karten. Lediglich die
-entsprechenden Dashboard-Elemente können dann nicht dargestellt werden.
+Der Button öffnet das Repository direkt in HACS über **My Home Assistant**.
 
----
-
-## HACS-Installation
-
-Eine HACS-kompatible Custom Integration ist als Beta verfügbar.
-
-Aktuelle Beta:
-
-```text
-2.0.0-beta.7
-```
-
-Falls das Repository noch nicht in der regulären HACS-Suche verfügbar ist,
-kann es als benutzerdefiniertes Repository hinzugefügt werden:
+Alternativ kann das Repository als benutzerdefiniertes Repository eingetragen
+werden:
 
 ```text
 https://github.com/CHLINDE/home-assistant-noah-optimizer
@@ -112,19 +81,16 @@ Integration
 
 Danach **Growatt NOAH Optimizer** installieren und Home Assistant neu starten.
 
-Die vollständige Anleitung befindet sich unter:
+Die vollständige Anleitung steht unter:
 
 - [Installation](docs/installation.md)
 - [Konfiguration](docs/configuration.md)
 - [Fehlerbehebung](docs/troubleshooting.md)
-- [HACS Integration Beta](docs/hacs-beta.md)
-
----
+- [HACS Beta](docs/hacs-beta.md)
 
 ## Benötigte Quell-Entitäten
 
-Beim Einrichten der Integration werden folgende vorhandene
-Home-Assistant-Entitäten ausgewählt:
+Beim Einrichten werden ausgewählt:
 
 - saldierte Netzleistung
 - NOAH Solar Power
@@ -135,9 +101,7 @@ Home-Assistant-Entitäten ausgewählt:
 - Forecast.Solar Restprognose heute
 - NOAH System Output Power
 
-`NOAH System Output Power` muss eine beschreibbare `number`-Entität sein.
-
-### Unterstützte Einheiten
+Unterstützte Einheiten:
 
 ```text
 Leistung: W oder kW
@@ -145,31 +109,21 @@ Energie:  Wh oder kWh
 SOC:      %
 ```
 
-### Netzvorzeichen
-
-Die erwartete Konvention lautet:
+Die erwartete Netzkonvention lautet:
 
 ```text
 positiv = Netzbezug
 negativ = Netzeinspeisung
 ```
 
-Bei umgekehrter Konvention kann während der Einrichtung:
-
-```text
-Netzvorzeichen umkehren
-```
-
-aktiviert werden.
-
----
+Bei umgekehrter Konvention kann während der Einrichtung
+**Netzvorzeichen umkehren** aktiviert werden.
 
 ## Optimizer-Berechnung
 
 Die Integration berechnet unter anderem:
 
-- Netzbezug
-- Netzeinspeisung
+- Netzbezug und Netzeinspeisung
 - Hauslast
 - Batterieleistung
 - 5-Minuten-Mittelwert der Netzleistung
@@ -184,17 +138,16 @@ Die Integration berechnet unter anderem:
 - verbleibende Zeit bis Ziel-SOC
 - Eigenverbrauch-Sollwert
 - Ladeprioritäts-Sollwert
+- dynamisches SOC-Soll
+- SOC-Abweichung zum dynamischen Ladeplan
+- dynamisch erforderliche Nachladeleistung
 - Reglermodus
 - endgültigen Ausgangssollwert
 
-Die Berechnungslogik wurde in Beta 4 gegen den bisherigen YAML-Optimizer
-verglichen.
-
-Bei identischen Einstellungen stimmten die relevanten Berechnungsergebnisse,
-der Reglermodus und der endgültige Ausgangssollwert mit der YAML-Version
-überein.
-
----
+Die ursprüngliche Berechnungslogik wurde in Beta 4 gegen den bisherigen
+YAML-Optimizer verglichen. Bei identischen Einstellungen stimmten die
+relevanten Berechnungsergebnisse, der Reglermodus und der Ausgangssollwert mit
+der YAML-Version überein.
 
 ## Betriebsarten
 
@@ -209,18 +162,12 @@ Manuell
 
 ### Automatik
 
-Die Betriebsart wird abhängig von unter anderem:
+Die Betriebsart wird abhängig von unter anderem SOC, Ziel-SOC, Mindest-SOC,
+Restprognose, Prognosemarge, erwarteter Hauslast, Netzleistung und verbleibender
+Zeit bis Sonnenuntergang automatisch gewählt.
 
-- SOC
-- Ziel-SOC
-- Mindest-SOC
-- Restprognose
-- Prognosemarge
-- erwarteter Hauslast
-- Netzleistung
-- verbleibender Zeit bis Sonnenuntergang
-
-automatisch gewählt.
+Ist in Beta 8 zusätzlich **Dynamische SOC-Steuerung aktiv** eingeschaltet,
+kann die Automatik den Reglermodus **SOC-Nachladung** verwenden.
 
 ### Eigenverbrauch
 
@@ -236,378 +183,233 @@ reserviert.
 
 Die konfigurierte manuelle Ausgangsleistung wird als Sollwert verwendet.
 
----
+## Dynamischer SOC-Ladeplan ab Beta 8
+
+Beta 8 berechnet laufend einen SOC-Wert, den der Speicher **jetzt mindestens
+haben sollte**, damit der konfigurierte Ziel-SOC bis Sonnenuntergang mit der
+noch erwarteten PV-Energie erreichbar bleibt.
+
+Die Berechnung berücksichtigt:
+
+- wirksame Forecast.Solar-Restprognose
+- erwarteten Hausenergiebedarf bis Sonnenuntergang
+- zusätzliche Energiereserve
+- nutzbare Akkukapazität
+- Ladewirkungsgrad
+- Ziel-SOC
+- Mindest-SOC
+
+Vereinfacht gilt:
+
+```text
+PV-Energie für Akku
+= wirksame Restprognose
+  - erwarteter Hausenergiebedarf
+  - zusätzliche Energiereserve
+
+möglicher SOC-Zuwachs
+= PV-Energie für Akku × Ladewirkungsgrad
+  / Akkukapazität × 100
+
+Dynamisches SOC-Soll
+= Ziel-SOC - möglicher SOC-Zuwachs
+```
+
+Das dynamische SOC-Soll wird auf den Bereich zwischen Mindest-SOC und Ziel-SOC
+begrenzt.
+
+### SOC-Ladeplan
+
+Die Abweichung wird als:
+
+```text
+SOC-Abweichung = Ist-SOC - dynamisches SOC-Soll
+```
+
+berechnet.
+
+Mit einer Toleranz von 2 Prozentpunkten entstehen die Zustände:
+
+```text
+Vor Ladeplan
+Im Ladeplan
+Hinter Ladeplan
+```
+
+Liegt der Speicher hinter dem Ladeplan, berechnet Beta 8 zusätzlich eine
+Nachladeleistung. Der Parameter **SOC-Nachholzeit** legt fest, innerhalb welcher
+Zeit der Rückstand aufgeholt werden soll. Standard sind `2,0 h`.
+
+### Sichere Aktivierung
+
+Nach einem Update ist:
+
+```text
+Dynamische SOC-Steuerung aktiv = Aus
+```
+
+Die neuen Sensoren rechnen trotzdem bereits mit. Dadurch können die Werte erst
+beobachtet werden, ohne den bestehenden Ausgangssollwert zu verändern.
+
+Die dynamische SOC-Steuerung beeinflusst den Sollwert nur in der Betriebsart
+**Automatik**. Manuell, Eigenverbrauch und Ladepriorität bleiben unverändert.
 
 ## Aktive Steuerung
 
-Seit Beta 5 kann der berechnete Ausgangssollwert optional aktiv an:
-
-```text
-NOAH System Output Power
-```
-
-übertragen werden.
-
-Die Integration besitzt dafür zwei bewusst getrennte Schalter:
+Die Integration besitzt getrennte Schalter:
 
 ```text
 Optimierer-Berechnung aktiv
 NOAH-Steuerung aktiv
+Dynamische SOC-Steuerung aktiv
 ```
 
-Die aktive NOAH-Steuerung ist standardmäßig ausgeschaltet.
+Die aktive NOAH-Steuerung und die dynamische SOC-Steuerung sind standardmäßig
+ausgeschaltet.
 
-Dadurch kann die vollständige Optimizer-Berechnung zunächst beobachtet und
-geprüft werden, ohne Stellbefehle an den NOAH zu senden.
+Der Controller enthält unter anderem:
 
-### Schutzmechanismen
-
-Der aktive Controller enthält:
-
-- konfigurierbare Schalt-Hysterese
+- Schalt-Hysterese
 - Stellgrößenraster
 - Mindestabstand zwischen normalen Stellbefehlen
 - Wiederholungsversuch bei nicht übernommenem Sollwert
-- Failsafe bei längerem Verlust kritischer Messdaten
+- Failsafe bei längerem Verlust kritischer Daten
 - persistente Home-Assistant-Benachrichtigung
 - Sperre gegen den alten YAML-Controller
 
-### Controllerdiagnose
-
-Der Schalter **NOAH-Steuerung aktiv** stellt zusätzliche Attribute bereit:
-
-```text
-control_status
-last_command_target
-last_command_at
-```
-
-Typische `control_status`-Werte sind:
-
-```text
-disabled
-optimizer_disabled
-legacy_controller_active
-critical_data_missing
-actuator_unavailable
-target_unavailable
-rate_limited
-waiting_for_retry
-in_sync
-command_sent
-command_failed
-failsafe
-```
-
-`in_sync` ist der normale Ruhezustand, wenn berechneter Sollwert und aktuelle
-NOAH-Stellgröße innerhalb der eingestellten Hysterese liegen.
-
----
-
-## Failsafe
-
-Fehlen kritische Messwerte länger als zehn Minuten, während die aktive
-Steuerung eingeschaltet ist:
-
-1. Home Assistant erzeugt eine persistente Benachrichtigung.
-2. Ist NOAH System Output Power erreichbar, versucht der Optimizer die
-   Stellgröße auf `0 W` zu setzen.
-3. Ist die Stellgröße nicht erreichbar, wird die Warnung trotzdem erzeugt.
-4. Nach Wiederkehr der kritischen Messwerte wird der Failsafe zurückgesetzt
-   und die Benachrichtigung entfernt.
-
----
+Der alte YAML-Optimizer und die HACS-Steuerung dürfen niemals gleichzeitig
+denselben NOAH aktiv regeln.
 
 ## Dashboard ab Beta 6
 
-Seit Beta 6 erzeugt die Integration beim ersten Start ein eigenes
-Lovelace-Dashboard mit dem Seitenleisteneintrag:
+Die Integration erzeugt beim ersten Start ein eigenes Lovelace-Dashboard mit
+dem Seitenleisteneintrag:
 
 ```text
 NOAH Optimizer
 ```
 
-### Seitenleiste
+Bei einer Neuinstallation kann im Einrichtungsdialog gewählt werden, ob der
+Eintrag in der Seitenleiste erscheinen soll. Standard ist **Ein**.
 
-Bei einer Neuinstallation kann im Einrichtungsdialog ausgewählt werden, ob
-das Dashboard in der Seitenleiste erscheinen soll.
+Die Integration löst ihre eigenen Entity-IDs über die Home-Assistant Entity
+Registry auf. Bereichspräfixe oder vom Benutzer geänderte Entity-IDs müssen
+deshalb nicht fest in den Dashboard-Dateien stehen.
 
-Standard:
+Die Standardsprache des Dashboards richtet sich bei der erstmaligen Erzeugung
+nach der Home-Assistant-Sprache:
 
-```text
-Ein
-```
+- Deutsch → `dashboard_de.yaml`
+- alle anderen Sprachen → `dashboard_en.yaml`
 
-Bei einem Update von einer älteren Beta, in der diese Einstellung noch nicht
-existierte, wird ebenfalls **Ein** verwendet.
+### Dashboard-Migration in Beta 8
 
-### Dynamische Entity-IDs
+Ein vorhandenes Beta-6-/Beta-7-Dashboard wird nicht vollständig ersetzt.
+Beta 8 ergänzt gezielt die neuen dynamischen SOC-Entitäten und den SOC-Chart.
+Vorhandene Benutzeranpassungen bleiben erhalten. Gleichzeitig wird die alte
+fehlerhafte Batterie-Flusszuordnung korrigiert, falls sie noch exakt im
+Beta-6-Zustand vorhanden ist.
 
-Die Integration löst ihre eigenen Entity-IDs über die Home-Assistant
-Entity Registry auf.
+### Energiefluss
 
-Dadurch müssen Bereichspräfixe wie beispielsweise:
-
-```text
-terrasse_
-balkon_
-keller_
-```
-
-nicht fest in der Dashboard-Datei eingetragen werden.
-
-Auch vom Benutzer geänderte Entity-IDs können dadurch berücksichtigt werden.
-
-### Dashboard-Sprache
-
-Bei der erstmaligen Erstellung wird die Standardsprache anhand der
-Home-Assistant-Sprache gewählt:
+Für Power Flow Card Plus gilt:
 
 ```text
-Deutsch                 → dashboard_de.yaml
-alle anderen Sprachen   → dashboard_en.yaml
-```
+Netz:
+consumption = Netzbezug
+production  = Netzeinspeisung
 
-Ein späterer Sprachwechsel überschreibt ein bereits vorhandenes oder vom
-Benutzer angepasstes Dashboard nicht.
-
-### Benutzeränderungen
-
-Das Standard-Dashboard wird nur initial angelegt.
-
-Eigene Änderungen am Dashboard werden bei:
-
-- Home-Assistant-Neustarts
-- Reloads der Integration
-- späteren Updates
-
-nicht automatisch überschrieben.
-
----
-
-## Energiefluss
-
-Power Flow Card Plus stellt Netz und Batterie mit getrennten Flussrichtungen
-dar.
-
-### Netz
-
-```text
-Netzbezug       = Energie aus dem Netz
-Netzeinspeisung = Energie ins Netz
-```
-
-### NOAH-Speicher
-
-```text
-Ladeleistung    = Energie fließt in den Akku
-Entladeleistung = Energie fließt aus dem Akku
-```
-
-Für Power Flow Card Plus verwendet der NOAH deshalb:
-
-```text
+NOAH:
 consumption = Entladeleistung
 production  = Ladeleistung
 ```
 
-Damit entspricht die grafisch dargestellte Richtung dem tatsächlichen
-Energiefluss des Speichers.
+Damit zeigt die Card Ladeleistung als Energiefluss **in** den Akku und
+Entladeleistung als Energiefluss **aus** dem Akku.
 
----
+### Dashboard-Inhalt
 
-# Versionshistorie
-
-## Version 2.0.0-beta.1
-
-Die erste HACS-Beta war ausschließlich für den Beobachtungsbetrieb vorgesehen.
-
-Sie:
-
-- liest vorhandene Home-Assistant-Entitäten
-- normalisiert W/kW und Wh/kWh
-- berechnet Netzbezug und Netzeinspeisung
-- berechnet Hauslast und Batterieleistung
-- prüft die Verfügbarkeit von Forecast.Solar
-- prüft die Verfügbarkeit von NOAH System Output Power
-- sendet keine Stellbefehle an den NOAH
-
-Die Beta konnte deshalb parallel zum bestehenden YAML-Optimizer betrieben
-werden.
-
----
-
-## Version 2.0.0-beta.2
-
-Beta 2 konzentrierte sich auf die Integrationsstruktur und den
-HACS-Updatepfad.
-
-Änderungen:
-
-- Integrationstyp von `helper` auf `device` geändert
-- bessere Sichtbarkeit unter **Einstellungen → Geräte & Dienste**
-- vorhandener Konfigurationseintrag bleibt bei HACS-Updates erhalten
-- ausgewählte Quell-Entitäten bleiben bei Updates erhalten
-- vorhandene Entitäten werden nicht dupliziert
-- Updatepfad von `2.0.0-beta.1` auf `2.0.0-beta.2` getestet
-
-Der Optimizer blieb in dieser Version ausschließlich im Beobachtungsmodus.
-
-`2.0.0-beta.2` schrieb noch nicht auf NOAH System Output Power.
-
----
-
-## Version 2.0.0-beta.3
-
-Beta 3 portierte die vollständige Berechnungslogik des bisherigen
-YAML-Optimizers nach Python.
-
-Berechnet wurden unter anderem:
-
-- prognosebasierter Ladebedarf
-- erwarteter Hausenergiebedarf
-- Prognosemarge
-- Prognosedeckung
-- Eigenverbrauch-Sollwert
-- Ladeprioritäts-Sollwert
-- Reglermodus
-- endgültiger NOAH-Ausgangssollwert
-
-Der berechnete Ausgangssollwert war weiterhin ausschließlich zur Beobachtung
-bestimmt.
-
-`2.0.0-beta.3` schrieb nicht auf NOAH System Output Power und konnte deshalb
-weiterhin mit dem aktiven YAML-Optimizer verglichen werden.
-
----
-
-## Version 2.0.0-beta.4
-
-Beta 4 korrigierte den Integrationsfehler aus Beta 3, der durch die fehlende
-`select.py`-Plattform verursacht wurde.
-
-Änderungen:
-
-- fehlende `select.py` ergänzt
-- erfolgreiches Laden der Integration wiederhergestellt
-- Betriebsart-Auswahl wiederhergestellt
-- bestehender Konfigurationseintrag bleibt erhalten
-- ausgewählte Quell-Entitäten bleiben erhalten
-- Berechnungslogik gegen den Legacy-YAML-Optimizer geprüft
-
-Die berechneten Werte wurden mit dem alten YAML-Optimizer verglichen.
-
-Bei identischen Einstellungen stimmten:
-
-- Ladebedarf
-- wirksame Restprognose
-- erwarteter Hausenergiebedarf
-- Prognosemarge
-- Prognosedeckung
-- erforderliche mittlere Ladeleistung
-- Eigenverbrauch-Soll
-- Ladepriorität-Soll
-- Ausgangssollwert
-- Reglermodus
-
-mit der YAML-Implementierung überein.
-
-Beta 4 blieb weiterhin ausschließlich im Beobachtungsmodus.
-
----
-
-## Version 2.0.0-beta.5
-
-Beta 5 führte die optionale aktive NOAH-Steuerung ein.
-
-Die aktive Steuerung:
-
-- ist standardmäßig deaktiviert
-- verwendet den berechneten Ausgangssollwert
-- berücksichtigt die konfigurierte Schalt-Hysterese
-- begrenzt die Häufigkeit normaler Stellbefehle
-- wiederholt einen Sollwert, wenn NOAH ihn nicht übernommen hat
-- aktiviert nach längerem Verlust kritischer Messdaten einen Failsafe
-- erzeugt eine persistente Home-Assistant-Benachrichtigung
-- blockiert Stellbefehle, solange der Legacy-YAML-Optimizer noch aktiv ist
-
-Zusätzlich wurden getrennte Schalter eingeführt:
-
-```text
-Optimierer-Berechnung aktiv
-NOAH-Steuerung aktiv
-```
-
-Damit kann die Berechnung unabhängig von der aktiven Stellregelung betrieben
-werden.
-
----
-
-## Version 2.0.0-beta.6
-
-Beta 6 führte das automatisch erzeugte Lovelace-Dashboard für die
-HACS-Integration ein.
-
-Neu:
-
-- eigenes NOAH-Optimizer-Dashboard
-- standardmäßige Anzeige in der Home-Assistant-Seitenleiste
-- optionale Sidebar-Auswahl bei der Ersteinrichtung
-- dynamische Auflösung der tatsächlichen Entity-IDs
-- Unterstützung von durch Bereiche veränderten Entity-IDs
-- deutsche Dashboard-Vorlage
-- englische Dashboard-Vorlage
-- aktueller Energiefluss über Power Flow Card Plus
+- aktueller Energiefluss
 - Netzbezug und Netzeinspeisung getrennt
-- Laden und Entladen des Speichers getrennt
-- Controllerstatus und Diagnose
+- Laden und Entladen des NOAH getrennt
+- Akkustand und Prognosedeckung
+- dynamischer SOC-Ladeplan mit Ist-SOC, dynamischem Soll und Ziel-SOC
+- SOC-Abweichung und Ladeplanstatus
+- Reglermodus und Controllerstatus
+- letzter Stellwert und letzter Stellbefehl
 - Energieplanung bis Sonnenuntergang
-- Leistungs- und Reglerdiagramme über ApexCharts
-- Kalibrierparameter direkt im Dashboard
+- Leistung heute
+- Reglerverhalten
+- Planung im Detail
+- Kalibrierparameter
+- Diagnose
 
-Die Dashboard-Konfiguration wird nur initial erzeugt. Spätere Änderungen des
-Benutzers werden nicht automatisch überschrieben.
+### Browseransicht
 
----
+![NOAH Optimizer Dashboard im Browser](screenshots/noah_dashboard_browser.png)
 
-## Version 2.0.0-beta.7
+### Mobile Ansicht
 
-Beta 7 korrigiert die Richtung des Batterie-Energieflusses in Power Flow Card
-Plus.
+![NOAH Optimizer Dashboard auf dem iPhone](screenshots/noah_dashboard_iPhone.jpeg)
 
-In Beta 6 wurden Lade- und Entladeleistung in der grafischen Darstellung des
-NOAH vertauscht.
+## Versionshistorie
 
-### Behoben
+### 2.0.0-beta.1
 
-- Ladeleistung wurde als Energiefluss aus dem Akku dargestellt
-- Entladeleistung wurde als Energiefluss in den Akku dargestellt
-- Zuordnung in `dashboard_de.yaml` korrigiert
-- Zuordnung in `dashboard_en.yaml` korrigiert
-- Zuordnung im Legacy-Dashboard korrigiert
-- zugehörige Dokumentation korrigiert
+Erste HACS-kompatible Custom Integration im reinen Beobachtungsbetrieb mit
+Config Flow, Quellentitäten, Einheiten-Normalisierung und grundlegenden
+Energiefluss-Sensoren.
 
-Für Power Flow Card Plus gilt seit Beta 7 korrekt:
+### 2.0.0-beta.2
+
+Integrationstyp auf `device` umgestellt und HACS-Updatepfad verbessert.
+
+### 2.0.0-beta.3
+
+Berechnungslogik des Legacy-YAML-Optimizers nach Python portiert. Noch keine
+aktive Stellwertausgabe.
+
+### 2.0.0-beta.4
+
+Fehlende `select.py` ergänzt und Berechnungswerte 1:1 gegen die Legacy-Version
+geprüft.
+
+### 2.0.0-beta.5
+
+Optionale aktive NOAH-Steuerung, Hysterese, Mindestabstand zwischen Befehlen,
+Retry, Failsafe, Controllerdiagnose und Legacy-Sperre ergänzt.
+
+### 2.0.0-beta.6
+
+Automatisches Lovelace-Dashboard mit dynamischer Entity-Auflösung, deutschen
+und englischen Vorlagen, Power Flow Card Plus und ApexCharts eingeführt.
+
+### 2.0.0-beta.7
+
+Batterie-Flussrichtung im Dashboard korrigiert:
 
 ```text
 consumption = Entladeleistung
 production  = Ladeleistung
 ```
 
-Damit wird:
+### 2.0.0-beta.8
 
-```text
-Ladeleistung    → Energie zum NOAH
-Entladeleistung → Energie vom NOAH
-```
+Dynamischen SOC-Ladeplan ergänzt:
 
-grafisch korrekt dargestellt.
+- dynamisches SOC-Soll
+- SOC-Abweichung
+- Ladeplanstatus
+- dynamisch erforderliche Nachladeleistung
+- neue SOC-Nachholzeit
+- separate, standardmäßig deaktivierte Freigabe der dynamischen Regelung
+- neuer Reglermodus `SOC-Nachladung`
+- Diagramm mit Ist-SOC, dynamischem Soll und Ziel-SOC im Dashboard
+- gezielte Dashboard-Migration für bestehende Installationen
 
----
+## Legacy-YAML-Optimizer
 
-## Legacy-YAML-Installation
-
-Die ältere Package-Variante bleibt im Repository erhalten.
+Die ältere Package-Variante bleibt im Repository enthalten.
 
 Dateien:
 
@@ -616,88 +418,27 @@ noah_optimizer.yaml
 dashboards/noah_dashboard.yaml
 ```
 
-### Installation
-
-1. `noah_optimizer.yaml` nach `/config/packages/` kopieren.
-2. Alle Platzhalter-Entity-IDs ersetzen.
-3. Package-Unterstützung in `configuration.yaml` aktivieren.
-4. Unter **Werkzeuge → YAML** die Konfiguration prüfen.
-5. Home Assistant neu starten.
-6. Legacy-Dashboard importieren.
-7. Optimizer zunächst ausgeschaltet testen.
-
-Die ausführliche Anleitung befindet sich unter:
-
-- [Installation](docs/installation.md)
-- [Konfiguration](docs/configuration.md)
-- [Fehlerbehebung](docs/troubleshooting.md)
-
 Für neue Installationen wird die HACS-Integration empfohlen.
 
----
+Die Legacy-YAML-Regelung muss ausgeschaltet sein, bevor die aktive
+HACS-Steuerung eingeschaltet wird.
 
-## Legacy-YAML-Sperre
+## Sicherheit
 
-Legacy-YAML-Optimizer und HACS-Controller dürfen niemals gleichzeitig aktiv
-denselben NOAH steuern.
+Dieses Projekt ist ein Community-Projekt und keine offizielle Growatt-
+Integration.
 
-Die HACS-Integration prüft deshalb:
+Die aktive Steuerung sollte erst eingeschaltet werden, nachdem:
 
-```text
-input_boolean.noah_optimizer_enabled
-```
+- alle Quellwerte plausibel geprüft wurden
+- das Netzvorzeichen stimmt
+- Forecast.Solar plausible Werte liefert
+- NOAH System Output Power manuell beschreibbar ist
+- der berechnete Ausgangssollwert plausibel ist
 
-Ist dieser Helfer vorhanden und steht auf `on`, blockiert die HACS-Integration
-normale Stellbefehle.
-
-Vor Aktivierung der HACS-Steuerung muss deshalb gelten:
-
-```text
-Legacy YAML Optimizer = Aus
-NOAH-Steuerung aktiv  = Ein
-```
-
----
-
-## Wichtiger Sicherheitshinweis
-
-Versionen `2.0.0-beta.1` bis einschließlich `2.0.0-beta.4` waren
-ausschließlich für den Beobachtungsbetrieb vorgesehen.
-
-Seit `2.0.0-beta.5` kann die Integration optional die NOAH-Ausgangsleistung
-aktiv verändern.
-
-Die aktive Steuerung ist standardmäßig deaktiviert und muss ausdrücklich
-eingeschaltet werden.
-
-Vor der Aktivierung sollten geprüft werden:
-
-- Netzleistung und Netzvorzeichen
-- PV-Leistung
-- NOAH-Ausgangsleistung
-- Ladezustand
-- Ladeleistung
-- Entladeleistung
-- Forecast.Solar-Restprognose
-- berechneter Ausgangssollwert
-- Beschreibbarkeit von NOAH System Output Power
-
-Legacy-YAML-Optimizer und HACS-Controller dürfen niemals gleichzeitig
-denselben NOAH aktiv steuern.
-
----
-
-## Wichtiger Hinweis
-
-Die Steuerung verwendet die inoffizielle Noah-MQTT-Anbindung und ist keine
-offizielle Growatt-Lösung.
-
-Dieses Projekt ist ein Community-Projekt und steht in keiner offiziellen
-Verbindung zu Growatt.
-
-Die Nutzung erfolgt auf eigene Verantwortung.
-
----
+Für Beta 8 sollte die dynamische SOC-Steuerung zunächst ausgeschaltet bleiben,
+bis dynamisches Soll, SOC-Abweichung und Nachladeleistung über einen geeigneten
+Zeitraum plausibel beobachtet wurden.
 
 ## Projektstruktur
 
@@ -705,8 +446,6 @@ Die Nutzung erfolgt auf eigene Verantwortung.
 home-assistant-noah-optimizer/
 ├── .github/
 │   └── workflows/
-│       ├── hacs.yml
-│       └── hassfest.yml
 ├── custom_components/
 │   └── noah_optimizer/
 │       ├── translations/
@@ -735,8 +474,6 @@ home-assistant-noah-optimizer/
 │   ├── installation.md
 │   └── troubleshooting.md
 ├── screenshots/
-│   ├── noah_dashboard_browser.png
-│   └── noah_dashboard_iPhone.jpeg
 ├── CHANGELOG.md
 ├── LICENSE
 ├── README.md
@@ -744,8 +481,6 @@ home-assistant-noah-optimizer/
 ├── hacs.json
 └── noah_optimizer.yaml
 ```
-
----
 
 ## Lizenz
 
