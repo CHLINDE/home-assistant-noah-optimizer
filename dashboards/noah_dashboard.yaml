@@ -28,8 +28,8 @@ views:
           grid:
             name: Netz
             entity:
-              consumption: sensor.noah_opt_netzbezug
-              production: sensor.noah_opt_netzeinspeisung
+              consumption: sensor.noah_opt_entladeleistung
+              production: sensor.noah_opt_ladeleistung
             display_state: two_way
             color_icon: color_dynamically
             color_circle: color_dynamically

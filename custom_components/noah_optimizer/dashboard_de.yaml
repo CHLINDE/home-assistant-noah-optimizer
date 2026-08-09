@@ -29,8 +29,8 @@ views:
 
               battery:
                 entity:
-                  consumption: __CHARGING_POWER__
-                  production: __DISCHARGING_POWER__
+                  consumption: __DISCHARGING_POWER__
+                  production: __CHARGING_POWER__
                 state_of_charge: __SOC__
                 name: NOAH
                 icon: mdi:battery
