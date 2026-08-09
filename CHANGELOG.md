@@ -18,7 +18,7 @@
 - Automatic mode can reserve additional PV power for battery charging when dynamic SOC control is enabled and the battery is more than 2 percentage points behind the dynamic SOC target
 - Dynamic SOC calculations remain visible even while dynamic SOC control is disabled
 - Manual, self-consumption, and charge-priority operating modes remain unaffected by the new dynamic SOC control
-- Dashboard template storage version increased to 8
+- Dashboard template version set to 8 for targeted dashboard migrations
 - Existing dashboards are migrated selectively instead of being replaced
 - Beta 6 battery-flow mapping is corrected during dashboard migration when the old exact mapping is still present
 - Documentation updated for the dynamic SOC feature and Beta 8 installation
