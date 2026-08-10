@@ -475,7 +475,7 @@ Dynamic SOC load-plan rework:
 - keeps existing dashboard entities and template version 9
 - leaves manual, self-consumption, and charge-priority modes unchanged
 
-## Current limitations
+## Current limitations 
 
 The beta does not yet include:
 
