@@ -1,7 +1,7 @@
 # Installation
 
 Diese Anleitung beschreibt die Installation und das Update des **Home
-Assistant Growatt NOAH Optimizers** für Version `2.0.0-beta.8`.
+Assistant Growatt NOAH Optimizers** für Version `2.0.0-beta.9`.
 
 Für neue Installationen wird die HACS-Integration empfohlen.
 
@@ -85,12 +85,12 @@ Typ:
 Integration
 ```
 
-## 5. Beta 8 installieren
+## 5. Beta 9 installieren
 
 Zu installierende Version:
 
 ```text
-2.0.0-beta.8
+2.0.0-beta.9
 ```
 
 Nach der Installation Home Assistant vollständig neu starten.
@@ -127,7 +127,7 @@ Standard:
 Ein
 ```
 
-## 7. Update von Beta 7 auf Beta 8
+## 7. Update auf Beta 9
 
 Vor dem Update empfiehlt sich:
 

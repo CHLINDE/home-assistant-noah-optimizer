@@ -1,10 +1,18 @@
 # HACS Beta
 
-Current beta: `2.0.0-beta.8`
+Current beta: `2.0.0-beta.9`
 
 ## Direct HACS repository button
 
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=CHLINDE&repository=home-assistant-noah-optimizer&category=integration)
+
+> **Home Assistant 2026.8 and newer:**  
+> Home Assistant OS uses port 80 by default for new installations. Home
+> Assistant Container continues to use port 8123 by default.
+>
+> The HACS button itself does not contain the Home Assistant port. If My Home
+> Assistant still opens an instance URL containing `:8123`, update the instance
+> URL stored by My Home Assistant in the browser.
 
 The button uses My Home Assistant to open this custom integration repository in
 HACS.
@@ -143,6 +151,17 @@ preserving unrelated user changes.
 
 If the exact old Beta 6 battery mapping is still present, it is corrected to
 the Beta 7 mapping during migration.
+
+### Beta 9 dashboard repair
+
+Beta 9 increases the dashboard template version to 9.
+
+Beta 8 contained an error in the targeted migration of an existing controller
+status Markdown card. The generated Jinja expression for the SOC schedule could
+end with only one closing brace and cause:
+
+```text
+TemplateSyntaxError: unexpected '}'
 
 ### Dashboard requirements
 
@@ -346,6 +365,16 @@ Adds the dynamic SOC plan with:
 - dynamic SOC dashboard chart and diagnostics
 - selective migration of existing dashboard configurations
 - My Home Assistant HACS repository button in the documentation
+
+### 2.0.0-beta.9
+
+Dashboard migration hotfix:
+
+- fixes the malformed SOC schedule Jinja expression
+- repairs dashboards already migrated by Beta 8
+- increases dashboard template version to 9
+- preserves user dashboard customizations
+- does not change optimizer or active-control logic
 
 ## Current limitations
 

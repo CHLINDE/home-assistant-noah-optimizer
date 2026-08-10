@@ -32,7 +32,7 @@ DASHBOARD_ICON = "mdi:home-battery"
 
 DASHBOARD_STORAGE_VERSION = 1
 DASHBOARD_STORAGE_KEY = f"{DOMAIN}.dashboard"
-DASHBOARD_TEMPLATE_VERSION = 8
+DASHBOARD_TEMPLATE_VERSION = 9
 
 DASHBOARD_TEMPLATE_DE = Path(__file__).with_name("dashboard_de.yaml")
 DASHBOARD_TEMPLATE_EN = Path(__file__).with_name("dashboard_en.yaml")
@@ -423,14 +423,47 @@ def _dynamic_soc_chart(
         ],
     }
 
+def _repair_beta8_status_expression(
+    content: str,
+    german: bool,
+) -> tuple[str, bool]:
+    """Repair the malformed SOC status Jinja expression created by Beta 8."""
+    label = "**SOC-Ladeplan:**" if german else "**SOC schedule:**"
+    lines = content.splitlines(keepends=True)
+    changed = False
+
+    for index, line in enumerate(lines):
+        line_without_eol = line.rstrip("\r\n")
+        eol = line[len(line_without_eol):]
+
+        visible = line_without_eol.rstrip()
+        trailing_spaces = line_without_eol[len(visible):]
+
+        if (
+            label in visible
+            and "{{" in visible
+            and visible.endswith(") }")
+        ):
+            lines[index] = visible + "}" + trailing_spaces + eol
+            changed = True
+
+    return "".join(lines), changed
 
 def _patch_status_markdown(
     content: str,
     replacements: dict[str, str],
     german: bool,
 ) -> tuple[str, bool]:
-    """Add Beta 8 mode and SOC values to an existing status markdown card."""
+    """Add Beta 8 SOC values and repair the malformed Beta 8 status template."""
     changed = False
+
+    # Beta 9: repair the malformed Jinja expression that could have been
+    # written by the Beta 8 dashboard migration.
+    content, repaired = _repair_beta8_status_expression(
+        content,
+        german,
+    )
+    changed |= repaired
 
     if "'soc_catchup'" not in content:
         if german and "'blended_reserve': 'Gleitende Reserve'" in content:
@@ -449,18 +482,25 @@ def _patch_status_markdown(
             changed = True
 
     dynamic_entity = replacements["__DYNAMIC_SOC_TARGET__"]
+
     if dynamic_entity not in content:
         soc_deviation_entity = replacements["__SOC_DEVIATION__"]
         soc_status_entity = replacements["__DYNAMIC_SOC_STATUS__"]
-        dynamic_power_entity = replacements["__DYNAMIC_REQUIRED_CHARGE_POWER__"]
+        dynamic_power_entity = replacements[
+            "__DYNAMIC_REQUIRED_CHARGE_POWER__"
+        ]
 
         if german:
             anchor = "**Prognosemarge:**"
+
             status_expression = (
                 "{{ {'ahead': 'Vor Ladeplan', 'on_track': 'Im Ladeplan', "
                 "'behind': 'Hinter Ladeplan'}.get("
-                f"states('{soc_status_entity}'), states('{soc_status_entity}')) }}"
+                f"states('{soc_status_entity}'), "
+                f"states('{soc_status_entity}')) "
+                "}}"
             )
+
             addition = (
                 f"**Dynamisches SOC-Soll:** "
                 f"{{{{ states('{dynamic_entity}') }}}} %\n"
@@ -470,13 +510,19 @@ def _patch_status_markdown(
                 "**Dynamisch erforderliche Ladeleistung:** "
                 f"{{{{ states('{dynamic_power_entity}') }}}} W\n\n"
             )
+
         else:
             anchor = "**Forecast margin:**"
+
             status_expression = (
-                "{{ {'ahead': 'Ahead of schedule', 'on_track': 'On schedule', "
+                "{{ {'ahead': 'Ahead of schedule', "
+                "'on_track': 'On schedule', "
                 "'behind': 'Behind schedule'}.get("
-                f"states('{soc_status_entity}'), states('{soc_status_entity}')) }}"
+                f"states('{soc_status_entity}'), "
+                f"states('{soc_status_entity}')) "
+                "}}"
             )
+
             addition = (
                 f"**Dynamic SOC target:** "
                 f"{{{{ states('{dynamic_entity}') }}}} %\n"
@@ -488,18 +534,25 @@ def _patch_status_markdown(
             )
 
         anchor_index = content.find(anchor)
+
         if anchor_index >= 0:
             line_end = content.find("\n", anchor_index)
+
             if line_end >= 0:
-                content = content[: line_end + 1] + addition + content[line_end + 1 :]
+                content = (
+                    content[: line_end + 1]
+                    + addition
+                    + content[line_end + 1 :]
+                )
             else:
                 content += "\n" + addition
+
             changed = True
 
     return content, changed
 
 
-def _migrate_dashboard_to_beta8(
+def _migrate_dashboard_to_beta9(
     hass: HomeAssistant,
     config: dict[str, Any],
     replacements: dict[str, str],
@@ -690,7 +743,7 @@ async def async_ensure_dashboard(
         template_version = await dashboard.async_get_template_version()
 
         if template_version < DASHBOARD_TEMPLATE_VERSION:
-            dashboard_config, changed = _migrate_dashboard_to_beta8(
+            dashboard_config, changed = _migrate_dashboard_to_beta9(
                 hass,
                 dashboard_config,
                 replacements,

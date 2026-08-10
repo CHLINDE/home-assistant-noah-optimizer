@@ -1,3 +1,31 @@
+## [2.0.0-beta.9]
+
+### Fixed
+
+- Fixed `TemplateSyntaxError: unexpected '}'` in the controller status Markdown card after upgrading an existing dashboard to Beta 8
+- Corrected the Jinja expression generated for the dynamic SOC schedule status
+- Added a targeted repair for dashboard configurations already migrated and stored by Beta 8
+- Existing user dashboard customizations remain preserved during the repair
+
+### Changed
+
+- Dashboard template storage version increased from 8 to 9
+- Beta 8 dashboard additions remain idempotent when upgrading directly from older beta versions
+
+### Documentation
+
+- Added troubleshooting information for the Beta 8 controller-status template error
+- Updated installation documentation for Beta 9
+- Added a note about the Home Assistant 2026.8 HTTP port change and My Home Assistant instance URLs
+
+### Safety
+
+Beta 9 does not change the optimizer calculation or active NOAH control logic.
+
+The release only repairs the automatically generated Lovelace dashboard migration.
+
+---
+
 ## [2.0.0-beta.8]
 
 ### Added
