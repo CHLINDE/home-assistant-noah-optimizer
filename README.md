@@ -25,7 +25,7 @@ Eine HACS-kompatible Custom Integration ist als Beta verfügbar.
 Aktuelle Beta:
 
 ```text
-2.0.0-beta.8
+2.0.0-beta.9
 ```
 
 Ab Beta 5 kann die Integration den berechneten Sollwert optional aktiv an
@@ -38,6 +38,12 @@ Beta 7 korrigiert die Batterie-Flussrichtung im Dashboard.
 Beta 8 ergänzt einen dynamischen SOC-Ladeplan. Die neue Regelungsfunktion ist
 nach dem Update standardmäßig ausgeschaltet und kann zunächst rein beobachtet
 werden.
+
+Beta 9 behebt einen Fehler in der Dashboard-Migration von Beta 8. Bei bereits
+migrierten Installationen konnte die Karte **Reglerstatus** wegen eines
+fehlerhaften Jinja-Ausdrucks mit `TemplateSyntaxError: unexpected '}'`
+ausfallen. Beta 9 repariert betroffene gespeicherte Dashboards automatisch,
+ohne Benutzeranpassungen am übrigen Dashboard zu ersetzen.
 
 ## Voraussetzungen
 
@@ -65,6 +71,15 @@ selbst funktioniert auch ohne sie.
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=CHLINDE&repository=home-assistant-noah-optimizer&category=integration)
 
 Der Button öffnet das Repository direkt in HACS über **My Home Assistant**.
+
+> **Hinweis zu Home Assistant 2026.8 und neuer:**  
+> Home Assistant OS verwendet bei neuen Installationen standardmäßig Port 80
+> statt Port 8123. Home Assistant Container verwendet weiterhin standardmäßig
+> Port 8123. Der HACS-Link selbst enthält keinen Home-Assistant-Port.
+>
+> Falls My Home Assistant noch eine Adresse mit `:8123` öffnet, muss dort die
+> im Browser gespeicherte Instanz-URL auf die tatsächlich verwendete
+> Home-Assistant-Adresse angepasst werden.
 
 Alternativ kann das Repository als benutzerdefiniertes Repository eingetragen
 werden:
@@ -406,6 +421,16 @@ Dynamischen SOC-Ladeplan ergänzt:
 - neuer Reglermodus `SOC-Nachladung`
 - Diagramm mit Ist-SOC, dynamischem Soll und Ziel-SOC im Dashboard
 - gezielte Dashboard-Migration für bestehende Installationen
+
+### 2.0.0-beta.9
+
+Dashboard-Hotfix:
+
+- fehlerhaften Jinja-Ausdruck im Reglerstatus behoben
+- bereits von Beta 8 beschädigte Reglerstatus-Karten werden automatisch repariert
+- Dashboard-Template-Version auf 9 erhöht
+- Benutzeranpassungen am Dashboard bleiben erhalten
+- keine Änderung an Berechnung oder aktiver NOAH-Regelung
 
 ## Legacy-YAML-Optimizer
 

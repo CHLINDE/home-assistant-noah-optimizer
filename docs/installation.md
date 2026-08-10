@@ -1,7 +1,7 @@
 # Installation
 
 Diese Anleitung beschreibt die Installation und das Update des **Home
-Assistant Growatt NOAH Optimizers** für Version `2.0.0-beta.8`.
+Assistant Growatt NOAH Optimizers** für Version `2.0.0-beta.9`.
 
 Für neue Installationen wird die HACS-Integration empfohlen.
 
@@ -73,6 +73,15 @@ Am einfachsten über My Home Assistant:
 
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=CHLINDE&repository=home-assistant-noah-optimizer&category=integration)
 
+> **Hinweis zu Home Assistant 2026.8 und neuer:**  
+> Home Assistant OS verwendet bei neuen Installationen standardmäßig Port 80
+> statt Port 8123. Home Assistant Container verwendet weiterhin standardmäßig
+> Port 8123. Der HACS-Link selbst enthält keinen Home-Assistant-Port.
+>
+> Falls My Home Assistant noch eine Adresse mit `:8123` öffnet, muss dort die
+> gespeicherte Instanz-URL auf die tatsächlich verwendete
+> Home-Assistant-Adresse angepasst werden.
+
 Alternativ das Repository in HACS als benutzerdefiniertes Repository hinzufügen:
 
 ```text
@@ -85,12 +94,12 @@ Typ:
 Integration
 ```
 
-## 5. Beta 8 installieren
+## 5. Beta 9 installieren
 
 Zu installierende Version:
 
 ```text
-2.0.0-beta.8
+2.0.0-beta.9
 ```
 
 Nach der Installation Home Assistant vollständig neu starten.
@@ -127,7 +136,7 @@ Standard:
 Ein
 ```
 
-## 7. Update von Beta 7 auf Beta 8
+## 7. Update auf Beta 9
 
 Vor dem Update empfiehlt sich:
 
@@ -135,11 +144,30 @@ Vor dem Update empfiehlt sich:
 NOAH-Steuerung aktiv = Aus
 ```
 
-Danach Beta 8 über HACS installieren und Home Assistant neu starten.
+Danach Beta 9 über HACS installieren und Home Assistant vollständig neu starten.
 
-Vorhandene Quellentitäten und bisherige Optimizer-Parameter bleiben erhalten.
+### Update von Beta 8
 
-Neu hinzu kommen automatisch:
+Beta 9 übernimmt alle Einstellungen und Entitäten aus Beta 8.
+
+Zusätzlich wird die gespeicherte Dashboard-Konfiguration von Template-Version 8
+auf Version 9 migriert.
+
+Dabei wird gezielt ein möglicher Fehler in der Karte **Reglerstatus** repariert:
+
+```text
+TemplateSyntaxError: unexpected '}'
+```
+
+Sonstige Benutzeranpassungen am Dashboard bleiben erhalten.
+
+Die dynamische SOC-Steuerung bleibt beim Update ausgeschaltet, sofern sie nicht
+bereits vom Benutzer aktiviert wurde.
+
+### Update von Beta 6 oder Beta 7
+
+Beim direkten Update auf Beta 9 werden zusätzlich die bereits mit Beta 8
+eingeführten Funktionen ergänzt:
 
 ```text
 Dynamische SOC-Steuerung aktiv
@@ -150,32 +178,53 @@ SOC-Ladeplan
 Dynamisch erforderliche Ladeleistung
 ```
 
-Wichtig:
+Die dynamische SOC-Steuerung ist standardmäßig ausgeschaltet.
 
-```text
-Dynamische SOC-Steuerung aktiv = Aus
-```
-
-ist der Standard. Das Update verändert deshalb nicht automatisch die bisherige
-Ausgangsregelung.
+Dadurch verändert das Update nicht automatisch die bisherige Ausgangsregelung.
 
 ## 8. Dashboard-Migration
 
-Beta 8 verwendet Dashboard-Template-Version 8.
+Beta 9 verwendet Dashboard-Template-Version 9.
 
-Ein vorhandenes Beta-6-/Beta-7-Dashboard wird **nicht vollständig ersetzt**.
-Die Integration nimmt nur gezielte Migrationen vor:
+Ein vorhandenes Dashboard wird **nicht vollständig ersetzt**. Die Integration
+führt nur gezielte Änderungen durch, damit vorhandene Benutzeranpassungen
+erhalten bleiben.
 
-- Beta-6-Batteriezuordnung korrigieren, wenn sie noch exakt unverändert vorliegt
-- Schalter für dynamische SOC-Steuerung ergänzen
-- neue SOC-Sensoren ergänzen
-- SOC-Nachholzeit ergänzen
-- SOC-Planungsdiagramm ergänzen
-- Reglerstatus um dynamische SOC-Werte ergänzen, wenn der Standardblock erkannt wird
+Beim Update werden, falls erforderlich:
 
-Eigene sonstige Dashboard-Anpassungen bleiben erhalten.
+- die alte Beta-6-Batteriezuordnung korrigiert
+- die mit Beta 8 eingeführten Dynamic-SOC-Elemente ergänzt
+- das SOC-Planungsdiagramm ergänzt
+- der Reglerstatus um die Dynamic-SOC-Werte erweitert
+- der fehlerhafte Beta-8-Jinja-Ausdruck im SOC-Ladeplan repariert
 
-Bei einer Neuinstallation wird direkt die vollständige Beta-8-Vorlage erzeugt.
+### Update eines bereits mit Beta 8 migrierten Dashboards
+
+Beta 8 konnte in der Karte **Reglerstatus** einen fehlerhaften Jinja-Ausdruck
+speichern. Dadurch konnte folgende Fehlermeldung erscheinen:
+
+```text
+TemplateSyntaxError: unexpected '}'
+```
+
+Beta 9 erkennt diesen Fehler gezielt und korrigiert die betroffene Zeile
+automatisch.
+
+Das Dashboard muss dafür **nicht gelöscht oder neu erstellt** werden.
+
+### Erhalt eigener Dashboard-Anpassungen
+
+Die Migration ersetzt nicht das vollständige Dashboard. Eigene Änderungen an
+anderen Karten und Bereichen bleiben erhalten.
+
+Nur eindeutig erkannte Standardbestandteile des NOAH-Optimizer-Dashboards
+werden ergänzt oder korrigiert.
+
+### Neuinstallation
+
+Bei einer Neuinstallation wird direkt die vollständige aktuelle
+Dashboard-Vorlage erzeugt. Die fehlerhafte Beta-8-Migration wird dabei nicht
+durchlaufen.
 
 ## 9. Erste Prüfung nach dem Update
 
@@ -198,7 +247,8 @@ SOC-Ladeplan
 Dynamisch erforderliche Ladeleistung
 ```
 
-Die neuen Werte dürfen den bisherigen Ausgangssollwert noch nicht verändern.
+Die neuen Werte dürfen den bisherigen Ausgangssollwert noch nicht verändern,
+solange die dynamische SOC-Steuerung ausgeschaltet ist.
 
 ## 10. Dynamische SOC-Werte plausibilisieren
 
@@ -238,6 +288,9 @@ SOC-Nachladung
 
 wechseln und mehr PV-Leistung für die Batterieladung reservieren.
 
+Die Betriebsarten **Manuell**, **Eigenverbrauch** und **Ladepriorität** werden
+durch die dynamische SOC-Steuerung nicht verändert.
+
 ## 12. SOC-Nachholzeit einstellen
 
 Standard:
@@ -254,6 +307,9 @@ Empfohlener Startwert:
 
 Kürzer bedeutet stärkere Reaktion auf einen SOC-Rückstand. Länger bedeutet
 eine sanftere Verteilung der Nachladung.
+
+Das wirksame Nachholfenster wird zusätzlich durch die verbleibende Zeit bis
+Sonnenuntergang begrenzt.
 
 ## 13. Stellgröße manuell testen
 
@@ -314,8 +370,8 @@ input_boolean.noah_optimizer_enabled
 
 Steht dieser Helfer auf `on`, werden normale HACS-Stellbefehle blockiert.
 
-Die Beta-8-Dynamik wird nur in der HACS-Integration implementiert; die
-Legacy-YAML-Version erhält keine dynamische SOC-Regelung.
+Die dynamische SOC-Regelung ab Beta 8 wird nur in der HACS-Integration
+implementiert; die Legacy-YAML-Version erhält keine dynamische SOC-Regelung.
 
 ## 17. Weiterführende Dokumentation
 

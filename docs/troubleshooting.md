@@ -1,7 +1,7 @@
 # Fehlerbehebung
 
 Dieses Dokument bezieht sich primär auf die HACS-Integration ab
-`2.0.0-beta.8`.
+`2.0.0-beta.9`.
 
 ## 1. Integration wird nicht geladen
 
@@ -17,7 +17,7 @@ Zusätzlich prüfen:
 
 - HACS-Installation vollständig
 - Home Assistant nach dem Update neu gestartet
-- `manifest.json` auf `2.0.0-beta.8`
+- `manifest.json` auf `2.0.0-beta.9`
 - alle Quell-Entitäten vorhanden
 - keine Python-Fehler im Protokoll
 
@@ -294,19 +294,41 @@ Mögliche Ursache ist ein bereits belegter Pfad:
 /noah-optimizer
 ```
 
-## 16. Beta-8-Dashboardelemente fehlen nach dem Update
+## 16. Dashboardfehler nach Beta 8 / Beta 9
 
-Beta 8 führt eine gezielte Dashboard-Migration aus.
+### `TemplateSyntaxError: unexpected '}'`
+
+Wenn in der Karte **Reglerstatus** nur der Titel angezeigt wird und darunter die Fehlermeldung
+
+`TemplateSyntaxError: unexpected '}'`
+
+erscheint, wurde das Dashboard wahrscheinlich bereits durch Beta 8 migriert.
+
+Beta 8 konnte beim Einfügen des dynamischen SOC-Ladeplanstatus einen
+fehlerhaften Jinja-Ausdruck erzeugen.
+
+### Lösung
+
+1. `2.0.0-beta.9` über HACS installieren.
+2. Home Assistant vollständig neu starten.
+3. Dashboard erneut öffnen.
+
+Beta 9 erhöht die Dashboard-Template-Version auf 9 und repariert die betroffene
+Zeile automatisch.
+
+Das Dashboard muss nicht gelöscht oder neu erstellt werden.
+
+### Neue Dashboardelemente fehlen
 
 Prüfen:
 
-- Home Assistant nach HACS-Update vollständig neu gestartet
-- tatsächlich `2.0.0-beta.8` installiert
+- tatsächlich `2.0.0-beta.9` installiert
+- Home Assistant nach dem HACS-Update vollständig neu gestartet
 - Protokoll auf `noah_optimizer`-Fehler prüfen
 
-Eigene starke Änderungen an den Standardkarten können verhindern, dass ein
-bestimmter Standardblock eindeutig erkannt und automatisch ergänzt wird. Die
-übrige Dashboard-Konfiguration wird bewusst nicht überschrieben.
+Stark veränderte Standardkarten können verhindern, dass einzelne Blöcke
+automatisch erkannt werden. Die Integration überschreibt bewusst nicht das
+gesamte benutzerdefinierte Dashboard.
 
 ## 17. Power Flow Card Plus fehlt
 

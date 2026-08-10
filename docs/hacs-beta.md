@@ -1,6 +1,6 @@
 # HACS Beta
 
-Current beta: `2.0.0-beta.8`
+Current beta: `2.0.0-beta.9`
 
 ## Direct HACS repository button
 
@@ -8,6 +8,14 @@ Current beta: `2.0.0-beta.8`
 
 The button uses My Home Assistant to open this custom integration repository in
 HACS.
+
+> **Home Assistant 2026.8 and newer:**  
+> Home Assistant OS uses port 80 by default for new installations. Home
+> Assistant Container continues to use port 8123 by default.
+>
+> The HACS button itself does not contain the Home Assistant port. If My Home
+> Assistant still opens an instance URL containing `:8123`, update the instance
+> URL stored by My Home Assistant in the browser.
 
 ## Dynamic SOC plan
 
@@ -64,9 +72,9 @@ A tolerance of 2 percentage points is used:
 
 ### Dynamic catch-up power
 
-When the battery is behind schedule, Beta 8 calculates the charging power
-required to recover the SOC shortfall within the configured **SOC catch-up
-time**.
+When the battery is behind schedule, the integration calculates the charging
+power required to recover the SOC shortfall within the configured **SOC
+catch-up time**.
 
 Default catch-up time:
 
@@ -79,7 +87,7 @@ sunset.
 
 ### Safe opt-in
 
-The new switch:
+The switch:
 
 ```text
 Dynamic SOC control
@@ -101,8 +109,8 @@ Dynamic SOC control can affect the output target only when:
 - SOC is below target SOC
 - the battery is more than 2 percentage points behind the dynamic SOC target
 
-Manual, self-consumption, and charge-priority modes are not changed by the new
-feature.
+Manual, self-consumption, and charge-priority modes are not changed by the
+dynamic SOC feature.
 
 When active, the controller mode is:
 
@@ -135,7 +143,7 @@ The initial dashboard language follows the Home Assistant language:
 
 ### Beta 8 dashboard migration
 
-Beta 8 introduces dashboard template version 8.
+Beta 8 introduced dashboard template version 8.
 
 Existing Beta 6 and Beta 7 dashboards are migrated selectively rather than
 replaced. The migration can add the new dynamic SOC controls and sensors while
@@ -143,6 +151,31 @@ preserving unrelated user changes.
 
 If the exact old Beta 6 battery mapping is still present, it is corrected to
 the Beta 7 mapping during migration.
+
+### Beta 9 dashboard repair
+
+Beta 9 increases the dashboard template version to 9.
+
+Beta 8 contained an error in the targeted migration of an existing controller
+status Markdown card. The generated Jinja expression for the SOC schedule could
+end with only one closing brace and cause:
+
+```text
+TemplateSyntaxError: unexpected '}'
+```
+
+Beta 9 detects this exact malformed SOC schedule line and repairs it
+automatically.
+
+The repair is intentionally targeted. Other user changes to the dashboard are
+not replaced.
+
+A dashboard that has already been migrated by Beta 8 does not need to be
+deleted or recreated.
+
+New installations are not affected by the Beta 8 migration bug because the
+German and English dashboard templates already contain the correct Jinja
+expression.
 
 ### Dashboard requirements
 
@@ -228,7 +261,7 @@ Starting with Beta 5, the integration can optionally write the calculated
 output target to the configured NOAH System Output Power entity using Home
 Assistant's `number.set_value` service.
 
-Three switches are now available:
+Three switches are available:
 
 - `Optimizer calculation enabled`
 - `Active NOAH control`
@@ -245,9 +278,11 @@ The active controller includes:
 - persistent Home Assistant failsafe notification
 - legacy YAML controller interlock
 
-Beta 8 does not change the low-level write controller in `control.py`. The new
-logic changes only the calculated target when the dynamic feature is explicitly
-enabled.
+Beta 8 introduced the dynamic SOC target logic but did not change the low-level
+write controller in `control.py`.
+
+Beta 9 does not change the optimizer calculation or the low-level write
+controller. It only repairs the affected dashboard migration.
 
 ## Legacy YAML interlock
 
@@ -334,7 +369,7 @@ related documentation.
 
 ### 2.0.0-beta.8
 
-Adds the dynamic SOC plan with:
+Added the dynamic SOC plan with:
 
 - dynamic minimum SOC target
 - SOC deviation
@@ -346,6 +381,16 @@ Adds the dynamic SOC plan with:
 - dynamic SOC dashboard chart and diagnostics
 - selective migration of existing dashboard configurations
 - My Home Assistant HACS repository button in the documentation
+
+### 2.0.0-beta.9
+
+Dashboard migration hotfix:
+
+- fixes the malformed SOC schedule Jinja expression
+- repairs dashboards already migrated by Beta 8
+- increases dashboard template version to 9
+- preserves user dashboard customizations
+- does not change optimizer or active-control logic
 
 ## Current limitations
 
