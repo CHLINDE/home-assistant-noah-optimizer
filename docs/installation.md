@@ -73,6 +73,15 @@ Am einfachsten über My Home Assistant:
 
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=CHLINDE&repository=home-assistant-noah-optimizer&category=integration)
 
+> **Hinweis zu Home Assistant 2026.8 und neuer:**  
+> Home Assistant OS verwendet bei neuen Installationen standardmäßig Port 80
+> statt Port 8123. Home Assistant Container verwendet weiterhin standardmäßig
+> Port 8123. Der HACS-Link selbst enthält keinen Home-Assistant-Port.
+>
+> Falls My Home Assistant noch eine Adresse mit `:8123` öffnet, muss dort die
+> gespeicherte Instanz-URL auf die tatsächlich verwendete
+> Home-Assistant-Adresse angepasst werden.
+
 Alternativ das Repository in HACS als benutzerdefiniertes Repository hinzufügen:
 
 ```text
@@ -152,6 +161,9 @@ TemplateSyntaxError: unexpected '}'
 
 Sonstige Benutzeranpassungen am Dashboard bleiben erhalten.
 
+Die dynamische SOC-Steuerung bleibt beim Update ausgeschaltet, sofern sie nicht
+bereits vom Benutzer aktiviert wurde.
+
 ### Update von Beta 6 oder Beta 7
 
 Beim direkten Update auf Beta 9 werden zusätzlich die bereits mit Beta 8
@@ -166,7 +178,9 @@ SOC-Ladeplan
 Dynamisch erforderliche Ladeleistung
 ```
 
-Die dynamische SOC-Steuerung ist weiterhin standardmäßig ausgeschaltet.
+Die dynamische SOC-Steuerung ist standardmäßig ausgeschaltet.
+
+Dadurch verändert das Update nicht automatisch die bisherige Ausgangsregelung.
 
 ## 8. Dashboard-Migration
 
@@ -233,7 +247,8 @@ SOC-Ladeplan
 Dynamisch erforderliche Ladeleistung
 ```
 
-Die neuen Werte dürfen den bisherigen Ausgangssollwert noch nicht verändern.
+Die neuen Werte dürfen den bisherigen Ausgangssollwert noch nicht verändern,
+solange die dynamische SOC-Steuerung ausgeschaltet ist.
 
 ## 10. Dynamische SOC-Werte plausibilisieren
 
@@ -273,6 +288,9 @@ SOC-Nachladung
 
 wechseln und mehr PV-Leistung für die Batterieladung reservieren.
 
+Die Betriebsarten **Manuell**, **Eigenverbrauch** und **Ladepriorität** werden
+durch die dynamische SOC-Steuerung nicht verändert.
+
 ## 12. SOC-Nachholzeit einstellen
 
 Standard:
@@ -289,6 +307,9 @@ Empfohlener Startwert:
 
 Kürzer bedeutet stärkere Reaktion auf einen SOC-Rückstand. Länger bedeutet
 eine sanftere Verteilung der Nachladung.
+
+Das wirksame Nachholfenster wird zusätzlich durch die verbleibende Zeit bis
+Sonnenuntergang begrenzt.
 
 ## 13. Stellgröße manuell testen
 
@@ -349,8 +370,8 @@ input_boolean.noah_optimizer_enabled
 
 Steht dieser Helfer auf `on`, werden normale HACS-Stellbefehle blockiert.
 
-Die Beta-8-Dynamik wird nur in der HACS-Integration implementiert; die
-Legacy-YAML-Version erhält keine dynamische SOC-Regelung.
+Die dynamische SOC-Regelung ab Beta 8 wird nur in der HACS-Integration
+implementiert; die Legacy-YAML-Version erhält keine dynamische SOC-Regelung.
 
 ## 17. Weiterführende Dokumentation
 

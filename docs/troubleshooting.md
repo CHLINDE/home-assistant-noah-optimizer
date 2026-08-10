@@ -1,7 +1,7 @@
 # Fehlerbehebung
 
 Dieses Dokument bezieht sich primär auf die HACS-Integration ab
-`2.0.0-beta.8`.
+`2.0.0-beta.9`.
 
 ## 1. Integration wird nicht geladen
 
@@ -17,7 +17,7 @@ Zusätzlich prüfen:
 
 - HACS-Installation vollständig
 - Home Assistant nach dem Update neu gestartet
-- `manifest.json` auf `2.0.0-beta.8`
+- `manifest.json` auf `2.0.0-beta.9`
 - alle Quell-Entitäten vorhanden
 - keine Python-Fehler im Protokoll
 
