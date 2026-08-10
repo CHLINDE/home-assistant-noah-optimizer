@@ -1,3 +1,35 @@
+## [2.0.0-beta.10]
+
+### Changed
+
+- Reworked the dynamic SOC target into a real time-based charging schedule from sunrise to sunset
+- Added daylight progress as the time basis for the dynamic SOC plan
+- The base SOC schedule now rises continuously from minimum SOC at sunrise to target SOC at sunset
+- The remaining PV forecast now raises the time-based schedule progressively instead of acting as an immediate hard SOC requirement
+- Prevented poor remaining forecasts from forcing the dynamic SOC target directly to 100% for most of the day
+- Dynamic catch-up power and `ahead` / `on_track` / `behind` status now use the new time-based forecast-aware target
+- Nighttime dynamic SOC target remains at minimum SOC
+- Dashboard template version remains 9 because no dashboard structure changes are required
+
+### Documentation
+
+- Updated README, installation, configuration, HACS beta, and troubleshooting documentation for the Beta 10 load-plan calculation
+- Added an explanation of the time-based SOC curve and forecast pressure
+- Added guidance for validating that the dynamic target changes gradually during daylight
+
+### Safety
+
+Beta 10 changes the automatic dynamic SOC calculation and can therefore change
+the calculated output target when dynamic SOC control is enabled.
+
+Before updating, disable active NOAH control and dynamic SOC control. After the
+update, observe the new dynamic SOC target and schedule status before enabling
+dynamic SOC control again.
+
+Manual, self-consumption, and charge-priority operating modes remain unchanged.
+
+---
+
 ## [2.0.0-beta.9]
 
 ### Fixed

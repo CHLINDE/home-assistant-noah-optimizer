@@ -1,7 +1,7 @@
 # Konfiguration
 
-Dieses Dokument beschreibt die HACS-Integration **Growatt NOAH Optimizer** ab
-Version `2.0.0-beta.8`.
+Dieses Dokument beschreibt die HACS-Integration **Growatt NOAH Optimizer**
+für Version `2.0.0-beta.10`.
 
 Die tatsächlichen Entity-IDs können durch Bereichsnamen oder manuelle
 Umbenennungen abweichen. Die Integration und das automatische Dashboard lösen
@@ -31,7 +31,7 @@ Berechnung und aktive Stellregelung sind absichtlich getrennt.
 
 ### Dynamische SOC-Steuerung aktiv
 
-Neu in Beta 8.
+Seit Beta 8 verfügbar.
 
 Die dynamische SOC-Berechnung läuft unabhängig von diesem Schalter, sodass die
 neuen Sensoren zunächst beobachtet werden können.
@@ -109,11 +109,53 @@ Der Parameter **Manuelle Ausgangsleistung** wird als Sollwert verwendet.
 
 ## 3. Dynamischer SOC-Ladeplan
 
-Beta 8 berechnet, welchen SOC der Speicher **jetzt mindestens haben sollte**,
-damit der Ziel-SOC bis Sonnenuntergang mit der konservativ noch erwarteten
-PV-Energie erreichbar bleibt.
+Beta 10 verwendet einen zeitbasierten und prognoseabhängigen SOC-Ladeplan.
 
-### 3.1 Verfügbare PV-Energie für den Akku
+Das dynamische SOC-Soll startet bei Sonnenaufgang am Mindest-SOC und erreicht
+bei Sonnenuntergang den Ziel-SOC. Eine knappe Restprognose kann die Sollkurve
+progressiv anheben.
+
+### 3.1 Tagesfortschritt
+
+Für den Zeitraum zwischen Sonnenaufgang und Sonnenuntergang wird ein
+Tagesfortschritt `p` berechnet:
+
+```text
+p = vergangene Zeit seit Sonnenaufgang / Tageslichtdauer
+```
+
+Der Wert wird auf `0 ... 1` begrenzt.
+
+```text
+Sonnenaufgang      p = 0
+Tagesmitte         p ≈ 0,5
+Sonnenuntergang    p = 1
+```
+
+Außerhalb der Tageslichtzeit wird für den SOC-Ladeplan `p = 0` verwendet.
+
+### 3.2 Zeitbasiertes Grund-Soll
+
+```text
+Zeit-Soll
+= Mindest-SOC
+  + p × (Ziel-SOC - Mindest-SOC)
+```
+
+Beispiel mit Mindest-SOC `10 %` und Ziel-SOC `100 %`:
+
+```text
+p = 0,00  -> 10,0 %
+p = 0,25  -> 32,5 %
+p = 0,50  -> 55,0 %
+p = 0,75  -> 77,5 %
+p = 1,00  -> 100,0 %
+```
+
+Damit existiert unabhängig von kurzfristigen Schwankungen der Restprognose
+eine nachvollziehbare Sollkurve über den Tag.
+
+### 3.3 Verfügbare PV-Energie für den Akku
 
 ```text
 PV-Energie für Akku
@@ -124,7 +166,10 @@ PV-Energie für Akku
 
 Negative Ergebnisse werden auf `0 kWh` begrenzt.
 
-### 3.2 Möglicher SOC-Zuwachs
+### 3.4 Prognose-Anforderung
+
+Aus der verbleibenden PV-Energie wird weiterhin berechnet, wie viel SOC mit
+dieser Energie voraussichtlich noch gewonnen werden kann:
 
 ```text
 Speicherbare Energie
@@ -132,41 +177,65 @@ Speicherbare Energie
 
 Möglicher SOC-Zuwachs
 = Speicherbare Energie / nutzbare Akkukapazität × 100
-```
 
-### 3.3 Dynamisches SOC-Soll
-
-```text
-Dynamisches SOC-Soll
+Prognose-Anforderung
 = Ziel-SOC - möglicher SOC-Zuwachs
 ```
 
-Der Wert wird begrenzt auf:
+Die Prognose-Anforderung wird auf den Bereich zwischen Mindest-SOC und
+Ziel-SOC begrenzt.
+
+Wichtig: Ab Beta 10 wird dieser Wert **nicht mehr direkt** als dynamisches
+SOC-Soll verwendet.
+
+### 3.5 Prognosedruck und dynamisches SOC-Soll
+
+Liegt die Prognose-Anforderung über dem Zeit-Soll, entsteht Prognosedruck:
+
+```text
+Prognosedruck
+= max(Prognose-Anforderung - Zeit-Soll, 0)
+```
+
+Das endgültige dynamische Soll lautet:
+
+```text
+Dynamisches SOC-Soll
+= Zeit-Soll + p × Prognosedruck
+```
+
+und wird anschließend auf:
 
 ```text
 Mindest-SOC <= dynamisches SOC-Soll <= Ziel-SOC
 ```
 
-Je mehr nutzbare PV-Energie noch erwartet wird, desto niedriger darf der Akku
-aktuell stehen. Nimmt die Restprognose im Tagesverlauf ab, steigt das
-dynamische SOC-Soll automatisch Richtung Ziel-SOC.
+begrenzt.
 
-### 3.4 SOC-Abweichung
+Das bewirkt:
+
+- bei ausreichender Restprognose folgt das Soll der zeitbasierten Grundkurve
+- bei knapper Restprognose steigt das Soll früher und stärker
+- morgens kann eine schlechte Prognose das Soll nicht sofort hart auf 100 % setzen
+- spätestens bei Sonnenuntergang erreicht die Tageskurve den Ziel-SOC
+- nachts fällt das dynamische Soll auf den Mindest-SOC zurück
+
+### 3.6 SOC-Abweichung
 
 ```text
 SOC-Abweichung
 = Ist-SOC - dynamisches SOC-Soll
 ```
 
-Beta 8 verwendet eine feste Toleranz von 2 Prozentpunkten:
+Es gilt eine feste Toleranz von 2 Prozentpunkten:
 
 ```text
-mehr als +2 %-Punkte  = Vor Ladeplan
--2 bis +2 %-Punkte    = Im Ladeplan
+mehr als +2 %-Punkte    = Vor Ladeplan
+-2 bis +2 %-Punkte      = Im Ladeplan
 weniger als -2 %-Punkte = Hinter Ladeplan
 ```
 
-### 3.5 Dynamisch erforderliche Ladeleistung
+### 3.7 Dynamisch erforderliche Ladeleistung
 
 Liegt der Speicher hinter dem Ladeplan, wird die zum Aufholen des Rückstands
 benötigte Ladeleistung berechnet.
@@ -185,9 +254,9 @@ Dynamische Ladeleistung
 Die verwendete Nachholzeit ist auf die noch verbleibende Zeit bis
 Sonnenuntergang begrenzt.
 
-### 3.6 Einfluss auf die Regelung
+### 3.8 Einfluss auf die Regelung
 
-Nur wenn alle folgenden Bedingungen erfüllt sind, wird der neue Reglermodus
+Nur wenn alle folgenden Bedingungen erfüllt sind, wird der Reglermodus
 **SOC-Nachladung** aktiv:
 
 - Optimierer-Berechnung ist aktiv
@@ -338,7 +407,7 @@ Standard:
 
 ### SOC-Nachholzeit
 
-Neu in Beta 8.
+Seit Beta 8 verfügbar.
 
 Standard:
 
@@ -413,7 +482,7 @@ Prozentuale Deckung des erwarteten Restbedarfs durch die wirksame Prognose.
 
 ### Dynamisches SOC-Soll
 
-SOC, den der Speicher zum aktuellen Zeitpunkt mindestens haben sollte.
+Zeit- und prognoseabhängiger SOC-Sollwert für den aktuellen Zeitpunkt.
 
 ### SOC-Abweichung
 
@@ -506,7 +575,7 @@ production  = Ladeleistung
 
 Damit entspricht die animierte Richtung dem realen Energiefluss.
 
-Beta 8 ergänzt außerdem:
+Seit Beta 8 enthält das Dashboard außerdem:
 
 - Dynamische SOC-Steuerung aktiv
 - Dynamisches SOC-Soll
@@ -518,3 +587,7 @@ Beta 8 ergänzt außerdem:
 
 Ein bestehendes Dashboard wird gezielt migriert und nicht vollständig durch
 die Standardvorlage ersetzt.
+
+Beta 10 ändert die Dashboard-Struktur nicht. Die Dashboard-Template-Version
+bleibt daher bei Version 9; der vorhandene SOC-Chart zeigt automatisch die neue
+zeitbasierte Sollkurve.
