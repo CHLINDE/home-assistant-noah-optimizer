@@ -135,11 +135,27 @@ Vor dem Update empfiehlt sich:
 NOAH-Steuerung aktiv = Aus
 ```
 
-Danach Beta 8 über HACS installieren und Home Assistant neu starten.
+Danach Beta 9 über HACS installieren und Home Assistant vollständig neu starten.
 
-Vorhandene Quellentitäten und bisherige Optimizer-Parameter bleiben erhalten.
+### Update von Beta 8
 
-Neu hinzu kommen automatisch:
+Beta 9 übernimmt alle Einstellungen und Entitäten aus Beta 8.
+
+Zusätzlich wird die gespeicherte Dashboard-Konfiguration von Template-Version 8
+auf Version 9 migriert.
+
+Dabei wird gezielt ein möglicher Fehler in der Karte **Reglerstatus** repariert:
+
+```text
+TemplateSyntaxError: unexpected '}'
+```
+
+Sonstige Benutzeranpassungen am Dashboard bleiben erhalten.
+
+### Update von Beta 6 oder Beta 7
+
+Beim direkten Update auf Beta 9 werden zusätzlich die bereits mit Beta 8
+eingeführten Funktionen ergänzt:
 
 ```text
 Dynamische SOC-Steuerung aktiv
@@ -150,32 +166,51 @@ SOC-Ladeplan
 Dynamisch erforderliche Ladeleistung
 ```
 
-Wichtig:
-
-```text
-Dynamische SOC-Steuerung aktiv = Aus
-```
-
-ist der Standard. Das Update verändert deshalb nicht automatisch die bisherige
-Ausgangsregelung.
+Die dynamische SOC-Steuerung ist weiterhin standardmäßig ausgeschaltet.
 
 ## 8. Dashboard-Migration
 
-Beta 8 verwendet Dashboard-Template-Version 8.
+Beta 9 verwendet Dashboard-Template-Version 9.
 
-Ein vorhandenes Beta-6-/Beta-7-Dashboard wird **nicht vollständig ersetzt**.
-Die Integration nimmt nur gezielte Migrationen vor:
+Ein vorhandenes Dashboard wird **nicht vollständig ersetzt**. Die Integration
+führt nur gezielte Änderungen durch, damit vorhandene Benutzeranpassungen
+erhalten bleiben.
 
-- Beta-6-Batteriezuordnung korrigieren, wenn sie noch exakt unverändert vorliegt
-- Schalter für dynamische SOC-Steuerung ergänzen
-- neue SOC-Sensoren ergänzen
-- SOC-Nachholzeit ergänzen
-- SOC-Planungsdiagramm ergänzen
-- Reglerstatus um dynamische SOC-Werte ergänzen, wenn der Standardblock erkannt wird
+Beim Update werden, falls erforderlich:
 
-Eigene sonstige Dashboard-Anpassungen bleiben erhalten.
+- die alte Beta-6-Batteriezuordnung korrigiert
+- die mit Beta 8 eingeführten Dynamic-SOC-Elemente ergänzt
+- das SOC-Planungsdiagramm ergänzt
+- der Reglerstatus um die Dynamic-SOC-Werte erweitert
+- der fehlerhafte Beta-8-Jinja-Ausdruck im SOC-Ladeplan repariert
 
-Bei einer Neuinstallation wird direkt die vollständige Beta-8-Vorlage erzeugt.
+### Update eines bereits mit Beta 8 migrierten Dashboards
+
+Beta 8 konnte in der Karte **Reglerstatus** einen fehlerhaften Jinja-Ausdruck
+speichern. Dadurch konnte folgende Fehlermeldung erscheinen:
+
+```text
+TemplateSyntaxError: unexpected '}'
+```
+
+Beta 9 erkennt diesen Fehler gezielt und korrigiert die betroffene Zeile
+automatisch.
+
+Das Dashboard muss dafür **nicht gelöscht oder neu erstellt** werden.
+
+### Erhalt eigener Dashboard-Anpassungen
+
+Die Migration ersetzt nicht das vollständige Dashboard. Eigene Änderungen an
+anderen Karten und Bereichen bleiben erhalten.
+
+Nur eindeutig erkannte Standardbestandteile des NOAH-Optimizer-Dashboards
+werden ergänzt oder korrigiert.
+
+### Neuinstallation
+
+Bei einer Neuinstallation wird direkt die vollständige aktuelle
+Dashboard-Vorlage erzeugt. Die fehlerhafte Beta-8-Migration wird dabei nicht
+durchlaufen.
 
 ## 9. Erste Prüfung nach dem Update
 

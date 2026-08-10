@@ -557,7 +557,7 @@ def _migrate_dashboard_to_beta9(
     config: dict[str, Any],
     replacements: dict[str, str],
 ) -> tuple[dict[str, Any], bool]:
-    """Apply targeted Beta 8 additions without replacing user customizations."""
+    """Apply Beta 8 additions and the Beta 9 dashboard repair without replacing user customizations."""
     migrated = deepcopy(config)
     changed = False
     labels = _localized_dynamic_labels(hass)
