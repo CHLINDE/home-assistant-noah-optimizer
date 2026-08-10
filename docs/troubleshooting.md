@@ -1,7 +1,7 @@
 # Fehlerbehebung
 
 Dieses Dokument bezieht sich primär auf die HACS-Integration ab
-`2.0.0-beta.9`.
+`2.0.0-beta.10`.
 
 ## 1. Integration wird nicht geladen
 
@@ -17,7 +17,7 @@ Zusätzlich prüfen:
 
 - HACS-Installation vollständig
 - Home Assistant nach dem Update neu gestartet
-- `manifest.json` auf `2.0.0-beta.9`
+- `manifest.json` auf `2.0.0-beta.10`
 - alle Quell-Entitäten vorhanden
 - keine Python-Fehler im Protokoll
 
@@ -117,7 +117,11 @@ Das bedeutet:
 Ist-SOC < dynamisches SOC-Soll - 2 Prozentpunkte
 ```
 
-Das ist zunächst nur ein Diagnosewert.
+Ab Beta 10 wird das dynamische SOC-Soll aus einer zeitbasierten Tageskurve und
+einem zusätzlichen Prognosedruck berechnet.
+
+Der Status ist daher jetzt tatsächlich eine Aussage darüber, ob der Akku vor,
+im oder hinter dem aktuellen Tages-Ladeplan liegt.
 
 Nur wenn zusätzlich:
 
@@ -126,7 +130,34 @@ Dynamische SOC-Steuerung aktiv = Ein
 Betriebsart = Automatik
 ```
 
-ist, kann der Zustand den Ausgangssollwert beeinflussen.
+gilt, kann der Zustand den Ausgangssollwert beeinflussen.
+
+### Dynamisches Soll bleibt tagsüber ständig bei 100 %
+
+Das sollte in Beta 10 nicht mehr allein durch eine schlechte Restprognose
+verursacht werden.
+
+Prüfen:
+
+- tatsächlich `2.0.0-beta.10` installiert
+- Home Assistant nach dem Update vollständig neu gestartet
+- `sun.sun` ist verfügbar
+- `sun.sun` steht tagsüber auf `above_horizon`
+- Mindest-SOC ist kleiner als Ziel-SOC
+- Forecast.Solar liefert eine gültige Restprognose
+
+Nahe Sonnenuntergang ist ein dynamisches Soll am Ziel-SOC dagegen normal.
+
+### Dynamisches Soll bleibt tagsüber ständig beim Mindest-SOC
+
+Prüfen:
+
+- `sun.sun` ist verfügbar
+- Home Assistant besitzt korrekte Standort- und Zeitzoneneinstellungen
+- die Sun-Integration ist geladen
+
+Außerhalb der Tageslichtzeit ist der Mindest-SOC als dynamisches Soll
+beabsichtigt.
 
 ## 8. Dynamische SOC-Steuerung ist an, aber nichts ändert sich
 
@@ -187,7 +218,7 @@ Außerdem müssen Tag, Forecast und SOC-Grenzen die Aktivierung erlauben.
 
 Das ist beabsichtigt.
 
-Beta 8 berechnet:
+Die Integration berechnet:
 
 ```text
 Dynamisches SOC-Soll
@@ -204,7 +235,7 @@ Dadurch kann die Berechnung zunächst gefahrlos beobachtet werden.
 
 Das ist ebenfalls beabsichtigt.
 
-Beta 8 beeinflusst ausschließlich die Betriebsart **Automatik**.
+Die dynamische SOC-Regelung beeinflusst ausschließlich die Betriebsart **Automatik**.
 
 Die explizit gewählten Betriebsarten:
 
@@ -309,7 +340,7 @@ fehlerhaften Jinja-Ausdruck erzeugen.
 
 ### Lösung
 
-1. `2.0.0-beta.9` über HACS installieren.
+1. `2.0.0-beta.9` oder neuer über HACS installieren.
 2. Home Assistant vollständig neu starten.
 3. Dashboard erneut öffnen.
 
@@ -322,7 +353,7 @@ Das Dashboard muss nicht gelöscht oder neu erstellt werden.
 
 Prüfen:
 
-- tatsächlich `2.0.0-beta.9` installiert
+- tatsächlich `2.0.0-beta.10` installiert
 - Home Assistant nach dem HACS-Update vollständig neu gestartet
 - Protokoll auf `noah_optimizer`-Fehler prüfen
 
@@ -375,4 +406,4 @@ input_boolean.noah_optimizer_enabled = Aus
 
 setzen.
 
-Die Beta-8-Dynamik wird nicht in die Legacy-YAML-Regelung zurückportiert.
+Die dynamische SOC-Regelung wird nicht in die Legacy-YAML-Regelung zurückportiert.

@@ -1,6 +1,6 @@
-# HACS Beta
+﻿# HACS Beta
 
-Current beta: `2.0.0-beta.9`
+Current beta: `2.0.0-beta.10`
 
 ## Direct HACS repository button
 
@@ -19,42 +19,104 @@ HACS.
 
 ## Dynamic SOC plan
 
-Starting with `2.0.0-beta.8`, the integration calculates a dynamic minimum SOC
-for the current point in time.
+Beta 10 changes the dynamic SOC calculation into a time-based charging
+schedule from sunrise to sunset.
 
 The goal is to answer:
 
-> How much SOC should the battery already have now so that the configured
-> target SOC can still be reached by sunset with the conservatively expected
-> remaining PV energy?
+> Where should the battery SOC be at the current point of the daylight period,
+> while still reacting earlier when the remaining PV forecast becomes weak?
 
-The calculation considers:
+### Daylight progress
 
-- effective remaining PV forecast
-- expected household energy demand until sunset
-- additional energy reserve
-- usable battery capacity
-- charging efficiency
-- minimum SOC
-- target SOC
+Between sunrise and sunset, the integration calculates a daylight progress
+factor `p` from `0` to `1`:
 
-Simplified:
+```text
+p = elapsed time since sunrise / daylight duration
+```
+
+This gives:
+
+```text
+sunrise     p = 0
+midday      p ≈ 0.5
+sunset      p = 1
+```
+
+Outside daylight, the SOC schedule uses `p = 0`.
+
+### Time-based SOC target
+
+The base schedule is:
+
+```text
+time target
+= minimum SOC
+  + p × (target SOC - minimum SOC)
+```
+
+For a minimum SOC of `10%` and a target SOC of `100%`, the base curve is
+approximately:
+
+```text
+sunrise          10.0%
+25% of daylight  32.5%
+50% of daylight  55.0%
+75% of daylight  77.5%
+sunset          100.0%
+```
+
+### Forecast pressure
+
+The remaining PV forecast is still evaluated conservatively:
 
 ```text
 PV energy available for battery
 = effective remaining forecast
   - expected household energy
   - additional energy reserve
+```
+
+The possible future SOC gain is:
+
+```text
+storable battery energy
+= available PV energy × charging efficiency
 
 possible SOC gain
-= available PV energy � charging efficiency
-  / battery capacity � 100
+= storable battery energy / battery capacity × 100
+```
 
-dynamic SOC target
+An internal forecast requirement is then calculated:
+
+```text
+forecast requirement
 = target SOC - possible SOC gain
 ```
 
-The dynamic SOC target is clamped between minimum SOC and target SOC.
+Beta 8 used this value directly as the dynamic SOC target. With a weak forecast,
+that could force the target to `100%` very early in the day.
+
+Beta 10 uses it only as progressive forecast pressure:
+
+```text
+forecast pressure
+= max(forecast requirement - time target, 0)
+
+dynamic SOC target
+= time target + p × forecast pressure
+```
+
+The final target is clamped between minimum SOC and target SOC.
+
+This means:
+
+- with sufficient remaining PV, the dynamic target follows the time curve
+- with weak remaining PV, the curve rises earlier
+- a weak forecast no longer turns directly into a hard 100% target early in the day
+- the daylight curve reaches target SOC at sunset
+- outside daylight, the dynamic target returns to minimum SOC
 
 ### SOC deviation
 
@@ -93,10 +155,17 @@ The switch:
 Dynamic SOC control
 ```
 
-is disabled by default.
+is disabled by default for a new setup.
 
-The dynamic SOC sensors are calculated even when this switch is off, allowing
-the feature to be observed before it influences the output target.
+Before updating to Beta 10, disable both:
+
+```text
+Active NOAH control
+Dynamic SOC control
+```
+
+After the update, the new SOC plan sensors can be observed before control is
+enabled again.
 
 Dynamic SOC control can affect the output target only when:
 
@@ -146,7 +215,7 @@ The initial dashboard language follows the Home Assistant language:
 Beta 8 introduced dashboard template version 8.
 
 Existing Beta 6 and Beta 7 dashboards are migrated selectively rather than
-replaced. The migration can add the new dynamic SOC controls and sensors while
+replaced. The migration can add the dynamic SOC controls and sensors while
 preserving unrelated user changes.
 
 If the exact old Beta 6 battery mapping is still present, it is corrected to
@@ -154,7 +223,7 @@ the Beta 7 mapping during migration.
 
 ### Beta 9 dashboard repair
 
-Beta 9 increases the dashboard template version to 9.
+Beta 9 increased the dashboard template version to 9.
 
 Beta 8 contained an error in the targeted migration of an existing controller
 status Markdown card. The generated Jinja expression for the SOC schedule could
@@ -170,14 +239,20 @@ automatically.
 The repair is intentionally targeted. Other user changes to the dashboard are
 not replaced.
 
-A dashboard that has already been migrated by Beta 8 does not need to be
-deleted or recreated.
+### Beta 10 dashboard behavior
 
-New installations are not affected by the Beta 8 migration bug because the
-German and English dashboard templates already contain the correct Jinja
-expression.
+Beta 10 does not change the dashboard structure.
 
-### Dashboard requirements
+Dashboard template version remains:
+
+```text
+9
+```
+
+The existing dynamic SOC chart automatically displays the new time-based target
+curve because the same `dynamic_soc_target` sensor is used.
+
+## Dashboard requirements
 
 The enhanced dashboard requires:
 
@@ -267,8 +342,6 @@ Three switches are available:
 - `Active NOAH control`
 - `Dynamic SOC control`
 
-Active NOAH control and dynamic SOC control are disabled by default.
-
 The active controller includes:
 
 - configurable command deadband
@@ -278,11 +351,9 @@ The active controller includes:
 - persistent Home Assistant failsafe notification
 - legacy YAML controller interlock
 
-Beta 8 introduced the dynamic SOC target logic but did not change the low-level
-write controller in `control.py`.
-
-Beta 9 does not change the optimizer calculation or the low-level write
-controller. It only repairs the affected dashboard migration.
+Beta 10 changes only the dynamic SOC calculation used in automatic mode when
+dynamic SOC control is enabled. The low-level write controller in `control.py`
+is unchanged.
 
 ## Legacy YAML interlock
 
@@ -392,12 +463,25 @@ Dashboard migration hotfix:
 - preserves user dashboard customizations
 - does not change optimizer or active-control logic
 
-## Current limitations
+### 2.0.0-beta.10
+
+Dynamic SOC load-plan rework:
+
+- adds a time-based SOC curve from sunrise to sunset
+- keeps minimum SOC as the start of the daytime curve
+- reaches target SOC at sunset
+- applies weak remaining PV forecast as progressive forecast pressure
+- prevents weak forecast from forcing an immediate 100% target early in the day
+- keeps existing dashboard entities and template version 9
+- leaves manual, self-consumption, and charge-priority modes unchanged
+
+## Current limitations 
 
 The beta does not yet include:
 
 - learned household load
 - multiple independent NOAH systems
+- an hourly Forecast.Solar production profile for shaping the SOC curve
 
 Active control should still be treated as beta functionality and monitored
 during testing.

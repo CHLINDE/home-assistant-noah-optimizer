@@ -10,6 +10,7 @@ from typing import Any
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import STATE_UNAVAILABLE, STATE_UNKNOWN
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.sun import get_astral_event_date
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import dt as dt_util
 
@@ -275,6 +276,25 @@ class NoahOptimizerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         seconds = (sunset - dt_util.utcnow()).total_seconds()
         return max(seconds / 3600, 0.0)
 
+    def _daylight_progress(self) -> float:
+        """Return today's daylight progress from sunrise to sunset."""
+        sun = self.hass.states.get("sun.sun")
+
+        if sun is None or sun.state != "above_horizon":
+            return 0.0
+
+        today = dt_util.now().date()
+        sunrise = get_astral_event_date(self.hass, "sunrise", today)
+        sunset = get_astral_event_date(self.hass, "sunset", today)
+
+        if sunrise is None or sunset is None or sunset <= sunrise:
+            return 0.0
+
+        daylight_seconds = (sunset - sunrise).total_seconds()
+        elapsed_seconds = (dt_util.utcnow() - sunrise).total_seconds()
+
+        return min(max(elapsed_seconds / daylight_seconds, 0.0), 1.0)
+
     def _is_night(self, solar_power: float) -> bool:
         """Return whether night mode applies."""
         sun = self.hass.states.get("sun.sun")
@@ -309,17 +329,22 @@ class NoahOptimizerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         expected_load_energy: float,
         forecast_safety: float,
         hours_to_sunset: float,
+        daylight_progress: float,
         catchup_hours: float,
     ) -> tuple[float, float, str, float]:
-        """Calculate the dynamic minimum SOC target and catch-up demand.
+        """Calculate the time-based forecast-aware SOC plan and catch-up demand.
 
-        The curve answers this question:
-        "How much SOC must the battery already have now so that the configured
-        target SOC can still be reached with the conservatively expected PV
-        energy remaining after household demand and the energy reserve?"
+        The plan starts at the configured minimum SOC at sunrise and reaches
+        the configured target SOC at sunset. A weak remaining PV forecast
+        raises the curve progressively, but never turns the forecast-based
+        requirement into an immediate hard 100 percent target.
         """
         safe_efficiency = max(efficiency, 0.1)
         safe_capacity = max(capacity, 0.001)
+        progress = min(max(daylight_progress, 0.0), 1.0)
+
+        soc_span = max(target_soc - min_soc, 0.0)
+        time_based_target = min_soc + soc_span * progress
 
         pv_energy_for_battery = max(
             effective_forecast - expected_load_energy - forecast_safety,
@@ -328,10 +353,23 @@ class NoahOptimizerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         storable_battery_energy = pv_energy_for_battery * safe_efficiency
         possible_soc_gain = storable_battery_energy / safe_capacity * 100
 
-        dynamic_soc_target = min(
+        forecast_required_soc = min(
             max(target_soc - possible_soc_gain, min_soc),
             target_soc,
         )
+
+        forecast_pressure = max(
+            forecast_required_soc - time_based_target,
+            0.0,
+        )
+        dynamic_soc_target = (
+            time_based_target + progress * forecast_pressure
+        )
+        dynamic_soc_target = min(
+            max(dynamic_soc_target, min_soc),
+            target_soc,
+        )
+
         soc_deviation = soc - dynamic_soc_target
 
         if soc_deviation < -DYNAMIC_SOC_TOLERANCE_PERCENT:
@@ -484,6 +522,7 @@ class NoahOptimizerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         dynamic_soc_enabled = bool(self.get_option(OPT_DYNAMIC_SOC_ENABLED))
 
         hours_to_sunset = self._hours_to_sunset()
+        daylight_progress = self._daylight_progress()
 
         available_battery_energy = (
             capacity * max(soc - min_soc, 0.0) / 100
@@ -547,6 +586,7 @@ class NoahOptimizerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 expected_load_energy=expected_load_energy,
                 forecast_safety=forecast_safety,
                 hours_to_sunset=hours_to_sunset,
+                daylight_progress=daylight_progress,
                 catchup_hours=dynamic_soc_catchup_hours,
             )
 

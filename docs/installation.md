@@ -1,7 +1,7 @@
 # Installation
 
 Diese Anleitung beschreibt die Installation und das Update des **Home
-Assistant Growatt NOAH Optimizers** für Version `2.0.0-beta.9`.
+Assistant Growatt NOAH Optimizers** für Version `2.0.0-beta.10`.
 
 Für neue Installationen wird die HACS-Integration empfohlen.
 
@@ -94,12 +94,12 @@ Typ:
 Integration
 ```
 
-## 5. Beta 9 installieren
+## 5. Beta 10 installieren
 
 Zu installierende Version:
 
 ```text
-2.0.0-beta.9
+2.0.0-beta.10
 ```
 
 Nach der Installation Home Assistant vollständig neu starten.
@@ -136,38 +136,39 @@ Standard:
 Ein
 ```
 
-## 7. Update auf Beta 9
+## 7. Update auf Beta 10
 
-Vor dem Update empfiehlt sich:
+Vor dem Update:
 
 ```text
 NOAH-Steuerung aktiv = Aus
+Dynamische SOC-Steuerung aktiv = Aus
 ```
 
-Danach Beta 9 über HACS installieren und Home Assistant vollständig neu starten.
+Danach Beta 10 über HACS installieren und Home Assistant vollständig neu starten.
 
-### Update von Beta 8
+### Update von Beta 9
 
-Beta 9 übernimmt alle Einstellungen und Entitäten aus Beta 8.
+Beta 10 übernimmt alle vorhandenen Einstellungen und Entitäten.
 
-Zusätzlich wird die gespeicherte Dashboard-Konfiguration von Template-Version 8
-auf Version 9 migriert.
+Geändert wird die Berechnung des dynamischen SOC-Ladeplans:
 
-Dabei wird gezielt ein möglicher Fehler in der Karte **Reglerstatus** repariert:
+- zeitbasierte Sollkurve von Sonnenaufgang bis Sonnenuntergang
+- Mindest-SOC als Startwert
+- Ziel-SOC als Endwert
+- Restprognose hebt die Kurve bei Bedarf progressiv an
+- eine knappe Restprognose setzt das dynamische Soll nicht mehr sofort auf 100 %
 
-```text
-TemplateSyntaxError: unexpected '}'
-```
+Die Dashboard-Struktur wird nicht geändert. Die Dashboard-Template-Version
+bleibt bei Version 9.
 
-Sonstige Benutzeranpassungen am Dashboard bleiben erhalten.
+### Update von Beta 8 oder älter
 
-Die dynamische SOC-Steuerung bleibt beim Update ausgeschaltet, sofern sie nicht
-bereits vom Benutzer aktiviert wurde.
+Beim direkten Update auf Beta 10 werden weiterhin die bisherigen Migrationen
+aus Beta 8 und Beta 9 ausgeführt, soweit sie für das vorhandene Dashboard
+erforderlich sind.
 
-### Update von Beta 6 oder Beta 7
-
-Beim direkten Update auf Beta 9 werden zusätzlich die bereits mit Beta 8
-eingeführten Funktionen ergänzt:
+Dazu gehören insbesondere:
 
 ```text
 Dynamische SOC-Steuerung aktiv
@@ -178,53 +179,34 @@ SOC-Ladeplan
 Dynamisch erforderliche Ladeleistung
 ```
 
-Die dynamische SOC-Steuerung ist standardmäßig ausgeschaltet.
+und die Reparatur des Beta-8-Jinja-Fehlers im Reglerstatus.
 
-Dadurch verändert das Update nicht automatisch die bisherige Ausgangsregelung.
+Die dynamische SOC-Steuerung ist bei einer neuen Einrichtung standardmäßig
+ausgeschaltet.
 
-## 8. Dashboard-Migration
+## 8. Dashboard und Migration
 
-Beta 9 verwendet Dashboard-Template-Version 9.
+Beta 10 verändert die Dashboard-Struktur nicht.
 
-Ein vorhandenes Dashboard wird **nicht vollständig ersetzt**. Die Integration
-führt nur gezielte Änderungen durch, damit vorhandene Benutzeranpassungen
-erhalten bleiben.
-
-Beim Update werden, falls erforderlich:
-
-- die alte Beta-6-Batteriezuordnung korrigiert
-- die mit Beta 8 eingeführten Dynamic-SOC-Elemente ergänzt
-- das SOC-Planungsdiagramm ergänzt
-- der Reglerstatus um die Dynamic-SOC-Werte erweitert
-- der fehlerhafte Beta-8-Jinja-Ausdruck im SOC-Ladeplan repariert
-
-### Update eines bereits mit Beta 8 migrierten Dashboards
-
-Beta 8 konnte in der Karte **Reglerstatus** einen fehlerhaften Jinja-Ausdruck
-speichern. Dadurch konnte folgende Fehlermeldung erscheinen:
+Es werden keine neuen Dashboardkarten und keine neuen Dashboard-Entitäten
+benötigt. Deshalb bleibt:
 
 ```text
-TemplateSyntaxError: unexpected '}'
+Dashboard-Template-Version = 9
 ```
 
-Beta 9 erkennt diesen Fehler gezielt und korrigiert die betroffene Zeile
-automatisch.
+Der vorhandene Chart **Dynamischer SOC-Ladeplan** zeigt nach dem Update
+automatisch die neue zeitbasierte Sollkurve.
 
-Das Dashboard muss dafür **nicht gelöscht oder neu erstellt** werden.
+Ältere Dashboard-Migrationen bleiben im Code erhalten:
 
-### Erhalt eigener Dashboard-Anpassungen
+- Beta-6-Batteriezuordnung korrigieren, wenn sie noch exakt unverändert vorliegt
+- Beta-8-Dynamic-SOC-Elemente ergänzen, falls sie fehlen
+- SOC-Planungsdiagramm ergänzen, falls es fehlt
+- Reglerstatus um Dynamic-SOC-Werte erweitern
+- fehlerhaften Beta-8-Jinja-Ausdruck reparieren
 
-Die Migration ersetzt nicht das vollständige Dashboard. Eigene Änderungen an
-anderen Karten und Bereichen bleiben erhalten.
-
-Nur eindeutig erkannte Standardbestandteile des NOAH-Optimizer-Dashboards
-werden ergänzt oder korrigiert.
-
-### Neuinstallation
-
-Bei einer Neuinstallation wird direkt die vollständige aktuelle
-Dashboard-Vorlage erzeugt. Die fehlerhafte Beta-8-Migration wird dabei nicht
-durchlaufen.
+Eigene Dashboard-Anpassungen bleiben erhalten.
 
 ## 9. Erste Prüfung nach dem Update
 
@@ -247,27 +229,49 @@ SOC-Ladeplan
 Dynamisch erforderliche Ladeleistung
 ```
 
-Die neuen Werte dürfen den bisherigen Ausgangssollwert noch nicht verändern,
-solange die dynamische SOC-Steuerung ausgeschaltet ist.
+Die Werte werden bereits mit der Beta-10-Logik berechnet, beeinflussen den
+Ausgangssollwert aber noch nicht, solange die dynamische SOC-Steuerung
+ausgeschaltet ist.
 
 ## 10. Dynamische SOC-Werte plausibilisieren
+
+Während des Tages sollte das dynamische SOC-Soll jetzt eine nachvollziehbare
+Kurve bilden.
+
+Bei Mindest-SOC `10 %` und Ziel-SOC `100 %` liegt das reine Zeit-Soll ungefähr
+bei:
+
+```text
+Sonnenaufgang    10 %
+25 % des Tages   32,5 %
+50 % des Tages   55 %
+75 % des Tages   77,5 %
+Sonnenuntergang 100 %
+```
+
+Eine knappe Restprognose darf diese Kurve nach oben ziehen. Sie sollte das Soll
+morgens aber nicht mehr allein deshalb sofort auf `100 %` setzen.
 
 Beispiel:
 
 ```text
-Ist-SOC:                       40 %
-Dynamisches SOC-Soll:          52 %
-SOC-Abweichung:               -12 %
-SOC-Ladeplan:                  Hinter Ladeplan
+Ist-SOC:                       70 %
+Dynamisches SOC-Soll:          66 %
+SOC-Abweichung:                +4 %
+SOC-Ladeplan:                  Vor Ladeplan
 Dynamisch erforderliche
-Ladeleistung:                 280 W
+Ladeleistung:                   0 W
 ```
 
-Bei hoher verbleibender PV-Prognose darf das dynamische SOC-Soll morgens
-niedrig sein. Mit abnehmender Restprognose sollte es Richtung Ziel-SOC steigen.
+Bei stärkerem Prognosedruck kann das dynamische Soll zum gleichen Zeitpunkt
+höher liegen.
+
+Nach Sonnenuntergang fällt das dynamische Soll wieder auf den Mindest-SOC.
+Das ist beabsichtigt, weil die Nachtregelung den Speicher bis zum Mindest-SOC
+nutzen darf.
 
 Fehlt Forecast.Solar, sind die dynamischen SOC-Werte nicht verfügbar und die
-neue Funktion greift nicht in die Regelung ein.
+dynamische SOC-Steuerung greift nicht in die Regelung ein.
 
 ## 11. Dynamische SOC-Steuerung aktivieren
 
