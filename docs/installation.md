@@ -1,7 +1,7 @@
 # Installation
 
 Diese Anleitung beschreibt die Installation und das Update des **Home
-Assistant Growatt NOAH Optimizers** für Version `2.0.0-beta.10`.
+Assistant Growatt NOAH Optimizers** für Version `2.0.0-beta.11`.
 
 Für neue Installationen wird die HACS-Integration empfohlen.
 
@@ -94,12 +94,12 @@ Typ:
 Integration
 ```
 
-## 5. Beta 10 installieren
+## 5. Beta 11 installieren
 
 Zu installierende Version:
 
 ```text
-2.0.0-beta.10
+2.0.0-beta.11
 ```
 
 Nach der Installation Home Assistant vollständig neu starten.
@@ -136,77 +136,80 @@ Standard:
 Ein
 ```
 
-## 7. Update auf Beta 10
+## 7. Update auf Beta 11
 
 Vor dem Update:
 
 ```text
 NOAH-Steuerung aktiv = Aus
 Dynamische SOC-Steuerung aktiv = Aus
+Vorausschauende SOC-Freigabe aktiv = Aus
 ```
 
-Danach Beta 10 über HACS installieren und Home Assistant vollständig neu starten.
+Bei einem Update von Beta 10 existiert der letzte Schalter noch nicht. Er wird
+mit Beta 11 neu angelegt und ist standardmäßig ausgeschaltet.
 
-### Update von Beta 9
+Danach Beta 11 über HACS installieren und Home Assistant vollständig neu starten.
 
-Beta 10 übernimmt alle vorhandenen Einstellungen und Entitäten.
+### Update von Beta 10
 
-Geändert wird die Berechnung des dynamischen SOC-Ladeplans:
+Beta 11 übernimmt alle vorhandenen Einstellungen und Entitäten.
 
-- zeitbasierte Sollkurve von Sonnenaufgang bis Sonnenuntergang
-- Mindest-SOC als Startwert
-- Ziel-SOC als Endwert
-- Restprognose hebt die Kurve bei Bedarf progressiv an
-- eine knappe Restprognose setzt das dynamische Soll nicht mehr sofort auf 100 %
-
-Die Dashboard-Struktur wird nicht geändert. Die Dashboard-Template-Version
-bleibt bei Version 9.
-
-### Update von Beta 8 oder älter
-
-Beim direkten Update auf Beta 10 werden weiterhin die bisherigen Migrationen
-aus Beta 8 und Beta 9 ausgeführt, soweit sie für das vorhandene Dashboard
-erforderlich sind.
-
-Dazu gehören insbesondere:
+Neu hinzu kommen:
 
 ```text
-Dynamische SOC-Steuerung aktiv
-SOC-Nachholzeit
-Dynamisches SOC-Soll
-SOC-Abweichung
-SOC-Ladeplan
-Dynamisch erforderliche Ladeleistung
+Vorausschauende SOC-Freigabe aktiv
+Prognosebasierter Mindest-SOC
+SOC-Freigabegrenze
+Freigebare Akkuenergie
+SOC-Freigabe-Soll
 ```
 
-und die Reparatur des Beta-8-Jinja-Fehlers im Reglerstatus.
+Außerdem steht der neue Reglermodus zur Verfügung:
 
-Die dynamische SOC-Steuerung ist bei einer neuen Einrichtung standardmäßig
-ausgeschaltet.
+```text
+SOC-Freigabe
+```
+
+Die Funktion ist nach dem Update **nicht automatisch aktiv**.
+
+### Update von Beta 9 oder älter
+
+Beim direkten Update auf Beta 11 bleiben die bisherigen Dashboard-Migrationen
+erhalten. Die Integration ergänzt fehlende Beta-8-Dynamic-SOC-Elemente,
+repariert gegebenenfalls den Beta-8-Jinja-Fehler und führt anschließend die
+Beta-11-Erweiterung aus.
 
 ## 8. Dashboard und Migration
 
-Beta 10 verändert die Dashboard-Struktur nicht.
-
-Es werden keine neuen Dashboardkarten und keine neuen Dashboard-Entitäten
-benötigt. Deshalb bleibt:
+Beta 11 ergänzt neue Dashboard-Entitäten und einen neuen Schalter. Deshalb
+wird die Dashboard-Template-Version erhöht auf:
 
 ```text
-Dashboard-Template-Version = 9
+Dashboard-Template-Version = 10
 ```
 
-Der vorhandene Chart **Dynamischer SOC-Ladeplan** zeigt nach dem Update
-automatisch die neue zeitbasierte Sollkurve.
+Bei einem bestehenden Dashboard werden gezielt ergänzt:
 
-Ältere Dashboard-Migrationen bleiben im Code erhalten:
+- Vorausschauende SOC-Freigabe aktiv
+- Prognosebasierter Mindest-SOC
+- SOC-Freigabegrenze
+- Freigebare Akkuenergie
+- SOC-Freigabe-Soll
+- Reglermodus `SOC-Freigabe` in der Statuskarte
+
+Ältere Migrationen bleiben ebenfalls aktiv:
 
 - Beta-6-Batteriezuordnung korrigieren, wenn sie noch exakt unverändert vorliegt
 - Beta-8-Dynamic-SOC-Elemente ergänzen, falls sie fehlen
 - SOC-Planungsdiagramm ergänzen, falls es fehlt
-- Reglerstatus um Dynamic-SOC-Werte erweitern
 - fehlerhaften Beta-8-Jinja-Ausdruck reparieren
 
-Eigene Dashboard-Anpassungen bleiben erhalten.
+Das Dashboard wird **nicht vollständig ersetzt**. Eigene Anpassungen bleiben
+bestehen, soweit die bekannten Standardkarten eindeutig erkannt werden.
+
+Bei einer Neuinstallation wird direkt die vollständige Beta-11-Vorlage mit
+Dashboard-Template-Version 10 erzeugt.
 
 ## 9. Erste Prüfung nach dem Update
 
@@ -216,6 +219,7 @@ Zunächst:
 Optimierer-Berechnung aktiv = Ein
 NOAH-Steuerung aktiv = Aus
 Dynamische SOC-Steuerung aktiv = Aus
+Vorausschauende SOC-Freigabe aktiv = Aus
 Betriebsart = Automatik
 ```
 
@@ -227,16 +231,18 @@ Dynamisches SOC-Soll
 SOC-Abweichung
 SOC-Ladeplan
 Dynamisch erforderliche Ladeleistung
+Prognosebasierter Mindest-SOC
+SOC-Freigabegrenze
+Freigebare Akkuenergie
+SOC-Freigabe-Soll
 ```
 
-Die Werte werden bereits mit der Beta-10-Logik berechnet, beeinflussen den
-Ausgangssollwert aber noch nicht, solange die dynamische SOC-Steuerung
-ausgeschaltet ist.
+Alle neuen Diagnosewerte werden auch bei ausgeschalteter SOC-Freigabe
+berechnet. Es wird noch kein Stellbefehl an den NOAH gesendet.
 
-## 10. Dynamische SOC-Werte plausibilisieren
+## 10. Dynamischen SOC-Ladeplan prüfen
 
-Während des Tages sollte das dynamische SOC-Soll jetzt eine nachvollziehbare
-Kurve bilden.
+Die Beta-10-Ladeplankurve bleibt unverändert.
 
 Bei Mindest-SOC `10 %` und Ziel-SOC `100 %` liegt das reine Zeit-Soll ungefähr
 bei:
@@ -249,53 +255,110 @@ Sonnenaufgang    10 %
 Sonnenuntergang 100 %
 ```
 
-Eine knappe Restprognose darf diese Kurve nach oben ziehen. Sie sollte das Soll
-morgens aber nicht mehr allein deshalb sofort auf `100 %` setzen.
+Eine knappe Restprognose darf diese Kurve progressiv nach oben ziehen, soll sie
+aber morgens nicht allein deshalb sofort auf `100 %` setzen.
+
+## 11. SOC-Freigabewerte plausibilisieren
+
+Die neuen Werte beantworten drei verschiedene Fragen:
+
+```text
+Prognosebasierter Mindest-SOC
+= Welchen SOC muss der Akku nach aktueller Prognose mindestens schon haben,
+  damit der Ziel-SOC bis Sonnenuntergang noch erreichbar ist?
+
+SOC-Freigabegrenze
+= Bis zu welchem SOC darf die neue Freigabe maximal entladen?
+
+Freigebare Akkuenergie
+= Wie viel Batterieenergie liegt aktuell oberhalb dieser Grenze?
+```
+
+Die Freigabegrenze wird aus dem größeren Wert von dynamischem SOC-Soll und
+prognosebasiertem Mindest-SOC plus 2 Prozentpunkten Sicherheitsreserve gebildet.
 
 Beispiel:
 
 ```text
-Ist-SOC:                       70 %
-Dynamisches SOC-Soll:          66 %
-SOC-Abweichung:                +4 %
-SOC-Ladeplan:                  Vor Ladeplan
-Dynamisch erforderliche
-Ladeleistung:                   0 W
+Ist-SOC:                         92 %
+Dynamisches SOC-Soll:            70 %
+Prognosebasierter Mindest-SOC:   76 %
+SOC-Freigabegrenze:              78 %
 ```
 
-Bei stärkerem Prognosedruck kann das dynamische Soll zum gleichen Zeitpunkt
-höher liegen.
+Dann dürfen rechnerisch maximal `14` SOC-Prozentpunkte als Vorsprung genutzt
+werden.
 
-Nach Sonnenuntergang fällt das dynamische Soll wieder auf den Mindest-SOC.
-Das ist beabsichtigt, weil die Nachtregelung den Speicher bis zum Mindest-SOC
-nutzen darf.
+Ist dagegen:
 
-Fehlt Forecast.Solar, sind die dynamischen SOC-Werte nicht verfügbar und die
-dynamische SOC-Steuerung greift nicht in die Regelung ein.
+```text
+Prognosebasierter Mindest-SOC:   96 %
+SOC-Freigabegrenze:              98 %
+Ist-SOC:                         98 %
+```
 
-## 11. Dynamische SOC-Steuerung aktivieren
+vorhanden, ist keine Akkuenergie freigebbar. Die aktuelle Prognose lässt dann
+keine sichere zusätzliche Entladung zu.
+
+Wichtig: Diese Grenze ist **prognosebasiert**. Sie verhindert eine absichtliche
+Entladung unter den aktuell berechneten Bedarf, kann aber keine absolute
+Garantie geben, wenn PV-Ertrag oder Hausverbrauch später deutlich von der
+Prognose abweichen.
+
+## 12. Dynamische SOC-Steuerung aktivieren
 
 Erst nach plausibler Beobachtung:
 
 ```text
 Dynamische SOC-Steuerung aktiv = Ein
+Vorausschauende SOC-Freigabe aktiv = Aus
+NOAH-Steuerung aktiv = Aus
 ```
 
-Die Funktion beeinflusst ausschließlich die Betriebsart **Automatik**.
-
-Liegt der Akku mehr als 2 Prozentpunkte hinter dem Ladeplan, kann der interne
-Reglermodus auf:
+Dadurch kann bereits geprüft werden, ob der berechnete Reglermodus bei einem
+SOC-Rückstand auf:
 
 ```text
 SOC-Nachladung
 ```
 
-wechseln und mehr PV-Leistung für die Batterieladung reservieren.
+wechselt und wie sich der berechnete Ausgangssollwert ändert. Wegen der noch
+ausgeschalteten NOAH-Steuerung wird der Sollwert nicht geschrieben.
 
-Die Betriebsarten **Manuell**, **Eigenverbrauch** und **Ladepriorität** werden
-durch die dynamische SOC-Steuerung nicht verändert.
+## 13. Vorausschauende SOC-Freigabe testen
 
-## 12. SOC-Nachholzeit einstellen
+Anschließend:
+
+```text
+Dynamische SOC-Steuerung aktiv = Ein
+Vorausschauende SOC-Freigabe aktiv = Ein
+NOAH-Steuerung aktiv = Aus
+Betriebsart = Automatik
+```
+
+Der Reglermodus **SOC-Freigabe** kann jetzt erscheinen, wenn:
+
+- Forecast.Solar verfügbar ist
+- es Tag ist
+- der Ist-SOC über der SOC-Freigabegrenze liegt
+- freigebare Akkuenergie vorhanden ist
+- aktuell positiver Netzbezug vorliegt
+
+Der berechnete **SOC-Freigabe-Sollwert** entspricht näherungsweise:
+
+```text
+aktuelle NOAH-Ausgangsleistung + aktueller Netzbezug
+```
+
+begrenzt durch die maximale Ausgangsleistung.
+
+Der endgültige Ausgangssollwert wird weiterhin auf das konfigurierte
+Stellgrößenraster gerundet. Ziel ist ein möglichst kleiner Netzbezug; eine
+absichtliche Batterieeinspeisung ins Netz wird nicht angefordert. Kleine
+kurzzeitige Abweichungen um 0 W können durch Messverzögerung, Lastsprünge und
+das Stellgrößenraster entstehen.
+
+## 14. SOC-Nachholzeit einstellen
 
 Standard:
 
@@ -303,19 +366,13 @@ Standard:
 2,0 h
 ```
 
-Empfohlener Startwert:
+Ein kleinerer Wert reagiert stärker auf einen SOC-Rückstand. Ein größerer Wert
+verteilt das Nachladen über einen längeren Zeitraum.
 
-```text
-2,0 h
-```
+Die Nachholzeit wirkt auf **SOC-Nachladung**, nicht direkt auf die neue
+SOC-Freigabe.
 
-Kürzer bedeutet stärkere Reaktion auf einen SOC-Rückstand. Länger bedeutet
-eine sanftere Verteilung der Nachladung.
-
-Das wirksame Nachholfenster wird zusätzlich durch die verbleibende Zeit bis
-Sonnenuntergang begrenzt.
-
-## 13. Stellgröße manuell testen
+## 15. Stellgröße manuell testen
 
 Vor Aktivierung der NOAH-Steuerung unter **Werkzeuge → Aktionen** den Dienst:
 
@@ -337,31 +394,43 @@ data:
 
 Danach prüfen, ob die Stellgröße den Wert annimmt.
 
-## 14. Aktive NOAH-Steuerung einschalten
+## 16. Aktive NOAH-Steuerung einschalten
 
-Erst wenn Daten und Sollwert plausibel sind:
+Erst wenn Ladeplan und SOC-Freigabewerte plausibel sind:
 
 ```text
 Optimierer-Berechnung aktiv = Ein
+Dynamische SOC-Steuerung aktiv = Ein
+Vorausschauende SOC-Freigabe aktiv = Ein
 NOAH-Steuerung aktiv = Ein
 Betriebsart = Automatik
 ```
 
-Die dynamische SOC-Steuerung kann unabhängig davon ein- oder ausgeschaltet
-bleiben.
+Wenn die SOC-Freigabe noch nicht aktiv eingesetzt werden soll, kann ihr eigener
+Schalter auf **Aus** bleiben.
 
-## 15. Schutzmechanismen
+## 17. Schutzmechanismen
 
 Die aktive Steuerung enthält weiterhin:
 
 - Schalt-Hysterese
+- Stellgrößenraster
 - Mindestabstand zwischen normalen Stellbefehlen
 - Wiederholungsversuch
 - 10-Minuten-Failsafe bei dauerhaft fehlenden kritischen Daten
 - persistente Home-Assistant-Benachrichtigung
 - Sperre gegen den Legacy-YAML-Controller
 
-## 16. Legacy-YAML-Optimizer
+Zusätzlich schützt Beta 11 die SOC-Freigabe durch:
+
+- dynamisches SOC-Soll
+- prognosebasierten Mindest-SOC
+- 2 Prozentpunkte SOC-Sicherheitsreserve
+- Freigabe nur bei positivem Netzbezug
+- Freigabe nur am Tag
+- sofortige Sollwertreduzierung, wenn ein zuvor gesetzter SOC-Freigabe-Sollwert aus Sicherheitsgründen sinken muss
+
+## 18. Legacy-YAML-Optimizer
 
 Der ältere YAML-Optimizer darf nicht gleichzeitig mit der aktiven
 HACS-Steuerung denselben NOAH regeln.
@@ -374,10 +443,10 @@ input_boolean.noah_optimizer_enabled
 
 Steht dieser Helfer auf `on`, werden normale HACS-Stellbefehle blockiert.
 
-Die dynamische SOC-Regelung ab Beta 8 wird nur in der HACS-Integration
-implementiert; die Legacy-YAML-Version erhält keine dynamische SOC-Regelung.
+Die dynamische SOC-Regelung und die vorausschauende SOC-Freigabe werden nicht
+in die Legacy-YAML-Regelung zurückportiert.
 
-## 17. Weiterführende Dokumentation
+## 19. Weiterführende Dokumentation
 
 - [Konfiguration](configuration.md)
 - [Fehlerbehebung](troubleshooting.md)

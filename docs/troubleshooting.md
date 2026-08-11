@@ -1,7 +1,7 @@
 # Fehlerbehebung
 
 Dieses Dokument bezieht sich primär auf die HACS-Integration ab
-`2.0.0-beta.10`.
+`2.0.0-beta.11`.
 
 ## 1. Integration wird nicht geladen
 
@@ -17,7 +17,7 @@ Zusätzlich prüfen:
 
 - HACS-Installation vollständig
 - Home Assistant nach dem Update neu gestartet
-- `manifest.json` auf `2.0.0-beta.10`
+- `manifest.json` auf `2.0.0-beta.11`
 - alle Quell-Entitäten vorhanden
 - keine Python-Fehler im Protokoll
 
@@ -139,7 +139,7 @@ verursacht werden.
 
 Prüfen:
 
-- tatsächlich `2.0.0-beta.10` installiert
+- tatsächlich `2.0.0-beta.11` installiert
 - Home Assistant nach dem Update vollständig neu gestartet
 - `sun.sun` ist verfügbar
 - `sun.sun` steht tagsüber auf `above_horizon`
@@ -353,7 +353,7 @@ Das Dashboard muss nicht gelöscht oder neu erstellt werden.
 
 Prüfen:
 
-- tatsächlich `2.0.0-beta.10` installiert
+- tatsächlich `2.0.0-beta.11` installiert
 - Home Assistant nach dem HACS-Update vollständig neu gestartet
 - Protokoll auf `noah_optimizer`-Fehler prüfen
 
@@ -407,3 +407,115 @@ input_boolean.noah_optimizer_enabled = Aus
 setzen.
 
 Die dynamische SOC-Regelung wird nicht in die Legacy-YAML-Regelung zurückportiert.
+
+## 21. SOC-Freigabe wird nicht aktiv
+
+Der neue Reglermodus lautet:
+
+```text
+SOC-Freigabe
+```
+
+Er kann nur erscheinen, wenn gleichzeitig:
+
+```text
+Optimierer-Berechnung aktiv = Ein
+Dynamische SOC-Steuerung aktiv = Ein
+Vorausschauende SOC-Freigabe aktiv = Ein
+Betriebsart = Automatik
+```
+
+Zusätzlich müssen folgende Bedingungen erfüllt sein:
+
+- Forecast.Solar ist verfügbar
+- es ist Tag
+- der Ist-SOC liegt über der SOC-Freigabegrenze
+- freigebare Akkuenergie ist größer als `0 kWh`
+- der Netzsensor zeigt positiven Netzbezug
+
+Steht der Akku nur **Vor Ladeplan**, reicht das allein nicht. Die
+SOC-Freigabegrenze kann wegen der Restprognose höher als das dynamische SOC-Soll
+liegen.
+
+## 22. SOC-Freigabegrenze ist unerwartet hoch
+
+Die Grenze ist absichtlich konservativer als nur das dynamische SOC-Soll:
+
+```text
+SOC-Freigabegrenze
+= max(Dynamisches SOC-Soll, Prognosebasierter Mindest-SOC)
+  + 2 %-Punkte
+```
+
+Wenn die Restprognose knapp ist, kann der prognosebasierte Mindest-SOC bis nahe
+an den Ziel-SOC steigen. Dann darf trotz hohem aktuellem SOC nur wenig oder gar
+keine Akkuenergie freigegeben werden.
+
+Prüfen:
+
+- wirksame Restprognose
+- erwarteter Hausenergiebedarf
+- zusätzliche Energiereserve
+- Prognose-Sicherheitsfaktor
+- Ziel-SOC
+- Akkukapazität
+
+## 23. Akku wird trotz Netzbezug nicht entladen
+
+Prüfen:
+
+- `Vorausschauende SOC-Freigabe aktiv = Ein`
+- `Dynamische SOC-Steuerung aktiv = Ein`
+- `Betriebsart = Automatik`
+- `SOC-Freigabegrenze < Ist-SOC`
+- `Freigebare Akkuenergie > 0 kWh`
+- Netzleistung ist tatsächlich positiv
+
+Ist die aktive NOAH-Steuerung ausgeschaltet, werden Reglermodus und
+Ausgangssollwert zwar berechnet, aber nicht an die Stellgröße geschrieben.
+Das ist der empfohlene Testbetrieb.
+
+## 24. Bei SOC-Freigabe entsteht kurz Netzeinspeisung
+
+Die Funktion fordert keine absichtliche Batterieeinspeisung an. Das
+SOC-Freigabe-Soll orientiert sich am aktuell gemessenen positiven Netzbezug.
+
+Kurzzeitige kleine Einspeisung kann trotzdem entstehen durch:
+
+- Stellgrößenraster
+- Mess- und MQTT-Verzögerungen
+- schnelle Änderungen der Hauslast
+- Verzögerung bei der NOAH-Leistungsübernahme
+
+Soll der Ausgang nach einem SOC-Freigabe-Stellbefehl reduziert werden, umgeht
+diese Reduzierung bewusst die normale 2-Minuten-Wartezeit und die
+Schalt-Hysterese. Dadurch soll eine sinkende Hauslast möglichst schnell zu
+einem niedrigeren Sollwert führen.
+
+Wenn stärkere oder dauerhafte Einspeisung auftritt, zunächst:
+
+```text
+NOAH-Steuerung aktiv = Aus
+```
+
+setzen und Netzleistung, Ausgangssollwert, SOC-Freigabe-Soll und tatsächliche
+NOAH-Ausgangsleistung vergleichen.
+
+## 25. Abend-SOC wird trotz SOC-Freigabe nicht erreicht
+
+Die SOC-Freigabe schützt den aufgrund der **aktuellen** Prognose und der
+konfigurierten Lastannahmen benötigten SOC. Sie ist keine absolute Garantie.
+
+Mögliche Ursachen für ein später zu niedriges Abend-SOC:
+
+- tatsächlicher PV-Ertrag niedriger als Forecast.Solar
+- tatsächliche Hauslast höher als die konfigurierte erwartete Last
+- zu optimistischer Prognose-Sicherheitsfaktor
+- zu kleine zusätzliche Energiereserve
+- unerwartete Lastspitzen
+
+In diesem Fall die vorausschauende SOC-Freigabe zunächst deaktivieren und die
+Prognose-/Lastparameter konservativer einstellen. Die dynamische
+**SOC-Nachladung** sollte aktiviert bleiben, damit ein später erkannter
+SOC-Rückstand wieder aufgeholt werden kann.
+

@@ -32,7 +32,7 @@ DASHBOARD_ICON = "mdi:home-battery"
 
 DASHBOARD_STORAGE_VERSION = 1
 DASHBOARD_STORAGE_KEY = f"{DOMAIN}.dashboard"
-DASHBOARD_TEMPLATE_VERSION = 9
+DASHBOARD_TEMPLATE_VERSION = 10
 
 DASHBOARD_TEMPLATE_DE = Path(__file__).with_name("dashboard_de.yaml")
 DASHBOARD_TEMPLATE_EN = Path(__file__).with_name("dashboard_en.yaml")
@@ -70,6 +70,13 @@ ENTITY_TOKENS: dict[str, tuple[str, str]] = {
         "dynamic_required_charge_power",
     ),
     "__DYNAMIC_SOC_STATUS__": ("sensor", "dynamic_soc_status"),
+    "__FORECAST_REQUIRED_SOC__": ("sensor", "forecast_required_soc"),
+    "__SOC_RELEASE_FLOOR__": ("sensor", "soc_release_floor"),
+    "__RELEASABLE_BATTERY_ENERGY__": (
+        "sensor",
+        "releasable_battery_energy",
+    ),
+    "__SOC_RELEASE_TARGET__": ("sensor", "soc_release_target"),
     "__SELF_CONSUMPTION_TARGET__": (
         "sensor",
         "self_consumption_target",
@@ -87,6 +94,7 @@ ENTITY_TOKENS: dict[str, tuple[str, str]] = {
     "__OPTIMIZER_ENABLED__": ("switch", "optimizer_enabled"),
     "__CONTROL_ENABLED__": ("switch", "control_enabled"),
     "__DYNAMIC_SOC_ENABLED__": ("switch", "dynamic_soc_enabled"),
+    "__SOC_RELEASE_ENABLED__": ("switch", "soc_release_enabled"),
     "__OPTIMIZER_MODE__": ("select", "optimizer_mode"),
     "__BATTERY_CAPACITY__": ("number", "battery_capacity"),
     "__TARGET_SOC__": ("number", "target_soc"),
@@ -347,6 +355,11 @@ def _localized_dynamic_labels(hass: HomeAssistant) -> dict[str, str]:
             "soc_deviation": "SOC-Abweichung",
             "dynamic_status": "SOC-Ladeplan",
             "dynamic_power": "Dynamisch erforderliche Ladeleistung",
+            "forecast_required_soc": "Prognosebasierter Mindest-SOC",
+            "release_floor": "SOC-Freigabegrenze",
+            "releasable_energy": "Freigebare Akkuenergie",
+            "release_target": "SOC-Freigabe-Soll",
+            "release_switch": "Vorausschauende SOC-Freigabe aktiv",
             "catchup_hours": "SOC-Nachholzeit",
             "chart_title": "Dynamischer SOC-Ladeplan",
             "actual_soc": "Ist-SOC",
@@ -360,6 +373,11 @@ def _localized_dynamic_labels(hass: HomeAssistant) -> dict[str, str]:
         "soc_deviation": "SOC deviation",
         "dynamic_status": "SOC schedule status",
         "dynamic_power": "Dynamic required charging power",
+        "forecast_required_soc": "Forecast-required minimum SOC",
+        "release_floor": "SOC release floor",
+        "releasable_energy": "Releasable battery energy",
+        "release_target": "SOC release target",
+        "release_switch": "Predictive SOC release enabled",
         "catchup_hours": "SOC catch-up time",
         "chart_title": "Dynamic SOC charging schedule",
         "actual_soc": "Actual SOC",
@@ -454,7 +472,7 @@ def _patch_status_markdown(
     replacements: dict[str, str],
     german: bool,
 ) -> tuple[str, bool]:
-    """Add Beta 8 SOC values and repair the malformed Beta 8 status template."""
+    """Patch legacy SOC status content and add Beta 11 release diagnostics."""
     changed = False
 
     # Beta 9: repair the malformed Jinja expression that could have been
@@ -478,6 +496,22 @@ def _patch_status_markdown(
                 "'blended_reserve': 'Blended reserve'",
                 "'blended_reserve': 'Blended reserve',\n"
                 "                'soc_catchup': 'SOC catch-up'",
+            )
+            changed = True
+
+    if "'soc_release'" not in content:
+        if german and "'soc_catchup': 'SOC-Nachladung'" in content:
+            content = content.replace(
+                "'soc_catchup': 'SOC-Nachladung'",
+                "'soc_catchup': 'SOC-Nachladung',\n"
+                "                'soc_release': 'SOC-Freigabe'",
+            )
+            changed = True
+        elif not german and "'soc_catchup': 'SOC catch-up'" in content:
+            content = content.replace(
+                "'soc_catchup': 'SOC catch-up'",
+                "'soc_catchup': 'SOC catch-up',\n"
+                "                'soc_release': 'SOC release'",
             )
             changed = True
 
@@ -549,15 +583,62 @@ def _patch_status_markdown(
 
             changed = True
 
+    release_floor_entity = replacements["__SOC_RELEASE_FLOOR__"]
+
+    if release_floor_entity not in content:
+        forecast_required_entity = replacements["__FORECAST_REQUIRED_SOC__"]
+        releasable_energy_entity = replacements[
+            "__RELEASABLE_BATTERY_ENERGY__"
+        ]
+        release_target_entity = replacements["__SOC_RELEASE_TARGET__"]
+
+        if german:
+            anchor = "**Dynamisch erforderliche Ladeleistung:**"
+            addition = (
+                "**Prognosebasierter Mindest-SOC:** "
+                f"{{{{ states('{forecast_required_entity}') }}}} %\n"
+                "**SOC-Freigabegrenze:** "
+                f"{{{{ states('{release_floor_entity}') }}}} %\n"
+                "**Freigebare Akkuenergie:** "
+                f"{{{{ states('{releasable_energy_entity}') }}}} kWh\n"
+                "**SOC-Freigabe-Soll:** "
+                f"{{{{ states('{release_target_entity}') }}}} W\n"
+            )
+        else:
+            anchor = "**Dynamic required charging power:**"
+            addition = (
+                "**Forecast-required minimum SOC:** "
+                f"{{{{ states('{forecast_required_entity}') }}}} %\n"
+                "**SOC release floor:** "
+                f"{{{{ states('{release_floor_entity}') }}}} %\n"
+                "**Releasable battery energy:** "
+                f"{{{{ states('{releasable_energy_entity}') }}}} kWh\n"
+                "**SOC release target:** "
+                f"{{{{ states('{release_target_entity}') }}}} W\n"
+            )
+
+        anchor_index = content.find(anchor)
+        if anchor_index >= 0:
+            line_end = content.find("\n", anchor_index)
+            if line_end >= 0:
+                content = (
+                    content[: line_end + 1]
+                    + addition
+                    + content[line_end + 1 :]
+                )
+            else:
+                content += "\n" + addition
+            changed = True
+
     return content, changed
 
 
-def _migrate_dashboard_to_beta9(
+def _migrate_dashboard_to_beta11(
     hass: HomeAssistant,
     config: dict[str, Any],
     replacements: dict[str, str],
 ) -> tuple[dict[str, Any], bool]:
-    """Apply Beta 8 additions and the Beta 9 dashboard repair without replacing user customizations."""
+    """Apply legacy dashboard fixes and the Beta 11 release additions."""
     migrated = deepcopy(config)
     changed = False
     labels = _localized_dynamic_labels(hass)
@@ -591,7 +672,7 @@ def _migrate_dashboard_to_beta9(
             battery_entity["production"] = replacements["__CHARGING_POWER__"]
             changed = True
 
-    # Add the new Beta 8 entities to the existing cards where possible.
+    # Add legacy dynamic-SOC and Beta 11 release entities where possible.
     for item in _iter_dicts(migrated):
         if item.get("type") == "entities":
             if (
@@ -602,6 +683,11 @@ def _migrate_dashboard_to_beta9(
                     item,
                     replacements["__DYNAMIC_SOC_ENABLED__"],
                     labels["dynamic_switch"],
+                )
+                changed |= _append_entity_row(
+                    item,
+                    replacements["__SOC_RELEASE_ENABLED__"],
+                    labels["release_switch"],
                 )
 
             if (
@@ -627,6 +713,26 @@ def _migrate_dashboard_to_beta9(
                     item,
                     replacements["__DYNAMIC_REQUIRED_CHARGE_POWER__"],
                     labels["dynamic_power"],
+                )
+                changed |= _append_entity_row(
+                    item,
+                    replacements["__FORECAST_REQUIRED_SOC__"],
+                    labels["forecast_required_soc"],
+                )
+                changed |= _append_entity_row(
+                    item,
+                    replacements["__SOC_RELEASE_FLOOR__"],
+                    labels["release_floor"],
+                )
+                changed |= _append_entity_row(
+                    item,
+                    replacements["__RELEASABLE_BATTERY_ENERGY__"],
+                    labels["releasable_energy"],
+                )
+                changed |= _append_entity_row(
+                    item,
+                    replacements["__SOC_RELEASE_TARGET__"],
+                    labels["release_target"],
                 )
 
             if (
@@ -743,7 +849,7 @@ async def async_ensure_dashboard(
         template_version = await dashboard.async_get_template_version()
 
         if template_version < DASHBOARD_TEMPLATE_VERSION:
-            dashboard_config, changed = _migrate_dashboard_to_beta9(
+            dashboard_config, changed = _migrate_dashboard_to_beta11(
                 hass,
                 dashboard_config,
                 replacements,

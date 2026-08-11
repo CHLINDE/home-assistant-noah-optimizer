@@ -1,7 +1,7 @@
 # Konfiguration
 
 Dieses Dokument beschreibt die HACS-Integration **Growatt NOAH Optimizer**
-für Version `2.0.0-beta.10`.
+für Version `2.0.0-beta.11`.
 
 Die tatsächlichen Entity-IDs können durch Bereichsnamen oder manuelle
 Umbenennungen abweichen. Die Integration und das automatische Dashboard lösen
@@ -54,6 +54,36 @@ Aus
 Die Betriebsarten **Manuell**, **Eigenverbrauch** und **Ladepriorität** werden
 durch diesen Schalter nicht verändert.
 
+### Vorausschauende SOC-Freigabe aktiv
+
+Neu in Beta 11.
+
+Dieser Schalter erlaubt dem Optimizer, einen sicher prognostizierten
+SOC-Vorsprung tagsüber zur Deckung von aktuellem Netzbezug zu nutzen. Ziel ist,
+bei einem früh weit geladenen Akku wieder Ladekapazität für späteren
+PV-Überschuss zu schaffen.
+
+Standard:
+
+```text
+Aus
+```
+
+Die Freigabe wirkt nur bei:
+
+```text
+Dynamische SOC-Steuerung aktiv = Ein
+Vorausschauende SOC-Freigabe aktiv = Ein
+Betriebsart = Automatik
+```
+
+Die zusätzliche Abhängigkeit von der dynamischen SOC-Steuerung stellt sicher,
+dass bei einer späteren Verschlechterung der Prognose auch die
+**SOC-Nachladung** zur Verfügung steht.
+
+Die Betriebsarten **Manuell**, **Eigenverbrauch**, **Ladepriorität** und die
+Nachtregelung werden nicht verändert.
+
 ## 2. Betriebsarten
 
 Der Select **Betriebsart** bietet:
@@ -86,6 +116,7 @@ Manuell
 Eigenverbrauch
 Ladepriorität
 SOC-Nachladung
+SOC-Freigabe
 Mindest-SOC
 Nachtbetrieb
 Ziel-SOC erreicht
@@ -280,6 +311,113 @@ reserviert.
 
 Der NOAH-Ausgang wird entsprechend reduziert, ohne negative Ausgangsleistung
 anzufordern.
+
+### 3.9 Vorausschauende SOC-Freigabe
+
+Beta 11 ergänzt die Gegenrichtung zur SOC-Nachladung: Liegt der Akku sicher
+**vor** dem Ladeplan, kann ein Teil dieses Vorsprungs für den Hausverbrauch
+freigegeben werden.
+
+#### Prognosebasierter Mindest-SOC
+
+Die bereits für den Ladeplan berechnete Prognose-Anforderung wird als eigener
+Diagnosewert ausgegeben:
+
+```text
+Prognosebasierter Mindest-SOC
+= Ziel-SOC - möglicher zukünftiger SOC-Zuwachs
+```
+
+Der Wert liegt immer zwischen Mindest-SOC und Ziel-SOC. Er gibt an, welcher SOC
+nach der aktuellen Restprognose mindestens bereits vorhanden sein muss, damit
+der Ziel-SOC bis Sonnenuntergang rechnerisch noch erreichbar bleibt.
+
+#### SOC-Freigabegrenze
+
+Für die Freigabe wird der konservativere der beiden SOC-Werte verwendet:
+
+```text
+Basis-Freigabegrenze
+= max(Dynamisches SOC-Soll, Prognosebasierter Mindest-SOC)
+```
+
+Zusätzlich werden die bereits für den SOC-Ladeplan verwendeten 2
+Prozentpunkte Toleranz als Sicherheitsreserve aufgeschlagen:
+
+```text
+SOC-Freigabegrenze
+= min(Basis-Freigabegrenze + 2 %-Punkte, 100 %)
+```
+
+Damit wird der Akku durch die vorausschauende Freigabe nicht absichtlich bis
+auf den eigentlichen Ladeplan heruntergezogen, sondern behält einen kleinen
+Puffer.
+
+#### Freigebare Akkuenergie
+
+```text
+Freigebarer SOC
+= max(Ist-SOC - SOC-Freigabegrenze, 0)
+
+Freigebare Akkuenergie
+= Akkukapazität × Freigebarer SOC / 100
+```
+
+Nur dieser Anteil wird als sicher freigebar betrachtet.
+
+#### SOC-Freigabe-Soll
+
+Liegt gleichzeitig realer Netzbezug vor, wird der NOAH-Ausgang um diesen
+Netzbezug erhöht:
+
+```text
+SOC-Freigabe-Soll
+= aktuelle NOAH-Ausgangsleistung + max(Netzleistung, 0)
+```
+
+Der Wert wird auf die konfigurierte maximale Ausgangsleistung begrenzt und
+anschließend wie alle anderen Ausgangssollwerte auf das Stellgrößenraster
+gerundet.
+
+Ziel ist, den aktuellen Netzbezug möglichst weit aus dem sicheren SOC-Vorsprung
+zu decken. Es wird keine absichtliche Entladung zum Zweck einer Netzeinspeisung
+angefordert. Durch Stellgrößenraster, Messverzögerung und Lastsprünge können
+kurzfristig dennoch kleine Abweichungen um 0 W auftreten.
+
+#### Aktivierungsbedingungen
+
+Der Reglermodus **SOC-Freigabe** wird nur aktiv, wenn gleichzeitig:
+
+- Optimierer-Berechnung aktiv ist
+- Betriebsart **Automatik** gewählt ist
+- Dynamische SOC-Steuerung aktiv ist
+- Vorausschauende SOC-Freigabe aktiv ist
+- Forecast.Solar verfügbar ist
+- es Tag ist
+- der Ist-SOC über der SOC-Freigabegrenze liegt
+- freigebare Akkuenergie größer als `0 kWh` vorhanden ist
+- aktuell Netzbezug vorliegt
+
+**SOC-Nachladung** hat Vorrang vor **SOC-Freigabe**. Die beiden Zustände können
+aufgrund ihrer entgegengesetzten SOC-Bedingungen normalerweise nicht
+zeitgleich aktiv sein.
+
+#### Prognosegrenze
+
+Die Schutzwirkung ist prognosebasiert. Mit den aktuell bekannten Daten entlädt
+die Funktion nicht absichtlich unter den SOC, der zum Erreichen des Ziel-SOC
+benötigt wird. Ändern sich später PV-Ertrag oder Hausverbrauch deutlich
+gegenüber der Prognose, kann das reale Abend-SOC trotzdem abweichen.
+
+Bei einer verschlechterten Prognose steigt der prognosebasierte Mindest-SOC und
+damit die SOC-Freigabegrenze. Die Freigabe endet automatisch; bei Bedarf kann
+der dynamische Regler anschließend in **SOC-Nachladung** wechseln.
+
+Wurde der letzte Stellbefehl im Modus **SOC-Freigabe** gesendet und muss der
+Sollwert anschließend sinken, wird diese Reduzierung als sicherheitsrelevant
+behandelt. Sie umgeht die normale 2-Minuten-Wartezeit und die übliche
+Schalt-Hysterese, damit eine steigende Freigabegrenze oder sinkende Hauslast
+nicht unnötig lange mit dem alten höheren Entladesollwert weiterläuft.
 
 ## 4. Parameter
 
@@ -503,6 +641,27 @@ behind    = Hinter Ladeplan
 Zusätzliche Ladeleistung zum Aufholen eines SOC-Rückstands innerhalb der
 konfigurierten SOC-Nachholzeit.
 
+### Prognosebasierter Mindest-SOC
+
+Konservativer Mindest-SOC, der nach aktueller Restprognose bereits vorhanden
+sein muss, damit der Ziel-SOC bis Sonnenuntergang rechnerisch noch erreichbar
+bleibt.
+
+### SOC-Freigabegrenze
+
+Untergrenze, bis zu der die vorausschauende SOC-Freigabe den Akku maximal
+nutzen darf. Sie berücksichtigt dynamisches SOC-Soll, prognosebasierten
+Mindest-SOC und 2 Prozentpunkte Sicherheitsreserve.
+
+### Freigebare Akkuenergie
+
+Batterieenergie oberhalb der aktuellen SOC-Freigabegrenze.
+
+### SOC-Freigabe-Soll
+
+NOAH-Ausgangssollwert, der bei aktiver SOC-Freigabe den aktuellen positiven
+Netzbezug möglichst aus dem sicheren SOC-Vorsprung decken soll.
+
 ### Ausgangssollwert
 
 Endgültiger berechneter NOAH-Sollwert nach Betriebsart, Grenzwerten,
@@ -585,9 +744,18 @@ Seit Beta 8 enthält das Dashboard außerdem:
 - SOC-Nachholzeit
 - Diagramm mit Ist-SOC, dynamischem SOC-Soll und Ziel-SOC
 
+Beta 11 ergänzt:
+
+- Vorausschauende SOC-Freigabe aktiv
+- Prognosebasierter Mindest-SOC
+- SOC-Freigabegrenze
+- Freigebare Akkuenergie
+- SOC-Freigabe-Soll
+- Reglermodus `SOC-Freigabe`
+
 Ein bestehendes Dashboard wird gezielt migriert und nicht vollständig durch
 die Standardvorlage ersetzt.
 
-Beta 10 ändert die Dashboard-Struktur nicht. Die Dashboard-Template-Version
-bleibt daher bei Version 9; der vorhandene SOC-Chart zeigt automatisch die neue
-zeitbasierte Sollkurve.
+Beta 11 erhöht wegen der neuen Dashboardelemente die Dashboard-Template-Version
+von 9 auf 10. Bestehende Benutzeranpassungen werden nicht pauschal
+überschrieben.
