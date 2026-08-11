@@ -832,7 +832,13 @@ class NoahOptimizerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 if releasable_battery_energy is not None
                 else None
             ),
-            DATA_SOC_RELEASE_TARGET: round(soc_release_target),
+            DATA_SOC_RELEASE_TARGET: round(
+                self._round_to_step(
+                    soc_release_target,
+                    command_step,
+                    max_output,
+            )
+),
             DATA_SELF_CONSUMPTION_TARGET: round(self_consumption_target),
             DATA_CHARGE_PRIORITY_TARGET: round(charge_priority_target),
             DATA_OUTPUT_TARGET: round(output_target),

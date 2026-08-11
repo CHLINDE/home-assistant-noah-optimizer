@@ -475,8 +475,13 @@ The active controller includes:
 Beta 10 changes the dynamic SOC calculation used in automatic mode.
 
 Beta 11 adds predictive SOC release as an additional automatic controller mode.
-The low-level write controller in `control.py` remains unchanged. Predictive
-SOC release is disabled by default.
+
+The controller in `control.py` is also extended so that downward target
+corrections after a SOC-release command bypass the normal command interval and
+deadband. This allows falling household load or a rising SOC release floor to
+reduce battery discharge without waiting for the normal rate limit.
+
+Predictive SOC release is disabled by default.
 
 ## Legacy YAML interlock
 

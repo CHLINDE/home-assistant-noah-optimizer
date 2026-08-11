@@ -492,13 +492,22 @@ diese Reduzierung bewusst die normale 2-Minuten-Wartezeit und die
 Schalt-Hysterese. Dadurch soll eine sinkende Hauslast möglichst schnell zu
 einem niedrigeren Sollwert führen.
 
-Wenn stärkere oder dauerhafte Einspeisung auftritt, zunächst:
+Wenn stärkere oder dauerhafte Einspeisung auftritt:
 
-```text
-NOAH-Steuerung aktiv = Aus
-```
+1. **Vorausschauende SOC-Freigabe aktiv** ausschalten.
+2. Prüfen, ob Ausgangssollwert und NOAH-Stellgröße auf einen niedrigeren Wert
+   zurückgehen.
+3. Anschließend bei Bedarf **NOAH-Steuerung aktiv** ausschalten.
 
-setzen und Netzleistung, Ausgangssollwert, SOC-Freigabe-Soll und tatsächliche
+Das Ausschalten von **NOAH-Steuerung aktiv** verhindert weitere Stellbefehle,
+setzt einen zuvor geschriebenen NOAH-Sollwert jedoch nicht automatisch auf
+`0 W`.
+
+Falls die Stellgröße nicht wie erwartet zurückgeht, kann `NOAH System Output
+Power` unter **Werkzeuge → Aktionen** mit `number.set_value` manuell auf einen
+sicheren Wert gesetzt werden.
+
+Anschließend Netzleistung, Ausgangssollwert, SOC-Freigabe-Soll und tatsächliche
 NOAH-Ausgangsleistung vergleichen.
 
 ## 25. Abend-SOC wird trotz SOC-Freigabe nicht erreicht
