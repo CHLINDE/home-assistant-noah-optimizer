@@ -117,6 +117,18 @@
           "behind": "Hinter Ladeplan"
         }
       },
+      "forecast_required_soc": {
+        "name": "Prognosebasierter Mindest-SOC"
+      },
+      "soc_release_floor": {
+        "name": "SOC-Freigabegrenze"
+      },
+      "releasable_battery_energy": {
+        "name": "Freigebare Akkuenergie"
+      },
+      "soc_release_target": {
+        "name": "SOC-Freigabe-Soll"
+      },
       "self_consumption_target": {
         "name": "Eigenverbrauch-Soll"
       },
@@ -138,7 +150,8 @@
           "target_soc_reached": "Ziel-SOC erreicht",
           "no_forecast": "Konservativ ohne Prognose",
           "blended_reserve": "Gleitende Reserve",
-          "soc_catchup": "SOC-Nachladung"
+          "soc_catchup": "SOC-Nachladung",
+          "soc_release": "SOC-Freigabe"
         }
       },
       "data_status": {
@@ -219,6 +232,9 @@
       },
       "dynamic_soc_enabled": {
         "name": "Dynamische SOC-Steuerung aktiv"
+      },
+      "soc_release_enabled": {
+        "name": "Vorausschauende SOC-Freigabe aktiv"
       }
     },
     "binary_sensor": {

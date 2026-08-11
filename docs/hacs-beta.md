@@ -1,6 +1,6 @@
 ﻿# HACS Beta
 
-Current beta: `2.0.0-beta.10`
+Current beta: `2.0.0-beta.11`
 
 ## Direct HACS repository button
 
@@ -157,7 +157,7 @@ Dynamic SOC control
 
 is disabled by default for a new setup.
 
-Before updating to Beta 10, disable both:
+Before updating to Beta 11, disable active control and dynamic SOC control:
 
 ```text
 Active NOAH control
@@ -186,6 +186,111 @@ When active, the controller mode is:
 ```text
 soc_catchup
 ```
+
+## Predictive SOC release
+
+Beta 11 adds predictive SOC release for situations where the battery is safely
+ahead of the charging schedule. The goal is to use part of that safe SOC
+surplus for current household demand instead of importing from the grid, while
+preserving enough SOC to remain on track for the evening target.
+
+The feature has a separate switch:
+
+```text
+Predictive SOC release enabled
+```
+
+It is disabled by default and only operates together with dynamic SOC control
+in `automatic` mode.
+
+### Forecast-required minimum SOC
+
+The conservative remaining forecast already determines how much SOC must be
+present now if the target SOC is still to be reachable by sunset:
+
+```text
+forecast-required minimum SOC
+= target SOC - possible future SOC gain
+```
+
+The result is clamped between minimum SOC and target SOC.
+
+### SOC release floor
+
+The release floor protects both the active time-based schedule and the
+forecast-required minimum SOC:
+
+```text
+base release floor
+= max(dynamic SOC target, forecast-required minimum SOC)
+
+SOC release floor
+= min(base release floor + 2 percentage points, 100%)
+```
+
+The extra 2 percentage points use the existing dynamic SOC tolerance as a
+safety buffer.
+
+### Releasable battery energy
+
+```text
+releasable SOC
+= max(actual SOC - SOC release floor, 0)
+
+releasable battery energy
+= battery capacity × releasable SOC / 100
+```
+
+Only energy above the release floor is considered available for predictive
+release.
+
+### SOC release target
+
+When positive grid import exists, the release target is calculated as:
+
+```text
+SOC release target
+= current NOAH output + current positive grid import
+```
+
+The target is limited to maximum output power and then processed through the
+normal output step logic.
+
+This aims to reduce current grid import without intentionally requesting
+battery export to the grid. Small temporary deviations around zero can still
+occur because of output step size, measurement delay, and changing household
+load.
+
+### Activation conditions
+
+The `soc_release` controller mode requires all of the following:
+
+- optimizer calculation enabled
+- operating mode `automatic`
+- dynamic SOC control enabled
+- predictive SOC release enabled
+- forecast available
+- daytime
+- actual SOC above the SOC release floor
+- releasable battery energy greater than zero
+- positive grid import
+
+SOC catch-up is evaluated before SOC release. If the forecast later worsens,
+the release floor rises and predictive release stops automatically; dynamic SOC
+control can then switch to `soc_catchup` when charging recovery becomes
+necessary.
+
+If the previous output command was issued in `soc_release` mode and the new
+target must decrease, that reduction bypasses the normal two-minute command
+interval and deadband. This prevents a stale high discharge target from
+remaining active while the release floor rises or household load falls.
+
+### Forecast-based safety
+
+The release floor is based on the currently available forecast and configured
+load assumptions. The controller does not intentionally discharge below that
+calculated floor. It cannot, however, guarantee the evening SOC if later PV
+production or household demand differs materially from the forecast.
 
 ## Automatic dashboard
 
@@ -251,6 +356,21 @@ Dashboard template version remains:
 
 The existing dynamic SOC chart automatically displays the new time-based target
 curve because the same `dynamic_soc_target` sensor is used.
+
+### Beta 11 dashboard migration
+
+Beta 11 adds new release controls and diagnostics, so the dashboard template
+version increases to:
+
+```text
+10
+```
+
+Existing dashboards are migrated selectively. The integration adds the
+predictive release switch, forecast-required minimum SOC, SOC release floor,
+releasable battery energy, SOC release target, and the `soc_release` controller
+mode where the standard cards can be identified. Unrelated user customizations
+are preserved.
 
 ## Dashboard requirements
 
@@ -336,11 +456,12 @@ Starting with Beta 5, the integration can optionally write the calculated
 output target to the configured NOAH System Output Power entity using Home
 Assistant's `number.set_value` service.
 
-Three switches are available:
+Four switches are available:
 
 - `Optimizer calculation enabled`
 - `Active NOAH control`
 - `Dynamic SOC control`
+- `Predictive SOC release enabled`
 
 The active controller includes:
 
@@ -351,9 +472,16 @@ The active controller includes:
 - persistent Home Assistant failsafe notification
 - legacy YAML controller interlock
 
-Beta 10 changes only the dynamic SOC calculation used in automatic mode when
-dynamic SOC control is enabled. The low-level write controller in `control.py`
-is unchanged.
+Beta 10 changes the dynamic SOC calculation used in automatic mode.
+
+Beta 11 adds predictive SOC release as an additional automatic controller mode.
+
+The controller in `control.py` is also extended so that downward target
+corrections after a SOC-release command bypass the normal command interval and
+deadband. This allows falling household load or a rising SOC release floor to
+reduce battery discharge without waiting for the normal rate limit.
+
+Predictive SOC release is disabled by default.
 
 ## Legacy YAML interlock
 
@@ -474,6 +602,20 @@ Dynamic SOC load-plan rework:
 - prevents weak forecast from forcing an immediate 100% target early in the day
 - keeps existing dashboard entities and template version 9
 - leaves manual, self-consumption, and charge-priority modes unchanged
+
+### 2.0.0-beta.11
+
+Predictive SOC release:
+
+- adds a separate opt-in predictive release switch
+- calculates a forecast-required minimum SOC
+- protects the dynamic schedule and forecast requirement with an SOC release floor
+- exposes releasable battery energy and an SOC release target
+- adds the `soc_release` controller mode
+- uses safe SOC surplus to reduce current grid import
+- does not intentionally request battery export to the grid
+- increases dashboard template version to 10
+- preserves manual, self-consumption, charge-priority, and night behavior
 
 ## Current limitations 
 

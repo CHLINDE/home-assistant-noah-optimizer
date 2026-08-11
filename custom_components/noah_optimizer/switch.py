@@ -9,7 +9,12 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import NoahOptimizerConfigEntry
-from .const import OPT_CONTROL_ENABLED, OPT_DYNAMIC_SOC_ENABLED, OPT_ENABLED
+from .const import (
+    OPT_CONTROL_ENABLED,
+    OPT_DYNAMIC_SOC_ENABLED,
+    OPT_ENABLED,
+    OPT_SOC_RELEASE_ENABLED,
+)
 from .entity import NoahOptimizerEntity
 
 
@@ -24,6 +29,7 @@ async def async_setup_entry(
             NoahOptimizerEnabledSwitch(entry.runtime_data, entry),
             NoahOptimizerControlEnabledSwitch(entry.runtime_data, entry),
             NoahOptimizerDynamicSocSwitch(entry.runtime_data, entry),
+            NoahOptimizerSocReleaseSwitch(entry.runtime_data, entry),
         ]
     )
 
@@ -135,3 +141,37 @@ class NoahOptimizerDynamicSocSwitch(NoahOptimizerEntity, SwitchEntity):
         controller = getattr(self.coordinator, "controller", None)
         if controller is not None:
             await controller.async_control_tick()
+
+
+class NoahOptimizerSocReleaseSwitch(NoahOptimizerEntity, SwitchEntity):
+    """Enable predictive SOC release while the battery is safely ahead."""
+
+    _attr_translation_key = "soc_release_enabled"
+
+    def __init__(self, coordinator, entry) -> None:
+        """Initialize the switch."""
+        super().__init__(coordinator, entry)
+        self.entry = entry
+        self._attr_unique_id = f"{entry.entry_id}_soc_release_enabled"
+
+    @property
+    def is_on(self) -> bool:
+        """Return whether predictive SOC release is enabled."""
+        return bool(self.coordinator.get_option(OPT_SOC_RELEASE_ENABLED))
+
+    async def async_turn_on(self, **kwargs) -> None:
+        """Enable predictive SOC release."""
+        await self.coordinator.async_set_option(OPT_SOC_RELEASE_ENABLED, True)
+        await self._async_refresh_controller()
+
+    async def async_turn_off(self, **kwargs) -> None:
+        """Disable predictive SOC release."""
+        await self.coordinator.async_set_option(OPT_SOC_RELEASE_ENABLED, False)
+        await self._async_refresh_controller()
+
+    async def _async_refresh_controller(self) -> None:
+        """Evaluate the controller immediately after a switch change."""
+        controller = getattr(self.coordinator, "controller", None)
+        if controller is not None:
+            await controller.async_control_tick()
+

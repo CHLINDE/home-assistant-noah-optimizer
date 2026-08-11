@@ -1,3 +1,47 @@
+## [2.0.0-beta.11]
+
+### Added
+
+- Predictive SOC release for using safely available battery headroom to reduce grid import before sunset
+- Separate opt-in switch for predictive SOC release, disabled by default
+- New `soc_release` controller mode
+- Forecast-required minimum SOC sensor
+- SOC release floor sensor with an additional 2-percentage-point safety buffer
+- Releasable battery energy sensor
+- SOC release target sensor
+- Predictive SOC release diagnostics in the automatic Lovelace dashboard
+
+### Changed
+
+- Automatic mode can cover current grid import from safely releasable battery SOC when predictive SOC release is enabled
+- SOC release is limited by the higher of the dynamic SOC target and the forecast-required minimum SOC, plus the existing 2-percentage-point SOC tolerance as a safety buffer
+- SOC release requires dynamic SOC control to be enabled so catch-up charging remains available if the forecast later worsens
+- SOC release only reacts to positive grid import and does not intentionally request battery export to the grid
+- Manual, self-consumption, charge-priority, and night behavior remain unchanged
+- Dashboard template storage version increased from 9 to 10
+- Existing dashboards are migrated selectively with the new switch and release diagnostics while preserving user customizations
+- Downward target corrections after SOC-release commands bypass the normal two-minute command interval and deadband so a rising release floor or falling household load can reduce discharge promptly
+
+### Documentation
+
+- Updated README, installation, configuration, HACS beta, and troubleshooting documentation for predictive SOC release
+- Added formulas for forecast-required SOC, release floor, releasable battery energy, and release target
+- Documented that the release safety is forecast-based and cannot guarantee the evening target if actual PV production or household demand differs materially from the forecast
+
+### Safety
+
+Predictive SOC release is disabled by default.
+
+Before enabling it, verify the forecast-required minimum SOC, SOC release floor,
+releasable battery energy, and SOC release target in observation mode.
+
+The release logic never intentionally discharges below the calculated release
+floor. It is nevertheless based on the currently available forecast and load
+assumptions and therefore cannot provide an absolute guarantee for the evening
+SOC if conditions change unexpectedly.
+
+---
+
 ## [2.0.0-beta.10]
 
 ### Changed

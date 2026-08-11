@@ -42,6 +42,7 @@ OPT_ENABLED: Final = "enabled"
 OPT_MODE: Final = "mode"
 OPT_CONTROL_ENABLED: Final = "control_enabled"
 OPT_DYNAMIC_SOC_ENABLED: Final = "dynamic_soc_enabled"
+OPT_SOC_RELEASE_ENABLED: Final = "soc_release_enabled"
 
 OPT_BATTERY_CAPACITY: Final = "battery_capacity"
 OPT_TARGET_SOC: Final = "target_soc"
@@ -75,6 +76,7 @@ DEFAULT_OPTIONS: Final = {
     OPT_ENABLED: False,
     OPT_CONTROL_ENABLED: False,
     OPT_DYNAMIC_SOC_ENABLED: False,
+    OPT_SOC_RELEASE_ENABLED: False,
     OPT_MODE: MODE_AUTOMATIC,
     OPT_BATTERY_CAPACITY: 2.048,
     OPT_TARGET_SOC: 95.0,
@@ -127,6 +129,10 @@ DATA_DYNAMIC_SOC_TARGET: Final = "dynamic_soc_target"
 DATA_SOC_DEVIATION: Final = "soc_deviation"
 DATA_DYNAMIC_REQUIRED_CHARGE_POWER: Final = "dynamic_required_charge_power"
 DATA_DYNAMIC_SOC_STATUS: Final = "dynamic_soc_status"
+DATA_FORECAST_REQUIRED_SOC: Final = "forecast_required_soc"
+DATA_SOC_RELEASE_FLOOR: Final = "soc_release_floor"
+DATA_RELEASABLE_BATTERY_ENERGY: Final = "releasable_battery_energy"
+DATA_SOC_RELEASE_TARGET: Final = "soc_release_target"
 
 DATA_SELF_CONSUMPTION_TARGET: Final = "self_consumption_target"
 DATA_CHARGE_PRIORITY_TARGET: Final = "charge_priority_target"
@@ -166,3 +172,4 @@ CONTROLLER_TARGET_SOC_REACHED: Final = "target_soc_reached"
 CONTROLLER_NO_FORECAST: Final = "no_forecast"
 CONTROLLER_BLEND: Final = "blended_reserve"
 CONTROLLER_SOC_CATCHUP: Final = "soc_catchup"
+CONTROLLER_SOC_RELEASE: Final = "soc_release"

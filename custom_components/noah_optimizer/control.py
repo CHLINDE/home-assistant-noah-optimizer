@@ -17,7 +17,9 @@ from homeassistant.util import dt as dt_util
 
 from .const import (
     CONF_SYSTEM_OUTPUT_POWER,
+    CONTROLLER_SOC_RELEASE,
     DATA_ACTUATOR_AVAILABLE,
+    DATA_CONTROLLER_MODE,
     DATA_CRITICAL_DATA_OK,
     DATA_OUTPUT_TARGET,
     OPT_COMMAND_DEADBAND,
@@ -68,6 +70,7 @@ class NoahOptimizerController:
 
         self._last_command_target: float | None = None
         self._last_command_at: datetime | None = None
+        self._last_command_mode: str | None = None
 
         self._critical_missing_since: datetime | None = None
         self._failsafe_sent = False
@@ -460,6 +463,12 @@ class NoahOptimizerController:
                 return
 
             target = float(target)
+            controller_mode = str(
+                self.coordinator.data.get(
+                    DATA_CONTROLLER_MODE,
+                    "",
+                )
+            )
 
             actual_setpoint = (
                 self._read_actuator_value()
@@ -484,11 +493,23 @@ class NoahOptimizerController:
                     now - self._last_command_at
                 )
 
+            # A target reduction after a command issued in SOC release mode
+            # is safety-relevant. Apply it immediately so falling household
+            # load or a rising SOC release floor cannot keep the previous
+            # discharge target active until the normal rate limit expires.
+            release_reduction_required = (
+                self._last_command_mode == CONTROLLER_SOC_RELEASE
+                and target < actual_setpoint
+            )
+
             # Normal commands must never be sent faster
-            # than once every two minutes.
+            # than once every two minutes. SOC-release reductions are the
+            # exception because delaying them could use battery energy below
+            # the newly calculated safe release range.
             if (
                 elapsed is not None
                 and elapsed < MIN_COMMAND_INTERVAL
+                and not release_reduction_required
             ):
                 self._set_status(
                     "rate_limited"
@@ -526,6 +547,7 @@ class NoahOptimizerController:
                 change_required
                 or first_sync_required
                 or retry_required
+                or release_reduction_required
             ):
                 if (
                     abs(
@@ -548,6 +570,7 @@ class NoahOptimizerController:
             )
 
             if success:
+                self._last_command_mode = controller_mode
                 self._set_status(
                     "command_sent"
                 )

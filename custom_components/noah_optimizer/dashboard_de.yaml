@@ -73,7 +73,8 @@ views:
                 'target_soc_reached': 'Ziel-SOC erreicht',
                 'no_forecast': 'Konservativ ohne Prognose',
                 'blended_reserve': 'Gleitende Reserve',
-                'soc_catchup': 'SOC-Nachladung'
+                'soc_catchup': 'SOC-Nachladung',
+                'soc_release': 'SOC-Freigabe'
               } %}
 
               {% set ctrl = '__CONTROL_ENABLED__' %}
@@ -126,6 +127,10 @@ views:
               **SOC-Abweichung:** {{ states('__SOC_DEVIATION__') }} %  
               **SOC-Ladeplan:** {{ soc_plan_text.get(soc_plan, soc_plan) }}  
               **Dynamisch erforderliche Ladeleistung:** {{ states('__DYNAMIC_REQUIRED_CHARGE_POWER__') }} W  
+              **Prognosebasierter Mindest-SOC:** {{ states('__FORECAST_REQUIRED_SOC__') }} %  
+              **SOC-Freigabegrenze:** {{ states('__SOC_RELEASE_FLOOR__') }} %  
+              **Freigebare Akkuenergie:** {{ states('__RELEASABLE_BATTERY_ENERGY__') }} kWh  
+              **SOC-Freigabe-Soll:** {{ states('__SOC_RELEASE_TARGET__') }} W  
               **Restprognose wirksam:** {{ states('__EFFECTIVE_FORECAST__') }} kWh  
               **Noch benötigte Ladeenergie:** {{ states('__CHARGE_NEED__') }} kWh  
               **Prognosemarge:** {{ states('__FORECAST_MARGIN__') }} kWh
@@ -417,6 +422,14 @@ views:
                 name: SOC-Ladeplan
               - entity: __DYNAMIC_REQUIRED_CHARGE_POWER__
                 name: Dynamisch erforderliche Ladeleistung
+              - entity: __FORECAST_REQUIRED_SOC__
+                name: Prognosebasierter Mindest-SOC
+              - entity: __SOC_RELEASE_FLOOR__
+                name: SOC-Freigabegrenze
+              - entity: __RELEASABLE_BATTERY_ENERGY__
+                name: Freigebare Akkuenergie
+              - entity: __SOC_RELEASE_TARGET__
+                name: SOC-Freigabe-Soll
 
       - type: grid
         cards:
@@ -430,6 +443,8 @@ views:
                 name: NOAH-Steuerung aktiv
               - entity: __DYNAMIC_SOC_ENABLED__
                 name: Dynamische SOC-Steuerung aktiv
+              - entity: __SOC_RELEASE_ENABLED__
+                name: Vorausschauende SOC-Freigabe aktiv
               - entity: __OPTIMIZER_MODE__
                 name: Betriebsart
               - entity: __TARGET_SOC__

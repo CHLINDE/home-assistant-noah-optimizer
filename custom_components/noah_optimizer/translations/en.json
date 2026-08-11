@@ -117,6 +117,18 @@
           "behind": "Behind schedule"
         }
       },
+      "forecast_required_soc": {
+        "name": "Forecast-required minimum SOC"
+      },
+      "soc_release_floor": {
+        "name": "SOC release floor"
+      },
+      "releasable_battery_energy": {
+        "name": "Releasable battery energy"
+      },
+      "soc_release_target": {
+        "name": "SOC release target"
+      },
       "self_consumption_target": {
         "name": "Self-consumption target"
       },
@@ -138,7 +150,8 @@
           "target_soc_reached": "Target SOC reached",
           "no_forecast": "Conservative without forecast",
           "blended_reserve": "Blended reserve",
-          "soc_catchup": "SOC catch-up"
+          "soc_catchup": "SOC catch-up",
+          "soc_release": "SOC release"
         }
       },
       "data_status": {
@@ -219,6 +232,9 @@
       },
       "dynamic_soc_enabled": {
         "name": "Dynamic SOC control enabled"
+      },
+      "soc_release_enabled": {
+        "name": "Predictive SOC release enabled"
       }
     },
     "binary_sensor": {

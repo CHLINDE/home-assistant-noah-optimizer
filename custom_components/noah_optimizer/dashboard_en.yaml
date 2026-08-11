@@ -73,7 +73,8 @@ views:
                 'target_soc_reached': 'Target SOC reached',
                 'no_forecast': 'Conservative without forecast',
                 'blended_reserve': 'Blended reserve',
-                'soc_catchup': 'SOC catch-up'
+                'soc_catchup': 'SOC catch-up',
+                'soc_release': 'SOC release'
               } %}
 
               {% set ctrl = '__CONTROL_ENABLED__' %}
@@ -126,6 +127,10 @@ views:
               **SOC deviation:** {{ states('__SOC_DEVIATION__') }} %  
               **SOC schedule:** {{ soc_plan_text.get(soc_plan, soc_plan) }}  
               **Dynamic required charging power:** {{ states('__DYNAMIC_REQUIRED_CHARGE_POWER__') }} W  
+              **Forecast-required minimum SOC:** {{ states('__FORECAST_REQUIRED_SOC__') }} %  
+              **SOC release floor:** {{ states('__SOC_RELEASE_FLOOR__') }} %  
+              **Releasable battery energy:** {{ states('__RELEASABLE_BATTERY_ENERGY__') }} kWh  
+              **SOC release target:** {{ states('__SOC_RELEASE_TARGET__') }} W  
               **Effective remaining forecast:** {{ states('__EFFECTIVE_FORECAST__') }} kWh  
               **Required charging energy:** {{ states('__CHARGE_NEED__') }} kWh  
               **Forecast margin:** {{ states('__FORECAST_MARGIN__') }} kWh
@@ -417,6 +422,14 @@ views:
                 name: SOC schedule status
               - entity: __DYNAMIC_REQUIRED_CHARGE_POWER__
                 name: Dynamic required charging power
+              - entity: __FORECAST_REQUIRED_SOC__
+                name: Forecast-required minimum SOC
+              - entity: __SOC_RELEASE_FLOOR__
+                name: SOC release floor
+              - entity: __RELEASABLE_BATTERY_ENERGY__
+                name: Releasable battery energy
+              - entity: __SOC_RELEASE_TARGET__
+                name: SOC release target
 
       - type: grid
         cards:
@@ -430,6 +443,8 @@ views:
                 name: Active NOAH control
               - entity: __DYNAMIC_SOC_ENABLED__
                 name: Dynamic SOC control enabled
+              - entity: __SOC_RELEASE_ENABLED__
+                name: Predictive SOC release enabled
               - entity: __OPTIMIZER_MODE__
                 name: Operating mode
               - entity: __TARGET_SOC__

@@ -33,6 +33,7 @@ from .const import (
     CONTROLLER_OFF,
     CONTROLLER_SELF_CONSUMPTION,
     CONTROLLER_SOC_CATCHUP,
+    CONTROLLER_SOC_RELEASE,
     CONTROLLER_TARGET_SOC_REACHED,
     DATA_ACTUATOR_AVAILABLE,
     DATA_AVAILABLE_BATTERY_ENERGY,
@@ -52,6 +53,7 @@ from .const import (
     DATA_FORECAST_COVERAGE,
     DATA_FORECAST_MARGIN,
     DATA_FORECAST_REMAINING,
+    DATA_FORECAST_REQUIRED_SOC,
     DATA_GRID_EXPORT,
     DATA_GRID_IMPORT,
     DATA_GRID_POWER,
@@ -62,9 +64,12 @@ from .const import (
     DATA_OUTPUT_POWER,
     DATA_OUTPUT_TARGET,
     DATA_REQUIRED_CHARGE_POWER,
+    DATA_RELEASABLE_BATTERY_ENERGY,
     DATA_SELF_CONSUMPTION_TARGET,
     DATA_SOC,
     DATA_SOC_DEVIATION,
+    DATA_SOC_RELEASE_FLOOR,
+    DATA_SOC_RELEASE_TARGET,
     DATA_SOLAR_POWER,
     DATA_STATUS,
     DEFAULT_OPTIONS,
@@ -93,6 +98,7 @@ from .const import (
     OPT_MODE,
     OPT_NIGHT_MAX_OUTPUT,
     OPT_RELEASE_MARGIN,
+    OPT_SOC_RELEASE_ENABLED,
     OPT_TARGET_SOC,
     STATUS_ACTUATOR_UNAVAILABLE,
     STATUS_BATTERY_DATA_MISSING,
@@ -331,13 +337,15 @@ class NoahOptimizerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         hours_to_sunset: float,
         daylight_progress: float,
         catchup_hours: float,
-    ) -> tuple[float, float, str, float]:
-        """Calculate the time-based forecast-aware SOC plan and catch-up demand.
+    ) -> tuple[float, float, str, float, float, float, float]:
+        """Calculate the SOC plan, catch-up demand, and safe release reserve.
 
         The plan starts at the configured minimum SOC at sunrise and reaches
         the configured target SOC at sunset. A weak remaining PV forecast
         raises the curve progressively, but never turns the forecast-based
-        requirement into an immediate hard 100 percent target.
+        requirement into an immediate hard 100 percent target. The release
+        floor additionally protects the forecast-based SOC requirement and
+        keeps a small SOC buffer before battery energy may be released.
         """
         safe_efficiency = max(efficiency, 0.1)
         safe_capacity = max(capacity, 0.001)
@@ -370,6 +378,19 @@ class NoahOptimizerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             target_soc,
         )
 
+        # Predictive release must never use SOC that is still required by
+        # either the active charging schedule or the conservative remaining
+        # forecast. The normal SOC tolerance is added as a safety buffer.
+        soc_release_floor = min(
+            max(dynamic_soc_target, forecast_required_soc)
+            + DYNAMIC_SOC_TOLERANCE_PERCENT,
+            100.0,
+        )
+        releasable_soc = max(soc - soc_release_floor, 0.0)
+        releasable_battery_energy = (
+            safe_capacity * releasable_soc / 100
+        )
+
         soc_deviation = soc - dynamic_soc_target
 
         if soc_deviation < -DYNAMIC_SOC_TOLERANCE_PERCENT:
@@ -397,6 +418,9 @@ class NoahOptimizerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             soc_deviation,
             dynamic_status,
             dynamic_required_charge_power,
+            forecast_required_soc,
+            soc_release_floor,
+            releasable_battery_energy,
         )
 
     async def _async_update_data(self) -> dict[str, Any]:
@@ -476,6 +500,10 @@ class NoahOptimizerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 DATA_SOC_DEVIATION: None,
                 DATA_DYNAMIC_REQUIRED_CHARGE_POWER: None,
                 DATA_DYNAMIC_SOC_STATUS: None,
+                DATA_FORECAST_REQUIRED_SOC: None,
+                DATA_SOC_RELEASE_FLOOR: None,
+                DATA_RELEASABLE_BATTERY_ENERGY: None,
+                DATA_SOC_RELEASE_TARGET: None,
                 DATA_SELF_CONSUMPTION_TARGET: None,
                 DATA_CHARGE_PRIORITY_TARGET: None,
                 DATA_OUTPUT_TARGET: None,
@@ -520,6 +548,7 @@ class NoahOptimizerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         selected_mode = str(self.get_option(OPT_MODE))
         enabled = bool(self.get_option(OPT_ENABLED))
         dynamic_soc_enabled = bool(self.get_option(OPT_DYNAMIC_SOC_ENABLED))
+        soc_release_enabled = bool(self.get_option(OPT_SOC_RELEASE_ENABLED))
 
         hours_to_sunset = self._hours_to_sunset()
         daylight_progress = self._daylight_progress()
@@ -569,6 +598,9 @@ class NoahOptimizerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         soc_deviation: float | None = None
         dynamic_soc_status: str | None = None
         dynamic_required_charge_power: float | None = None
+        forecast_required_soc: float | None = None
+        soc_release_floor: float | None = None
+        releasable_battery_energy: float | None = None
 
         if forecast_available:
             (
@@ -576,6 +608,9 @@ class NoahOptimizerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 soc_deviation,
                 dynamic_soc_status,
                 dynamic_required_charge_power,
+                forecast_required_soc,
+                soc_release_floor,
+                releasable_battery_energy,
             ) = self._dynamic_soc_values(
                 soc=soc,
                 min_soc=min_soc,
@@ -603,6 +638,15 @@ class NoahOptimizerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             max_output,
         )
 
+        # Predictive release deliberately removes the configured residual
+        # grid import while safe battery headroom exists. It only increases
+        # the NOAH output by the current grid import and never requests
+        # deliberate battery export.
+        soc_release_target = min(
+            max(output_power + max(grid_power, 0.0), 0.0),
+            max_output,
+        )
+
         charge_priority_raw = max(
             solar_power - required_charge_power,
             0.0,
@@ -624,6 +668,20 @@ class NoahOptimizerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             and soc_deviation is not None
             and soc_deviation < -DYNAMIC_SOC_TOLERANCE_PERCENT
             and dynamic_required_charge_power is not None
+        )
+
+        soc_release_active = (
+            soc_release_enabled
+            and dynamic_soc_enabled
+            and selected_mode == MODE_AUTOMATIC
+            and forecast_available
+            and not night
+            and soc > min_soc
+            and soc_release_floor is not None
+            and soc > soc_release_floor
+            and releasable_battery_energy is not None
+            and releasable_battery_energy > 0
+            and grid_power > 0
         )
 
         if dynamic_catchup_active:
@@ -654,12 +712,14 @@ class NoahOptimizerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             controller_mode = CONTROLLER_MINIMUM_SOC
         elif night:
             controller_mode = CONTROLLER_NIGHT
+        elif dynamic_catchup_active:
+            controller_mode = CONTROLLER_SOC_CATCHUP
+        elif soc_release_active:
+            controller_mode = CONTROLLER_SOC_RELEASE
         elif soc >= target_soc:
             controller_mode = CONTROLLER_TARGET_SOC_REACHED
         elif not forecast_available:
             controller_mode = CONTROLLER_NO_FORECAST
-        elif dynamic_catchup_active:
-            controller_mode = CONTROLLER_SOC_CATCHUP
         elif forecast_margin <= 0:
             controller_mode = CONTROLLER_CHARGE_PRIORITY
         elif forecast_margin >= release_margin:
@@ -677,12 +737,14 @@ class NoahOptimizerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             raw_target = 0.0
         elif night:
             raw_target = min(self_consumption_target, night_max_output)
+        elif dynamic_catchup_active:
+            raw_target = soc_catchup_target
+        elif soc_release_active:
+            raw_target = soc_release_target
         elif soc >= target_soc:
             raw_target = self_consumption_target
         elif not forecast_available:
             raw_target = charge_priority_target
-        elif dynamic_catchup_active:
-            raw_target = soc_catchup_target
         elif forecast_margin <= 0:
             raw_target = charge_priority_target
         elif forecast_margin >= release_margin:
@@ -755,6 +817,28 @@ class NoahOptimizerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 else None
             ),
             DATA_DYNAMIC_SOC_STATUS: dynamic_soc_status,
+            DATA_FORECAST_REQUIRED_SOC: (
+                round(forecast_required_soc, 1)
+                if forecast_required_soc is not None
+                else None
+            ),
+            DATA_SOC_RELEASE_FLOOR: (
+                round(soc_release_floor, 1)
+                if soc_release_floor is not None
+                else None
+            ),
+            DATA_RELEASABLE_BATTERY_ENERGY: (
+                round(releasable_battery_energy, 3)
+                if releasable_battery_energy is not None
+                else None
+            ),
+            DATA_SOC_RELEASE_TARGET: round(
+                self._round_to_step(
+                    soc_release_target,
+                    command_step,
+                    max_output,
+            )
+),
             DATA_SELF_CONSUMPTION_TARGET: round(self_consumption_target),
             DATA_CHARGE_PRIORITY_TARGET: round(charge_priority_target),
             DATA_OUTPUT_TARGET: round(output_target),

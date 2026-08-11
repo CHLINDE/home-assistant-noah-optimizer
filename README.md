@@ -25,7 +25,7 @@ Eine HACS-kompatible Custom Integration ist als Beta verfügbar.
 Aktuelle Beta:
 
 ```text
-2.0.0-beta.10
+2.0.0-beta.11
 ```
 
 Ab Beta 5 kann die Integration den berechneten Sollwert optional aktiv an
@@ -49,6 +49,12 @@ Beta 10 überarbeitet den dynamischen SOC-Ladeplan. Das dynamische Soll folgt
 nun einer zeitbasierten Kurve von Mindest-SOC bei Sonnenaufgang bis Ziel-SOC
 bei Sonnenuntergang. Eine knappe PV-Restprognose hebt diese Kurve progressiv
 an, ohne das Soll bereits früh am Tag hart auf 100 % zu setzen.
+
+Beta 11 ergänzt eine **vorausschauende SOC-Freigabe**. Liegt der Speicher
+sicher über dem aktuellen Ladeplan und über dem prognosebasiert benötigten
+Mindest-SOC, darf dieser SOC-Vorsprung für den Hausverbrauch genutzt werden.
+Dadurch wird Netzbezug reduziert und gleichzeitig wieder Platz für späteren
+PV-Überschuss geschaffen. Die neue Funktion ist standardmäßig ausgeschaltet.
 
 ## Voraussetzungen
 
@@ -161,6 +167,10 @@ Die Integration berechnet unter anderem:
 - dynamisches SOC-Soll
 - SOC-Abweichung zum dynamischen Ladeplan
 - dynamisch erforderliche Nachladeleistung
+- prognosebasierten Mindest-SOC
+- SOC-Freigabegrenze
+- freigebare Akkuenergie
+- SOC-Freigabe-Sollwert
 - Reglermodus
 - endgültigen Ausgangssollwert
 
@@ -187,7 +197,10 @@ Restprognose, Prognosemarge, erwarteter Hauslast, Netzleistung und verbleibender
 Zeit bis Sonnenuntergang automatisch gewählt.
 
 Ist zusätzlich **Dynamische SOC-Steuerung aktiv** eingeschaltet, kann die
-Automatik den Reglermodus **SOC-Nachladung** verwenden.
+Automatik den Reglermodus **SOC-Nachladung** verwenden. Ist außerdem die
+**Vorausschauende SOC-Freigabe** aktiviert und ausreichend sicherer
+SOC-Vorsprung vorhanden, kann der Reglermodus **SOC-Freigabe** verwendet
+werden.
 
 ### Eigenverbrauch
 
@@ -327,11 +340,12 @@ Speicher bis zum konfigurierten Mindest-SOC entladen.
 
 ### Sichere Aktivierung
 
-Nach dem Update auf Beta 10 sollte zunächst gelten:
+Nach dem Update auf Beta 11 sollte zunächst gelten:
 
 ```text
 NOAH-Steuerung aktiv = Aus
 Dynamische SOC-Steuerung aktiv = Aus
+Vorausschauende SOC-Freigabe aktiv = Aus
 ```
 
 Die Sensoren rechnen trotzdem bereits mit der neuen Kurve. Dadurch kann das
@@ -339,6 +353,98 @@ Verhalten zunächst im Dashboard beobachtet werden.
 
 Die dynamische SOC-Steuerung beeinflusst den Sollwert nur in der Betriebsart
 **Automatik**. Manuell, Eigenverbrauch und Ladepriorität bleiben unverändert.
+
+## Vorausschauende SOC-Freigabe ab Beta 11
+
+Beta 11 nutzt einen sicher freigebbaren SOC-Vorsprung, um bei einem bereits
+weit geladenen Akku unnötigen Netzbezug zu vermeiden und gleichzeitig wieder
+Aufnahmekapazität für späteren PV-Überschuss zu schaffen.
+
+Die Funktion wirkt ausschließlich in der Betriebsart **Automatik** und besitzt
+einen eigenen Schalter:
+
+```text
+Vorausschauende SOC-Freigabe aktiv
+```
+
+Der Schalter ist standardmäßig **Aus**. Zusätzlich muss die dynamische
+SOC-Steuerung aktiv sein. Dadurch bleibt die SOC-Nachladung verfügbar, falls
+sich die Prognose später verschlechtert.
+
+### Prognosebasierter Mindest-SOC
+
+Aus der noch für den Akku erwarteten PV-Energie wird weiterhin berechnet,
+welcher SOC bereits vorhanden sein muss, damit der Ziel-SOC bis
+Sonnenuntergang prognostisch noch erreichbar ist:
+
+```text
+Prognosebasierter Mindest-SOC
+= Ziel-SOC - möglicher zukünftiger SOC-Zuwachs
+```
+
+Der Wert wird auf Mindest-SOC bis Ziel-SOC begrenzt.
+
+### SOC-Freigabegrenze
+
+Für eine Entladung wird nicht nur der aktuelle dynamische Ladeplan betrachtet.
+Die sichere Untergrenze ist der größere Wert aus dynamischem SOC-Soll und
+prognosebasiertem Mindest-SOC. Zusätzlich bleiben 2 SOC-Prozentpunkte Reserve:
+
+```text
+SOC-Freigabegrenze
+= max(Dynamisches SOC-Soll, Prognosebasierter Mindest-SOC)
+  + 2 %-Punkte Sicherheitsreserve
+```
+
+Die Grenze wird maximal auf `100 %` begrenzt.
+
+Der Optimizer gibt nur den Anteil oberhalb dieser Grenze frei:
+
+```text
+Freigebarer SOC
+= max(Ist-SOC - SOC-Freigabegrenze, 0)
+
+Freigebare Akkuenergie
+= Akkukapazität × Freigebarer SOC / 100
+```
+
+### Regelwirkung
+
+Die SOC-Freigabe wird nur aktiv, wenn gleichzeitig:
+
+- Optimierer-Berechnung aktiv ist
+- Betriebsart **Automatik** gewählt ist
+- Dynamische SOC-Steuerung aktiv ist
+- Vorausschauende SOC-Freigabe aktiv ist
+- Forecast.Solar verfügbar ist
+- es Tag ist
+- der Ist-SOC über der SOC-Freigabegrenze liegt
+- tatsächlich Netzbezug vorhanden ist
+
+Dann erhöht der Optimizer die NOAH-Ausgangsleistung um den aktuell gemessenen
+Netzbezug, höchstens bis zur maximalen Ausgangsleistung:
+
+```text
+SOC-Freigabe-Soll
+= aktuelle NOAH-Ausgangsleistung + aktueller Netzbezug
+```
+
+Ziel ist ein möglichst kleiner Netzbezug. Es wird **keine absichtliche
+Batterieeinspeisung ins Netz** angefordert. Wegen Stellgrößenraster,
+Messverzögerungen und Laständerungen können kurzfristig dennoch kleine
+Abweichungen um 0 W entstehen.
+
+### Sicherheitsgrenze der Prognose
+
+Die SOC-Freigabe ist prognosebasiert. Sie verhindert, dass der Optimizer den
+Akku absichtlich unter den nach aktuellem Ladeplan und aktueller Prognose
+benötigten SOC entlädt. Sie kann jedoch keine absolute Garantie geben, wenn
+sich PV-Ertrag oder Hausverbrauch später deutlich anders entwickeln als
+prognostiziert.
+
+Verschlechtert sich die Prognose, steigt die SOC-Freigabegrenze. Die Freigabe
+endet dann automatisch; bei aktiviertem dynamischem SOC-Regler kann anschließend
+wieder **SOC-Nachladung** erforderlich werden.
 
 ## Aktive Steuerung
 
@@ -348,16 +454,18 @@ Die Integration besitzt getrennte Schalter:
 Optimierer-Berechnung aktiv
 NOAH-Steuerung aktiv
 Dynamische SOC-Steuerung aktiv
+Vorausschauende SOC-Freigabe aktiv
 ```
 
-Die aktive NOAH-Steuerung und die dynamische SOC-Steuerung sind standardmäßig
-ausgeschaltet.
+Die aktive NOAH-Steuerung, die dynamische SOC-Steuerung und die
+vorausschauende SOC-Freigabe sind standardmäßig ausgeschaltet.
 
 Der Controller enthält unter anderem:
 
 - Schalt-Hysterese
 - Stellgrößenraster
 - Mindestabstand zwischen normalen Stellbefehlen
+- sofortige sicherheitsrelevante Sollwertreduzierung nach SOC-Freigabe
 - Wiederholungsversuch bei nicht übernommenem Sollwert
 - Failsafe bei längerem Verlust kritischer Daten
 - persistente Home-Assistant-Benachrichtigung
@@ -396,6 +504,14 @@ Vorhandene Benutzeranpassungen bleiben erhalten. Gleichzeitig wird die alte
 fehlerhafte Batterie-Flusszuordnung korrigiert, falls sie noch exakt im
 Beta-6-Zustand vorhanden ist.
 
+### Dashboard-Migration in Beta 11
+
+Beta 11 ergänzt die neue Freigabefunktion und deren Diagnosesensoren gezielt in
+bestehende Dashboards. Dafür wird die Dashboard-Template-Version von 9 auf 10
+erhöht. Das Dashboard wird nicht vollständig ersetzt; vorhandene
+Benutzeranpassungen bleiben erhalten, soweit die bekannten Standardkarten
+eindeutig erkannt werden können.
+
 ### Energiefluss
 
 Für Power Flow Card Plus gilt:
@@ -421,6 +537,8 @@ Entladeleistung als Energiefluss **aus** dem Akku.
 - Akkustand und Prognosedeckung
 - dynamischer SOC-Ladeplan mit Ist-SOC, dynamischem Soll und Ziel-SOC
 - SOC-Abweichung und Ladeplanstatus
+- prognosebasierter Mindest-SOC und SOC-Freigabegrenze
+- freigebare Akkuenergie und SOC-Freigabe-Soll
 - Reglermodus und Controllerstatus
 - letzter Stellwert und letzter Stellbefehl
 - Energieplanung bis Sonnenuntergang
@@ -514,6 +632,22 @@ Dynamischen SOC-Ladeplan neu aufgebaut:
 - Ladeplanstatus und Nachladeleistung verwenden die neue Sollkurve
 - keine Änderung der Dashboard-Struktur; Template-Version bleibt 9
 
+### 2.0.0-beta.11
+
+Vorausschauende SOC-Freigabe ergänzt:
+
+- sicher freigebbarer SOC-Vorsprung wird aus Ladeplan und Restprognose ermittelt
+- neuer prognosebasierter Mindest-SOC
+- neue SOC-Freigabegrenze mit 2 Prozentpunkten Sicherheitsreserve
+- freigebare Akkuenergie wird separat angezeigt
+- neuer Sollwert für die SOC-Freigabe
+- neuer Reglermodus `SOC-Freigabe`
+- eigener, standardmäßig deaktivierter Freigabeschalter
+- Netzbezug kann bei sicherem SOC-Vorsprung bevorzugt aus dem Akku gedeckt werden
+- keine absichtliche Batterieeinspeisung ins Netz
+- Dashboard-Template-Version auf 10 erhöht und bestehende Dashboards gezielt migriert
+- sicherheitsrelevante Sollwertreduzierungen nach SOC-Freigabe umgehen die normale 2-Minuten-Wartezeit
+
 ## Legacy-YAML-Optimizer
 
 Die ältere Package-Variante bleibt im Repository enthalten.
@@ -547,6 +681,11 @@ Nach Änderungen an der dynamischen SOC-Logik sollte die dynamische
 SOC-Steuerung zunächst ausgeschaltet bleiben, bis dynamisches Soll,
 SOC-Abweichung und Nachladeleistung über einen geeigneten Zeitraum plausibel
 beobachtet wurden.
+
+Die vorausschauende SOC-Freigabe sollte nach einem Update ebenfalls zunächst
+ausgeschaltet bleiben. Vor der Aktivierung sollten insbesondere
+prognosebasierter Mindest-SOC, SOC-Freigabegrenze und freigebare Akkuenergie
+plausibel geprüft werden.
 
 ## Projektstruktur
 
