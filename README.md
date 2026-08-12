@@ -63,7 +63,9 @@ für die SOC-Freigabe. Der erwartete Hausenergiebedarf wird für diese separate
 Freigabe-Reserve nicht mehr von der Restprognose abgezogen. Dadurch kann ein
 bereits voller Akku bei vorhandenem Netzbezug kontrolliert Energie freigeben,
 wenn noch genügend PV-Energie für eine spätere Wiederaufladung prognostiziert
-ist. Der dynamische Ladeplan selbst bleibt unverändert.
+ist. Zusätzlich berücksichtigt die SOC-Nachladung jetzt, dass das dynamische
+SOC-Soll während der Nachholzeit weiter ansteigt. Die Sollkurve selbst bleibt
+unverändert.
 
 ## Voraussetzungen
 
@@ -340,6 +342,18 @@ Liegt der Speicher hinter dem Ladeplan, wird zusätzlich eine dynamisch
 erforderliche Nachladeleistung berechnet. Der Parameter **SOC-Nachholzeit**
 legt fest, innerhalb welcher Zeit der Rückstand aufgeholt werden soll.
 Standard sind `2,0 h`.
+
+Ab Beta 12 wird dabei nicht mehr nur das **aktuelle** dynamische SOC-Soll als
+Nachholziel verwendet. Da die Sollkurve tagsüber weiter ansteigt, wird das
+dynamische SOC-Soll am **Ende der Nachholzeit** vorausberechnet. Die
+Nachladeleistung wird so dimensioniert, dass der Akku dieses vorausliegende
+Soll erreichen kann. Dadurch läuft die Nachladung einer steigenden Sollkurve
+nicht dauerhaft hinterher.
+
+Für die Projektion wird die aktuelle Prognose-Anforderung beibehalten und der
+Tageslichtfortschritt bis zum Ende des Nachholfensters weitergeführt. Die
+Berechnung wird bei jedem Update mit den aktuellen Forecast- und Zeitwerten
+neu ausgeführt.
 
 ### 5. Nacht
 
@@ -707,11 +721,13 @@ Vorausschauende SOC-Freigabe ergänzt:
 
 ### 2.0.0-beta.12
 
-SOC-Freigabe-Reserve korrigiert:
+SOC-Freigabe-Reserve und SOC-Nachladung korrigiert:
 
 - eigene Wiederauflade-Reserve für die SOC-Freigabe eingeführt
 - erwarteter Hausenergiebedarf wird bei dieser Reserve nicht mehr abgezogen
-- dynamischer Ladeplan bleibt weiterhin konservativ und unverändert
+- dynamische SOC-Sollkurve bleibt weiterhin konservativ und unverändert
+- SOC-Nachladung zielt auf das vorausberechnete Soll am Ende der Nachholzeit
+- verhindert dauerhaftes Hinterherlaufen hinter einer steigenden SOC-Sollkurve
 - verhindert eine unnötige 100-%-Freigabegrenze nur wegen negativer normaler Prognosemarge
 - prognosebasierter Mindest-SOC beschreibt nun den für spätere Wiederaufladung notwendigen SOC
 - Dashboard-Struktur unverändert; Template-Version bleibt 10

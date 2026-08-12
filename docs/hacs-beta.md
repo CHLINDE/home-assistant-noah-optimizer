@@ -147,6 +147,35 @@ Default catch-up time:
 The effective catch-up window is never longer than the remaining time until
 sunset.
 
+Beta 12 corrects the catch-up target for the rising daytime SOC curve. Earlier
+versions calculated the energy needed to reach only the **current** dynamic SOC
+target. Because that target keeps rising during the catch-up interval, the
+battery could remain permanently behind schedule even while catch-up was
+active.
+
+Beta 12 projects daylight progress to the end of the catch-up window and
+evaluates the same dynamic SOC curve at that future point. The current forecast
+requirement is kept for this short projection and is recalculated on every
+coordinator update.
+
+```text
+catch-up target
+= dynamic SOC target at the end of the catch-up window
+
+SOC shortfall
+= max(catch-up target - actual SOC, 0)
+
+required PV energy
+= battery capacity × SOC shortfall / 100 / charging efficiency
+
+dynamic catch-up power
+= required PV energy / catch-up window
+```
+
+Catch-up control still becomes active only when the battery is more than 2
+percentage points behind the **current** dynamic SOC target. The ahead,
+on-track, and behind status therefore remains unchanged.
+
 ### Safe opt-in
 
 The switch:
@@ -701,12 +730,14 @@ Predictive SOC release:
 
 ### 2.0.0-beta.12
 
-Predictive SOC release reserve fix:
+Predictive SOC release reserve and dynamic catch-up fix:
 
 - separates the predictive-release refill reserve from the dynamic charging schedule
 - no longer deducts expected household demand from the refill reserve
 - prevents a negative normal forecast margin from unnecessarily locking the release floor at 100%
-- keeps the dynamic charging schedule unchanged
+- keeps the dynamic SOC target curve unchanged
+- projects the catch-up target to the end of the configured catch-up window
+- prevents catch-up charging from permanently trailing a rising SOC target
 - keeps dashboard template version 10
 - adds no new entities, switches, or controller modes
 

@@ -175,7 +175,13 @@ bestehende Automatik zuständig.
 
 ## 9. SOC-Nachladung wirkt zu stark
 
-Parameter **SOC-Nachholzeit** erhöhen.
+Ab Beta 12 zielt die Nachladung auf das dynamische SOC-Soll am **Ende** des
+Nachholfensters. Die angezeigte dynamisch erforderliche Ladeleistung kann
+deshalb höher sein als bei älteren Versionen, weil zusätzlich der während der
+Nachholzeit weiter steigende Ladeplan berücksichtigt wird.
+
+Wenn die Nachladung trotzdem zu aggressiv ist, Parameter **SOC-Nachholzeit**
+erhöhen.
 
 Beispiel:
 
@@ -188,7 +194,20 @@ berechnete dynamische Ladeleistung sinkt.
 
 ## 10. SOC-Nachladung wirkt zu schwach
 
-Parameter **SOC-Nachholzeit** reduzieren.
+Ab Beta 12 sollte ein deutlicher SOC-Rückstand nicht mehr allein deshalb
+bestehen bleiben, weil die Nachladung nur auf das aktuelle, gleichzeitig
+weiter ansteigende Soll zielt.
+
+Prüfen:
+
+- tatsächlich `2.0.0-beta.12` mit der aktuellen Branch-Version installiert
+- `SOC-Ladeplan = Hinter Ladeplan`
+- `Dynamisch erforderliche Ladeleistung` ist größer als `0 W`
+- genügend aktuelle PV-Leistung ist vorhanden, um die berechnete Ladeleistung tatsächlich bereitzustellen
+- maximale NOAH-Ausgangsleistung und Hausverbrauch lassen ausreichend PV für die Akkuladung übrig
+
+Ist die Nachladung bei ausreichender PV weiterhin zu schwach, Parameter
+**SOC-Nachholzeit** reduzieren.
 
 Beispiel:
 

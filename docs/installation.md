@@ -154,8 +154,13 @@ Beta 12 übernimmt alle vorhandenen Einstellungen und Entitäten aus Beta 11.
 
 Es werden **keine neuen Entitäten oder Schalter** angelegt.
 
-Korrigiert wird ausschließlich die Berechnung des prognosebasierten
-Mindest-SOC für die vorausschauende SOC-Freigabe.
+Beta 12 korrigiert zwei Berechnungen der dynamischen SOC-Regelung:
+
+- den prognosebasierten Mindest-SOC der vorausschauenden SOC-Freigabe
+- die dynamisch erforderliche Ladeleistung bei einem SOC-Rückstand
+
+Es werden dafür keine neuen Entitäten, Schalter oder Dashboardelemente
+benötigt.
 
 In Beta 11 wurde für Ladeplan und SOC-Freigabe dieselbe konservative
 Prognose-Anforderung verwendet:
@@ -180,8 +185,12 @@ PV-Energie für Wiederaufladung
 Der erwartete Hausenergiebedarf wird bei dieser separaten Reserve bewusst nicht
 abgezogen.
 
-Der dynamische SOC-Ladeplan bleibt unverändert und berücksichtigt den
-erwarteten Hausenergiebedarf weiterhin.
+Die dynamische SOC-Sollkurve selbst bleibt unverändert und berücksichtigt den
+erwarteten Hausenergiebedarf weiterhin. Die SOC-Nachladung verwendet ab Beta
+12 jedoch das vorausberechnete Soll am Ende der Nachholzeit. Dadurch wird die
+Nachladeleistung so dimensioniert, dass ein Akku, der hinter dem Ladeplan liegt,
+nicht nur das aktuelle Soll erreicht, während dieses gleichzeitig weiter
+ansteigt.
 
 ### Update von Beta 10 oder älter
 
@@ -265,7 +274,10 @@ berechnet. Es wird noch kein Stellbefehl an den NOAH gesendet.
 
 ## 10. Dynamischen SOC-Ladeplan prüfen
 
-Die Beta-10-Ladeplankurve bleibt unverändert.
+Die Beta-10-Ladeplankurve bleibt unverändert. Beta 12 ändert lediglich die
+Nachladeleistung, wenn der Ist-SOC mehr als 2 Prozentpunkte hinter dieser
+Kurve liegt: Das Nachholziel wird bis zum Ende der eingestellten Nachholzeit
+vorausberechnet.
 
 Bei Mindest-SOC `10 %` und Ziel-SOC `100 %` liegt das reine Zeit-Soll ungefähr
 bei:
@@ -309,8 +321,10 @@ Der erwartete Hausenergiebedarf wird hierbei **nicht abgezogen**. Falls die
 PV-Energie später zum Wiederaufladen des Akkus benötigt wird, darf der
 Hausverbrauch in diesem Zeitraum aus dem Netz versorgt werden.
 
-Der dynamische Ladeplan selbst bleibt unverändert und berücksichtigt weiterhin
-den erwarteten Hausenergiebedarf.
+Die dynamische SOC-Sollkurve selbst bleibt unverändert und berücksichtigt
+weiterhin den erwarteten Hausenergiebedarf. Die separat berechnete
+SOC-Nachladeleistung verwendet dagegen das vorausberechnete Soll am Ende des
+Nachholfensters.
 
 Die Freigabegrenze wird aus dem größeren Wert von dynamischem SOC-Soll und
 prognosebasiertem Mindest-SOC plus 2 Prozentpunkten Sicherheitsreserve gebildet.

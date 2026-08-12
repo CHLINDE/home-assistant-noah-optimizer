@@ -431,18 +431,60 @@ class NoahOptimizerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         else:
             dynamic_status = DYNAMIC_SOC_ON_TRACK
 
-        soc_shortfall = max(dynamic_soc_target - soc, 0.0)
-        battery_energy_shortfall = safe_capacity * soc_shortfall / 100
-        pv_energy_shortfall = battery_energy_shortfall / safe_efficiency
-
         catchup_window = min(max(catchup_hours, 0.0), hours_to_sunset)
 
-        if pv_energy_shortfall <= 0 or catchup_window <= 0:
+        # Catch-up charging must aim at the SOC plan at the end of the
+        # catch-up window, not only at the current moving target. Otherwise
+        # the battery can remain permanently behind a rising daytime curve.
+        # The projection keeps the current forecast requirement and advances
+        # only the daylight progress. It is recalculated on every update as
+        # forecast and time-to-sunset change.
+        if (
+            soc_deviation >= -DYNAMIC_SOC_TOLERANCE_PERCENT
+            or catchup_window <= 0
+            or hours_to_sunset <= 0
+        ):
             dynamic_required_charge_power = 0.0
         else:
-            dynamic_required_charge_power = (
-                pv_energy_shortfall * 1000 / max(catchup_window, 0.25)
+            catchup_progress = min(
+                progress
+                + (1.0 - progress)
+                * catchup_window
+                / max(hours_to_sunset, 0.001),
+                1.0,
             )
+            catchup_time_based_target = (
+                min_soc + soc_span * catchup_progress
+            )
+            catchup_forecast_pressure = max(
+                schedule_forecast_required_soc - catchup_time_based_target,
+                0.0,
+            )
+            catchup_target = (
+                catchup_time_based_target
+                + catchup_progress * catchup_forecast_pressure
+            )
+            catchup_target = min(
+                max(catchup_target, min_soc),
+                target_soc,
+            )
+
+            soc_shortfall = max(catchup_target - soc, 0.0)
+            battery_energy_shortfall = (
+                safe_capacity * soc_shortfall / 100
+            )
+            pv_energy_shortfall = (
+                battery_energy_shortfall / safe_efficiency
+            )
+
+            if pv_energy_shortfall <= 0:
+                dynamic_required_charge_power = 0.0
+            else:
+                dynamic_required_charge_power = (
+                    pv_energy_shortfall
+                    * 1000
+                    / max(catchup_window, 0.25)
+                )
 
         return (
             dynamic_soc_target,

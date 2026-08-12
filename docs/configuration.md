@@ -271,7 +271,32 @@ weniger als -2 %-Punkte = Hinter Ladeplan
 Liegt der Speicher hinter dem Ladeplan, wird die zum Aufholen des Rückstands
 benötigte Ladeleistung berechnet.
 
+Ab Beta 12 wird dabei berücksichtigt, dass das dynamische SOC-Soll während der
+Nachholzeit weiter ansteigt. Das Nachholziel ist deshalb nicht mehr nur das
+aktuelle dynamische SOC-Soll, sondern das vorausberechnete dynamische SOC-Soll
+am Ende des Nachholfensters.
+
+Das Nachholfenster ist:
+
 ```text
+Nachholfenster
+= min(SOC-Nachholzeit, verbleibende Zeit bis Sonnenuntergang)
+```
+
+Für die Projektion wird der Tageslichtfortschritt bis zum Ende dieses Fensters
+weitergeführt. Die aktuell berechnete Prognose-Anforderung bleibt für diese
+kurze Projektion konstant. Bei jedem Coordinator-Update wird sie mit den dann
+aktuellen Forecast- und Zeitwerten neu berechnet.
+
+Vereinfacht gilt:
+
+```text
+Nachholziel
+= dynamisches SOC-Soll am Ende des Nachholfensters
+
+SOC-Rückstand
+= max(Nachholziel - Ist-SOC, 0)
+
 Fehlende Batterieenergie
 = Akkukapazität × SOC-Rückstand / 100
 
@@ -279,11 +304,14 @@ Benötigte PV-Energie
 = fehlende Batterieenergie / Ladewirkungsgrad
 
 Dynamische Ladeleistung
-= benötigte PV-Energie / Nachholzeit
+= benötigte PV-Energie / Nachholfenster
 ```
 
-Die verwendete Nachholzeit ist auf die noch verbleibende Zeit bis
-Sonnenuntergang begrenzt.
+Die Nachladeleistung wird nur verwendet, wenn der Akku mehr als 2
+Prozentpunkte hinter dem **aktuellen** dynamischen SOC-Soll liegt. Dadurch
+bleibt die bestehende Einteilung in **Vor Ladeplan**, **Im Ladeplan** und
+**Hinter Ladeplan** unverändert, während die aktive Nachladung ein bewegliches
+Soll tatsächlich einholen kann.
 
 ### 3.8 Einfluss auf die Regelung
 
@@ -698,8 +726,10 @@ behind    = Hinter Ladeplan
 
 ### Dynamisch erforderliche Ladeleistung
 
-Zusätzliche Ladeleistung zum Aufholen eines SOC-Rückstands innerhalb der
-konfigurierten SOC-Nachholzeit.
+Zusätzliche Ladeleistung zum Aufholen eines SOC-Rückstands. Ab Beta 12 wird
+dafür das vorausberechnete dynamische SOC-Soll am Ende des Nachholfensters
+verwendet, damit die Nachladung einer steigenden Sollkurve nicht dauerhaft
+hinterherläuft.
 
 ### Prognosebasierter Mindest-SOC
 
