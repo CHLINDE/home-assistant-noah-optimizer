@@ -1,7 +1,7 @@
 # Fehlerbehebung
 
 Dieses Dokument bezieht sich primär auf die HACS-Integration ab
-`2.0.0-beta.11`.
+`2.0.0-beta.12`.
 
 ## 1. Integration wird nicht geladen
 
@@ -17,7 +17,7 @@ Zusätzlich prüfen:
 
 - HACS-Installation vollständig
 - Home Assistant nach dem Update neu gestartet
-- `manifest.json` auf `2.0.0-beta.11`
+- `manifest.json` auf `2.0.0-beta.12`
 - alle Quell-Entitäten vorhanden
 - keine Python-Fehler im Protokoll
 
@@ -139,7 +139,7 @@ verursacht werden.
 
 Prüfen:
 
-- tatsächlich `2.0.0-beta.11` installiert
+- tatsächlich `2.0.0-beta.12` installiert
 - Home Assistant nach dem Update vollständig neu gestartet
 - `sun.sun` ist verfügbar
 - `sun.sun` steht tagsüber auf `above_horizon`
@@ -353,7 +353,7 @@ Das Dashboard muss nicht gelöscht oder neu erstellt werden.
 
 Prüfen:
 
-- tatsächlich `2.0.0-beta.11` installiert
+- tatsächlich `2.0.0-beta.12` installiert
 - Home Assistant nach dem HACS-Update vollständig neu gestartet
 - Protokoll auf `noah_optimizer`-Fehler prüfen
 
@@ -439,7 +439,7 @@ liegen.
 
 ## 22. SOC-Freigabegrenze ist unerwartet hoch
 
-Die Grenze ist absichtlich konservativer als nur das dynamische SOC-Soll:
+Die Grenze lautet:
 
 ```text
 SOC-Freigabegrenze
@@ -447,18 +447,42 @@ SOC-Freigabegrenze
   + 2 %-Punkte
 ```
 
-Wenn die Restprognose knapp ist, kann der prognosebasierte Mindest-SOC bis nahe
-an den Ziel-SOC steigen. Dann darf trotz hohem aktuellem SOC nur wenig oder gar
-keine Akkuenergie freigegeben werden.
+Ab Beta 12 wird der **prognosebasierte Mindest-SOC für
+die SOC-Freigabe** nicht mehr aus derselben konservativen Rechnung wie der
+dynamische Ladeplan abgeleitet.
 
-Prüfen:
+Für die Freigabe gilt:
+
+```text
+PV-Energie für Wiederaufladung
+= wirksame Restprognose
+  - zusätzliche Energiereserve
+```
+
+Der erwartete Hausenergiebedarf wird dabei nicht abgezogen.
+
+Wenn der prognosebasierte Mindest-SOC trotzdem nahe `100 %` liegt, prüfen:
 
 - wirksame Restprognose
-- erwarteter Hausenergiebedarf
 - zusätzliche Energiereserve
 - Prognose-Sicherheitsfaktor
 - Ziel-SOC
 - Akkukapazität
+- Ladewirkungsgrad
+
+Ist:
+
+```text
+Wirksame Restprognose <= zusätzliche Energiereserve
+```
+
+vorhanden, ist ein prognosebasierter Mindest-SOC bis zum Ziel-SOC korrekt. Es
+steht dann nach der Sicherheitsreserve keine prognostizierte Energie mehr zur
+Verfügung, um einen jetzt freigegebenen Akkuanteil später wieder aufzuladen.
+
+Wichtig: Der **erwartete Hausenergiebedarf gehört nicht mehr zu dieser
+Fehlerprüfung**. Er beeinflusst weiterhin den dynamischen Ladeplan, aber nicht
+die separate Wiederauflade-Reserve der SOC-Freigabe.
 
 ## 23. Akku wird trotz Netzbezug nicht entladen
 
@@ -512,19 +536,27 @@ NOAH-Ausgangsleistung vergleichen.
 
 ## 25. Abend-SOC wird trotz SOC-Freigabe nicht erreicht
 
-Die SOC-Freigabe schützt den aufgrund der **aktuellen** Prognose und der
-konfigurierten Lastannahmen benötigten SOC. Sie ist keine absolute Garantie.
+Die SOC-Freigabe schützt den aufgrund der **aktuellen** Restprognose
+berechneten Wiederaufladebedarf. Sie ist keine absolute Garantie.
+
+Für die Freigabe wird angenommen, dass die verbleibende PV-Energie bei Bedarf
+zum Wiederaufladen des Akkus priorisiert werden darf. Der spätere
+Hausverbrauch kann deshalb zeitweise Netzbezug verursachen.
 
 Mögliche Ursachen für ein später zu niedriges Abend-SOC:
 
 - tatsächlicher PV-Ertrag niedriger als Forecast.Solar
-- tatsächliche Hauslast höher als die konfigurierte erwartete Last
-- zu optimistischer Prognose-Sicherheitsfaktor
-- zu kleine zusätzliche Energiereserve
-- unerwartete Lastspitzen
+- Prognose-Sicherheitsfaktor zu optimistisch
+- zusätzliche Energiereserve zu klein
+- unerwartete Verluste oder Leistungsbegrenzungen
+- PV-Leistung kommt zeitlich so spät oder kurz, dass der Akku sie nicht
+  vollständig aufnehmen kann
 
-In diesem Fall die vorausschauende SOC-Freigabe zunächst deaktivieren und die
-Prognose-/Lastparameter konservativer einstellen. Die dynamische
-**SOC-Nachladung** sollte aktiviert bleiben, damit ein später erkannter
-SOC-Rückstand wieder aufgeholt werden kann.
+Ein höherer tatsächlicher Hausverbrauch ist für die **Freigabe-Reserve** nicht
+direkt abgezogen. Er kann jedoch dazu führen, dass später mehr Netzbezug nötig
+ist, während PV zum Wiederaufladen des Akkus reserviert wird.
 
+In diesem Fall die vorausschauende SOC-Freigabe zunächst deaktivieren und
+Prognose-Sicherheitsfaktor beziehungsweise Energiereserve konservativer
+einstellen. Die dynamische **SOC-Nachladung** sollte aktiviert bleiben, damit
+ein später erkannter SOC-Rückstand wieder aufgeholt werden kann.

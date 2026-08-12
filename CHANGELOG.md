@@ -1,3 +1,40 @@
+## [2.0.0-beta.12]
+
+### Fixed
+
+- Corrected the predictive SOC-release refill reserve introduced in Beta 11
+- The forecast-required minimum SOC for predictive release no longer deducts expected household demand
+- Prevented a full battery from being locked at a 100% SOC release floor solely because the normal forecast margin is negative due to expected household demand
+- Predictive release now correctly evaluates how much SOC can be restored later from effective remaining PV forecast after the configured energy reserve
+
+### Changed
+
+- The dynamic charging schedule remains unchanged and continues to deduct expected household demand from its conservative forecast calculation
+- Predictive SOC release now uses a separate refill reserve based on effective remaining PV forecast minus the configured energy reserve
+- Later household demand may be supplied from the grid while remaining PV is reserved for restoring released battery SOC if required
+- Dashboard structure and dashboard template version remain unchanged at version 10
+- No new entities, switches, or controller modes are introduced
+
+### Documentation
+
+- Updated README, installation, configuration, HACS beta, and troubleshooting documentation for the corrected predictive-release refill reserve
+- Added the distinction between the dynamic charging-schedule forecast calculation and the predictive-release refill calculation
+- Added a worked example for a full battery with remaining PV forecast
+
+### Safety
+
+Predictive SOC release remains disabled by default for a new setup.
+
+The corrected release reserve is forecast-based. It protects the calculated
+release floor but cannot guarantee the evening target SOC if actual PV
+production is lower than forecast.
+
+Before enabling active control after the update, verify the forecast-required
+minimum SOC, SOC release floor, releasable battery energy, and SOC release
+target in observation mode.
+
+---
+
 ## [2.0.0-beta.11]
 
 ### Added

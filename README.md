@@ -25,7 +25,7 @@ Eine HACS-kompatible Custom Integration ist als Beta verfügbar.
 Aktuelle Beta:
 
 ```text
-2.0.0-beta.11
+2.0.0-beta.12
 ```
 
 Ab Beta 5 kann die Integration den berechneten Sollwert optional aktiv an
@@ -51,10 +51,19 @@ bei Sonnenuntergang. Eine knappe PV-Restprognose hebt diese Kurve progressiv
 an, ohne das Soll bereits früh am Tag hart auf 100 % zu setzen.
 
 Beta 11 ergänzt eine **vorausschauende SOC-Freigabe**. Liegt der Speicher
-sicher über dem aktuellen Ladeplan und über dem prognosebasiert benötigten
-Mindest-SOC, darf dieser SOC-Vorsprung für den Hausverbrauch genutzt werden.
-Dadurch wird Netzbezug reduziert und gleichzeitig wieder Platz für späteren
-PV-Überschuss geschaffen. Die neue Funktion ist standardmäßig ausgeschaltet.
+sicher über dem aktuellen Ladeplan und über dem prognosebasierten Mindest-SOC
+für eine spätere Wiederaufladung, darf dieser SOC-Vorsprung für den
+Hausverbrauch genutzt werden. Dabei kann verbleibende PV-Energie später für
+das Wiederaufladen des Akkus reserviert werden. Dadurch wird Netzbezug
+reduziert und gleichzeitig wieder Platz für späteren PV-Überschuss geschaffen.
+Die neue Funktion ist standardmäßig ausgeschaltet.
+
+Beta 12 korrigiert die Berechnung der **prognosebasierten Wiederauflade-Reserve**
+für die SOC-Freigabe. Der erwartete Hausenergiebedarf wird für diese separate
+Freigabe-Reserve nicht mehr von der Restprognose abgezogen. Dadurch kann ein
+bereits voller Akku bei vorhandenem Netzbezug kontrolliert Energie freigeben,
+wenn noch genügend PV-Energie für eine spätere Wiederaufladung prognostiziert
+ist. Der dynamische Ladeplan selbst bleibt unverändert.
 
 ## Voraussetzungen
 
@@ -340,7 +349,7 @@ Speicher bis zum konfigurierten Mindest-SOC entladen.
 
 ### Sichere Aktivierung
 
-Nach dem Update auf Beta 11 sollte zunächst gelten:
+Nach dem Update auf Beta 12 sollte zunächst gelten:
 
 ```text
 NOAH-Steuerung aktiv = Aus
@@ -373,14 +382,47 @@ sich die Prognose später verschlechtert.
 
 ### Prognosebasierter Mindest-SOC
 
-Aus der noch für den Akku erwarteten PV-Energie wird weiterhin berechnet,
-welcher SOC bereits vorhanden sein muss, damit der Ziel-SOC bis
-Sonnenuntergang prognostisch noch erreichbar ist:
+Für die **SOC-Freigabe** wird eine eigene Wiederauflade-Reserve berechnet.
+Sie unterscheidet sich bewusst von der konservativen Prognose-Anforderung des
+dynamischen Ladeplans.
+
+Der dynamische Ladeplan berücksichtigt weiterhin:
 
 ```text
-Prognosebasierter Mindest-SOC
-= Ziel-SOC - möglicher zukünftiger SOC-Zuwachs
+PV-Energie für Ladeplan
+= wirksame Restprognose
+  - erwarteter Hausenergiebedarf
+  - zusätzliche Energiereserve
 ```
+
+Für die SOC-Freigabe wird dagegen gefragt, wie viel Akkuenergie mit der
+verbleibenden PV-Prognose später wieder aufgefüllt werden könnte, wenn diese
+PV-Energie bei Bedarf für den Akku reserviert wird:
+
+```text
+PV-Energie für Wiederaufladung
+= wirksame Restprognose
+  - zusätzliche Energiereserve
+
+Speicherbare Wiederaufladeenergie
+= PV-Energie für Wiederaufladung × Ladewirkungsgrad
+
+Möglicher Wiederauflade-SOC
+= Speicherbare Wiederaufladeenergie / Akkukapazität × 100
+
+Prognosebasierter Mindest-SOC
+= Ziel-SOC - möglicher Wiederauflade-SOC
+```
+
+Der erwartete Hausenergiebedarf wird bei **dieser Freigabe-Reserve nicht
+abgezogen**. Das ist beabsichtigt: Falls erforderlich, kann späterer
+Hausverbrauch aus dem Netz versorgt werden, während die prognostizierte
+PV-Energie zum Wiederaufladen des zuvor freigegebenen Akkuanteils verwendet
+wird.
+
+Dadurch wird ein bereits voller Akku nicht allein deshalb bei `100 %`
+festgehalten, weil die normale Prognosemarge wegen des erwarteten
+Hausverbrauchs negativ ist.
 
 Der Wert wird auf Mindest-SOC bis Ziel-SOC begrenzt.
 
@@ -437,10 +479,25 @@ Abweichungen um 0 W entstehen.
 ### Sicherheitsgrenze der Prognose
 
 Die SOC-Freigabe ist prognosebasiert. Sie verhindert, dass der Optimizer den
-Akku absichtlich unter den nach aktuellem Ladeplan und aktueller Prognose
-benötigten SOC entlädt. Sie kann jedoch keine absolute Garantie geben, wenn
-sich PV-Ertrag oder Hausverbrauch später deutlich anders entwickeln als
-prognostiziert.
+Akku absichtlich unter den höheren Wert aus dynamischem Ladeplan und
+prognosebasierter Wiederauflade-Reserve entlädt.
+
+Wichtig ist die bewusste Prioritätsverschiebung:
+
+- der **dynamische Ladeplan** berücksichtigt weiterhin den erwarteten
+  Hausenergiebedarf
+- die **Freigabe-Reserve** reserviert die verbleibende PV-Energie bei Bedarf
+  für das spätere Wiederaufladen des Akkus
+- dadurch kann zu einem späteren Zeitpunkt Netzbezug für den Hausverbrauch
+  entstehen, wenn die PV-Energie zum Wiederaufladen benötigt wird
+
+Das ist beabsichtigt: Ziel der Freigabe ist, jetzt vorhandenen Netzbezug aus
+einem sicheren SOC-Vorsprung zu decken und gleichzeitig Ladekapazität für
+späteren PV-Überschuss zu schaffen.
+
+Die Berechnung kann keine absolute Garantie geben. Fällt der reale PV-Ertrag
+geringer aus als Forecast.Solar oder ändern sich die Lastverhältnisse stark,
+kann das tatsächliche Abend-SOC vom Ziel abweichen.
 
 Verschlechtert sich die Prognose, steigt die SOC-Freigabegrenze. Die Freigabe
 endet dann automatisch; bei aktiviertem dynamischem SOC-Regler kann anschließend
@@ -647,6 +704,17 @@ Vorausschauende SOC-Freigabe ergänzt:
 - keine absichtliche Batterieeinspeisung ins Netz
 - Dashboard-Template-Version auf 10 erhöht und bestehende Dashboards gezielt migriert
 - sicherheitsrelevante Sollwertreduzierungen nach SOC-Freigabe umgehen die normale 2-Minuten-Wartezeit
+
+### 2.0.0-beta.12
+
+SOC-Freigabe-Reserve korrigiert:
+
+- eigene Wiederauflade-Reserve für die SOC-Freigabe eingeführt
+- erwarteter Hausenergiebedarf wird bei dieser Reserve nicht mehr abgezogen
+- dynamischer Ladeplan bleibt weiterhin konservativ und unverändert
+- verhindert eine unnötige 100-%-Freigabegrenze nur wegen negativer normaler Prognosemarge
+- prognosebasierter Mindest-SOC beschreibt nun den für spätere Wiederaufladung notwendigen SOC
+- Dashboard-Struktur unverändert; Template-Version bleibt 10
 
 ## Legacy-YAML-Optimizer
 

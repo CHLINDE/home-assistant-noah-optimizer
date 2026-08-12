@@ -343,9 +343,11 @@ class NoahOptimizerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         The plan starts at the configured minimum SOC at sunrise and reaches
         the configured target SOC at sunset. A weak remaining PV forecast
         raises the curve progressively, but never turns the forecast-based
-        requirement into an immediate hard 100 percent target. The release
-        floor additionally protects the forecast-based SOC requirement and
-        keeps a small SOC buffer before battery energy may be released.
+        requirement into an immediate hard 100 percent target. Predictive
+        release uses a separate refill reserve that may dedicate later PV to
+        restoring battery SOC while future household demand is supplied from
+        the grid if necessary. The release floor keeps a small SOC buffer
+        before battery energy may be released.
         """
         safe_efficiency = max(efficiency, 0.1)
         safe_capacity = max(capacity, 0.001)
@@ -354,20 +356,28 @@ class NoahOptimizerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         soc_span = max(target_soc - min_soc, 0.0)
         time_based_target = min_soc + soc_span * progress
 
-        pv_energy_for_battery = max(
+        # The dynamic charging schedule remains conservative: expected
+        # household demand and the configured energy reserve are deducted
+        # before estimating how much future PV energy can still charge the
+        # battery.
+        schedule_pv_energy_for_battery = max(
             effective_forecast - expected_load_energy - forecast_safety,
             0.0,
         )
-        storable_battery_energy = pv_energy_for_battery * safe_efficiency
-        possible_soc_gain = storable_battery_energy / safe_capacity * 100
+        schedule_storable_battery_energy = (
+            schedule_pv_energy_for_battery * safe_efficiency
+        )
+        schedule_possible_soc_gain = (
+            schedule_storable_battery_energy / safe_capacity * 100
+        )
 
-        forecast_required_soc = min(
-            max(target_soc - possible_soc_gain, min_soc),
+        schedule_forecast_required_soc = min(
+            max(target_soc - schedule_possible_soc_gain, min_soc),
             target_soc,
         )
 
         forecast_pressure = max(
-            forecast_required_soc - time_based_target,
+            schedule_forecast_required_soc - time_based_target,
             0.0,
         )
         dynamic_soc_target = (
@@ -378,11 +388,32 @@ class NoahOptimizerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             target_soc,
         )
 
+        # Predictive release uses a separate refill reserve. Expected
+        # household demand is deliberately not deducted here: if necessary,
+        # later household demand may be supplied from the grid while the
+        # remaining forecast PV is reserved for restoring the released
+        # battery SOC. The configured forecast safety reserve is still
+        # protected.
+        release_pv_energy_for_battery = max(
+            effective_forecast - forecast_safety,
+            0.0,
+        )
+        release_storable_battery_energy = (
+            release_pv_energy_for_battery * safe_efficiency
+        )
+        release_possible_soc_gain = (
+            release_storable_battery_energy / safe_capacity * 100
+        )
+        release_forecast_required_soc = min(
+            max(target_soc - release_possible_soc_gain, min_soc),
+            target_soc,
+        )
+
         # Predictive release must never use SOC that is still required by
-        # either the active charging schedule or the conservative remaining
-        # forecast. The normal SOC tolerance is added as a safety buffer.
+        # either the active charging schedule or the forecast-based refill
+        # reserve. The normal SOC tolerance is added as a safety buffer.
         soc_release_floor = min(
-            max(dynamic_soc_target, forecast_required_soc)
+            max(dynamic_soc_target, release_forecast_required_soc)
             + DYNAMIC_SOC_TOLERANCE_PERCENT,
             100.0,
         )
@@ -418,7 +449,7 @@ class NoahOptimizerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             soc_deviation,
             dynamic_status,
             dynamic_required_charge_power,
-            forecast_required_soc,
+            release_forecast_required_soc,
             soc_release_floor,
             releasable_battery_energy,
         )
@@ -837,8 +868,8 @@ class NoahOptimizerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     soc_release_target,
                     command_step,
                     max_output,
-            )
-),
+                )
+            ),
             DATA_SELF_CONSUMPTION_TARGET: round(self_consumption_target),
             DATA_CHARGE_PRIORITY_TARGET: round(charge_priority_target),
             DATA_OUTPUT_TARGET: round(output_target),
