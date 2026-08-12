@@ -739,7 +739,7 @@ Predictive SOC release reserve and dynamic catch-up fix:
 - projects the catch-up target to the end of the configured catch-up window
 - prevents catch-up charging from permanently trailing a rising SOC target
 - keeps dashboard template version 10
-- adds no new entities, switches, or controller modes
+- adds no new entities, switches, or controller modes 
 
 ## Current limitations 
 
