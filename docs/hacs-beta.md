@@ -728,7 +728,7 @@ Predictive SOC release:
 - increases dashboard template version to 10
 - preserves manual, self-consumption, charge-priority, and night behavior
 
-### 2.0.0-beta.12
+### 2.0.0-beta.12 
 
 Predictive SOC release reserve and dynamic catch-up fix:
 
