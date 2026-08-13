@@ -1,7 +1,7 @@
 # Installation
 
 Diese Anleitung beschreibt die Installation und das Update des **Home
-Assistant Growatt NOAH Optimizers** für Version `2.0.0-beta.11`.
+Assistant Growatt NOAH Optimizers** für Version `2.0.0-beta.12`.
 
 Für neue Installationen wird die HACS-Integration empfohlen.
 
@@ -94,12 +94,12 @@ Typ:
 Integration
 ```
 
-## 5. Beta 11 installieren
+## 5. Beta 12 installieren
 
 Zu installierende Version:
 
 ```text
-2.0.0-beta.11
+2.0.0-beta.12
 ```
 
 Nach der Installation Home Assistant vollständig neu starten.
@@ -136,7 +136,7 @@ Standard:
 Ein
 ```
 
-## 7. Update auf Beta 11
+## 7. Update auf Beta 12
 
 Vor dem Update:
 
@@ -146,16 +146,57 @@ Dynamische SOC-Steuerung aktiv = Aus
 Vorausschauende SOC-Freigabe aktiv = Aus
 ```
 
-Bei einem Update von Beta 10 existiert der letzte Schalter noch nicht. Er wird
-mit Beta 11 neu angelegt und ist standardmäßig ausgeschaltet.
+Danach Beta 12 über HACS installieren und Home Assistant vollständig neu starten.
 
-Danach Beta 11 über HACS installieren und Home Assistant vollständig neu starten.
+### Update von Beta 11
 
-### Update von Beta 10
+Beta 12 übernimmt alle vorhandenen Einstellungen und Entitäten aus Beta 11.
 
-Beta 11 übernimmt alle vorhandenen Einstellungen und Entitäten.
+Es werden **keine neuen Entitäten oder Schalter** angelegt.
 
-Neu hinzu kommen:
+Beta 12 korrigiert zwei Berechnungen der dynamischen SOC-Regelung:
+
+- den prognosebasierten Mindest-SOC der vorausschauenden SOC-Freigabe
+- die dynamisch erforderliche Ladeleistung bei einem SOC-Rückstand
+
+Es werden dafür keine neuen Entitäten, Schalter oder Dashboardelemente
+benötigt.
+
+In Beta 11 wurde für Ladeplan und SOC-Freigabe dieselbe konservative
+Prognose-Anforderung verwendet:
+
+```text
+wirksame Restprognose
+- erwarteter Hausenergiebedarf
+- zusätzliche Energiereserve
+```
+
+Dadurch konnte die SOC-Freigabegrenze trotz vollem Akku auf `100 %` steigen,
+wenn die normale Prognosemarge wegen des erwarteten Hausverbrauchs negativ war.
+
+Ab Beta 12 verwendet die SOC-Freigabe eine eigene Wiederauflade-Reserve:
+
+```text
+PV-Energie für Wiederaufladung
+= wirksame Restprognose
+  - zusätzliche Energiereserve
+```
+
+Der erwartete Hausenergiebedarf wird bei dieser separaten Reserve bewusst nicht
+abgezogen.
+
+Die dynamische SOC-Sollkurve selbst bleibt unverändert und berücksichtigt den
+erwarteten Hausenergiebedarf weiterhin. Die SOC-Nachladung verwendet ab Beta
+12 jedoch das vorausberechnete Soll am Ende der Nachholzeit. Dadurch wird die
+Nachladeleistung so dimensioniert, dass ein Akku, der hinter dem Ladeplan liegt,
+nicht nur das aktuelle Soll erreicht, während dieses gleichzeitig weiter
+ansteigt.
+
+### Update von Beta 10 oder älter
+
+Beim direkten Update auf Beta 12 bleiben alle bisherigen Migrationen erhalten.
+
+Falls die Beta-11-Elemente noch fehlen, werden weiterhin ergänzt:
 
 ```text
 Vorausschauende SOC-Freigabe aktiv
@@ -165,51 +206,42 @@ Freigebare Akkuenergie
 SOC-Freigabe-Soll
 ```
 
-Außerdem steht der neue Reglermodus zur Verfügung:
+Zusätzlich steht der Reglermodus:
 
 ```text
 SOC-Freigabe
 ```
 
-Die Funktion ist nach dem Update **nicht automatisch aktiv**.
+zur Verfügung.
 
-### Update von Beta 9 oder älter
-
-Beim direkten Update auf Beta 11 bleiben die bisherigen Dashboard-Migrationen
-erhalten. Die Integration ergänzt fehlende Beta-8-Dynamic-SOC-Elemente,
-repariert gegebenenfalls den Beta-8-Jinja-Fehler und führt anschließend die
-Beta-11-Erweiterung aus.
+Die Funktion ist bei einer neuen Einrichtung standardmäßig ausgeschaltet.
 
 ## 8. Dashboard und Migration
 
-Beta 11 ergänzt neue Dashboard-Entitäten und einen neuen Schalter. Deshalb
-wird die Dashboard-Template-Version erhöht auf:
+Beta 12 verändert die Dashboard-Struktur nicht.
+
+Deshalb bleibt:
 
 ```text
 Dashboard-Template-Version = 10
 ```
 
-Bei einem bestehenden Dashboard werden gezielt ergänzt:
+Bei einem Update von Beta 11 ist keine zusätzliche Dashboard-Migration
+erforderlich.
 
-- Vorausschauende SOC-Freigabe aktiv
-- Prognosebasierter Mindest-SOC
-- SOC-Freigabegrenze
-- Freigebare Akkuenergie
-- SOC-Freigabe-Soll
-- Reglermodus `SOC-Freigabe` in der Statuskarte
-
-Ältere Migrationen bleiben ebenfalls aktiv:
+Bei älteren Installationen bleiben die bisherigen Migrationen aktiv:
 
 - Beta-6-Batteriezuordnung korrigieren, wenn sie noch exakt unverändert vorliegt
 - Beta-8-Dynamic-SOC-Elemente ergänzen, falls sie fehlen
 - SOC-Planungsdiagramm ergänzen, falls es fehlt
 - fehlerhaften Beta-8-Jinja-Ausdruck reparieren
+- Beta-11-SOC-Freigabeschalter und Diagnosesensoren ergänzen
 
 Das Dashboard wird **nicht vollständig ersetzt**. Eigene Anpassungen bleiben
 bestehen, soweit die bekannten Standardkarten eindeutig erkannt werden.
 
-Bei einer Neuinstallation wird direkt die vollständige Beta-11-Vorlage mit
-Dashboard-Template-Version 10 erzeugt.
+Bei einer Neuinstallation wird direkt die vollständige aktuelle
+Dashboard-Vorlage mit Template-Version 10 erzeugt.
 
 ## 9. Erste Prüfung nach dem Update
 
@@ -242,7 +274,10 @@ berechnet. Es wird noch kein Stellbefehl an den NOAH gesendet.
 
 ## 10. Dynamischen SOC-Ladeplan prüfen
 
-Die Beta-10-Ladeplankurve bleibt unverändert.
+Die Beta-10-Ladeplankurve bleibt unverändert. Beta 12 ändert lediglich die
+Nachladeleistung, wenn der Ist-SOC mehr als 2 Prozentpunkte hinter dieser
+Kurve liegt: Das Nachholziel wird bis zum Ende der eingestellten Nachholzeit
+vorausberechnet.
 
 Bei Mindest-SOC `10 %` und Ziel-SOC `100 %` liegt das reine Zeit-Soll ungefähr
 bei:
@@ -264,8 +299,8 @@ Die neuen Werte beantworten drei verschiedene Fragen:
 
 ```text
 Prognosebasierter Mindest-SOC
-= Welchen SOC muss der Akku nach aktueller Prognose mindestens schon haben,
-  damit der Ziel-SOC bis Sonnenuntergang noch erreichbar ist?
+= Welchen SOC muss der Akku mindestens behalten, damit der Ziel-SOC mit der
+  noch prognostizierten PV-Energie wieder erreichbar bleibt?
 
 SOC-Freigabegrenze
 = Bis zu welchem SOC darf die neue Freigabe maximal entladen?
@@ -274,36 +309,65 @@ Freigebare Akkuenergie
 = Wie viel Batterieenergie liegt aktuell oberhalb dieser Grenze?
 ```
 
+Für die SOC-Freigabe wird die Wiederaufladeenergie so berechnet:
+
+```text
+PV-Energie für Wiederaufladung
+= wirksame Restprognose
+  - zusätzliche Energiereserve
+```
+
+Der erwartete Hausenergiebedarf wird hierbei **nicht abgezogen**. Falls die
+PV-Energie später zum Wiederaufladen des Akkus benötigt wird, darf der
+Hausverbrauch in diesem Zeitraum aus dem Netz versorgt werden.
+
+Die dynamische SOC-Sollkurve selbst bleibt unverändert und berücksichtigt
+weiterhin den erwarteten Hausenergiebedarf. Die separat berechnete
+SOC-Nachladeleistung verwendet dagegen das vorausberechnete Soll am Ende des
+Nachholfensters.
+
 Die Freigabegrenze wird aus dem größeren Wert von dynamischem SOC-Soll und
 prognosebasiertem Mindest-SOC plus 2 Prozentpunkten Sicherheitsreserve gebildet.
 
-Beispiel:
+Beispiel passend zu einem fast vollen Akku:
 
 ```text
-Ist-SOC:                         92 %
-Dynamisches SOC-Soll:            70 %
-Prognosebasierter Mindest-SOC:   76 %
-SOC-Freigabegrenze:              78 %
+Ist-SOC:                         100,0 %
+Dynamisches SOC-Soll:             93,3 %
+Wirksame Restprognose:             0,543 kWh
+Zusätzliche Energiereserve:        0,250 kWh
+Ladewirkungsgrad:                  0,90
+Akkukapazität:                     2,048 kWh
 ```
 
-Dann dürfen rechnerisch maximal `14` SOC-Prozentpunkte als Vorsprung genutzt
-werden.
-
-Ist dagegen:
+Dann stehen für die spätere Wiederaufladung rechnerisch zur Verfügung:
 
 ```text
-Prognosebasierter Mindest-SOC:   96 %
-SOC-Freigabegrenze:              98 %
-Ist-SOC:                         98 %
+0,543 kWh - 0,250 kWh = 0,293 kWh PV-Energie
+0,293 kWh × 0,90      = 0,264 kWh Batterieenergie
 ```
 
-vorhanden, ist keine Akkuenergie freigebbar. Die aktuelle Prognose lässt dann
-keine sichere zusätzliche Entladung zu.
+Das entspricht ungefähr `12,9` SOC-Prozentpunkten.
 
-Wichtig: Diese Grenze ist **prognosebasiert**. Sie verhindert eine absichtliche
-Entladung unter den aktuell berechneten Bedarf, kann aber keine absolute
-Garantie geben, wenn PV-Ertrag oder Hausverbrauch später deutlich von der
-Prognose abweichen.
+Damit ergibt sich bei Ziel-SOC `100 %`:
+
+```text
+Prognosebasierter Mindest-SOC:   ca. 87,1 %
+Dynamisches SOC-Soll:                93,3 %
+SOC-Freigabegrenze:              ca. 95,3 %
+```
+
+Bei `100 %` Ist-SOC sind damit ungefähr `4,7` SOC-Prozentpunkte freigebbar.
+Bei einer Akkukapazität von `2,048 kWh` entspricht das rund `0,096 kWh`.
+
+Sinkt die Restprognose so weit, dass nach Abzug der Energiereserve keine
+Wiederaufladeenergie mehr vorhanden ist, steigt der prognosebasierte
+Mindest-SOC bis zum Ziel-SOC. Dann wird keine zusätzliche Akkuenergie
+freigegeben.
+
+Wichtig: Die Grenze ist **prognosebasiert**. Sie kann das Ziel-SOC nicht
+garantieren, wenn der reale PV-Ertrag später deutlich geringer als prognostiziert
+ausfällt.
 
 ## 12. Dynamische SOC-Steuerung aktivieren
 
@@ -421,7 +485,7 @@ Die aktive Steuerung enthält weiterhin:
 - persistente Home-Assistant-Benachrichtigung
 - Sperre gegen den Legacy-YAML-Controller
 
-Zusätzlich schützt Beta 11 die SOC-Freigabe durch:
+Zusätzlich schützt Beta 12 die SOC-Freigabe durch:
 
 - dynamisches SOC-Soll
 - prognosebasierten Mindest-SOC

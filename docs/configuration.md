@@ -1,7 +1,7 @@
 # Konfiguration
 
 Dieses Dokument beschreibt die HACS-Integration **Growatt NOAH Optimizer**
-für Version `2.0.0-beta.11`.
+für Version `2.0.0-beta.12`.
 
 Die tatsächlichen Entity-IDs können durch Bereichsnamen oder manuelle
 Umbenennungen abweichen. Die Integration und das automatische Dashboard lösen
@@ -271,7 +271,32 @@ weniger als -2 %-Punkte = Hinter Ladeplan
 Liegt der Speicher hinter dem Ladeplan, wird die zum Aufholen des Rückstands
 benötigte Ladeleistung berechnet.
 
+Ab Beta 12 wird dabei berücksichtigt, dass das dynamische SOC-Soll während der
+Nachholzeit weiter ansteigt. Das Nachholziel ist deshalb nicht mehr nur das
+aktuelle dynamische SOC-Soll, sondern das vorausberechnete dynamische SOC-Soll
+am Ende des Nachholfensters.
+
+Das Nachholfenster ist:
+
 ```text
+Nachholfenster
+= min(SOC-Nachholzeit, verbleibende Zeit bis Sonnenuntergang)
+```
+
+Für die Projektion wird der Tageslichtfortschritt bis zum Ende dieses Fensters
+weitergeführt. Die aktuell berechnete Prognose-Anforderung bleibt für diese
+kurze Projektion konstant. Bei jedem Coordinator-Update wird sie mit den dann
+aktuellen Forecast- und Zeitwerten neu berechnet.
+
+Vereinfacht gilt:
+
+```text
+Nachholziel
+= dynamisches SOC-Soll am Ende des Nachholfensters
+
+SOC-Rückstand
+= max(Nachholziel - Ist-SOC, 0)
+
 Fehlende Batterieenergie
 = Akkukapazität × SOC-Rückstand / 100
 
@@ -279,11 +304,14 @@ Benötigte PV-Energie
 = fehlende Batterieenergie / Ladewirkungsgrad
 
 Dynamische Ladeleistung
-= benötigte PV-Energie / Nachholzeit
+= benötigte PV-Energie / Nachholfenster
 ```
 
-Die verwendete Nachholzeit ist auf die noch verbleibende Zeit bis
-Sonnenuntergang begrenzt.
+Die Nachladeleistung wird nur verwendet, wenn der Akku mehr als 2
+Prozentpunkte hinter dem **aktuellen** dynamischen SOC-Soll liegt. Dadurch
+bleibt die bestehende Einteilung in **Vor Ladeplan**, **Im Ladeplan** und
+**Hinter Ladeplan** unverändert, während die aktive Nachladung ein bewegliches
+Soll tatsächlich einholen kann.
 
 ### 3.8 Einfluss auf die Regelung
 
@@ -314,23 +342,62 @@ anzufordern.
 
 ### 3.9 Vorausschauende SOC-Freigabe
 
-Beta 11 ergänzt die Gegenrichtung zur SOC-Nachladung: Liegt der Akku sicher
+Beta 11 ergänzt die Gegenrichtung zur SOC-Nachladung. Beta 12 korrigiert
+die dafür verwendete Wiederauflade-Reserve: Liegt der Akku sicher
 **vor** dem Ladeplan, kann ein Teil dieses Vorsprungs für den Hausverbrauch
 freigegeben werden.
 
 #### Prognosebasierter Mindest-SOC
 
-Die bereits für den Ladeplan berechnete Prognose-Anforderung wird als eigener
-Diagnosewert ausgegeben:
+Für die SOC-Freigabe wird eine **eigene Wiederauflade-Reserve** berechnet.
+Diese ist absichtlich nicht identisch mit der Prognose-Anforderung des
+dynamischen Ladeplans.
+
+Der dynamische Ladeplan bleibt konservativ und verwendet weiterhin:
 
 ```text
-Prognosebasierter Mindest-SOC
-= Ziel-SOC - möglicher zukünftiger SOC-Zuwachs
+PV-Energie für Ladeplan
+= wirksame Restprognose
+  - erwarteter Hausenergiebedarf
+  - zusätzliche Energiereserve
 ```
 
-Der Wert liegt immer zwischen Mindest-SOC und Ziel-SOC. Er gibt an, welcher SOC
-nach der aktuellen Restprognose mindestens bereits vorhanden sein muss, damit
-der Ziel-SOC bis Sonnenuntergang rechnerisch noch erreichbar bleibt.
+Die SOC-Freigabe beantwortet eine andere Frage: Wie viel SOC darf jetzt
+freigegeben werden, wenn die verbleibende prognostizierte PV-Energie später
+notfalls zum Wiederaufladen des Akkus reserviert wird?
+
+Dafür gilt:
+
+```text
+PV-Energie für Wiederaufladung
+= wirksame Restprognose
+  - zusätzliche Energiereserve
+```
+
+Negative Ergebnisse werden auf `0 kWh` begrenzt.
+
+```text
+Speicherbare Wiederaufladeenergie
+= PV-Energie für Wiederaufladung × Ladewirkungsgrad
+
+Möglicher Wiederauflade-SOC
+= Speicherbare Wiederaufladeenergie
+  / nutzbare Akkukapazität × 100
+
+Prognosebasierter Mindest-SOC
+= Ziel-SOC - möglicher Wiederauflade-SOC
+```
+
+Der Wert wird auf Mindest-SOC bis Ziel-SOC begrenzt.
+
+Der **erwartete Hausenergiebedarf wird bei dieser Wiederauflade-Reserve nicht
+abgezogen**. Das ist beabsichtigt. Wenn die prognostizierte PV-Energie später
+zum Wiederaufladen des Akkus benötigt wird, kann der Hausverbrauch in diesem
+Zeitraum gegebenenfalls aus dem Netz versorgt werden.
+
+Dadurch führt eine negative normale Prognosemarge nicht mehr automatisch dazu,
+dass der prognosebasierte Mindest-SOC der Freigabe auf `100 %` steigt und ein
+voller Akku überhaupt nicht freigegeben werden kann.
 
 #### SOC-Freigabegrenze
 
@@ -404,14 +471,35 @@ zeitgleich aktiv sein.
 
 #### Prognosegrenze
 
-Die Schutzwirkung ist prognosebasiert. Mit den aktuell bekannten Daten entlädt
-die Funktion nicht absichtlich unter den SOC, der zum Erreichen des Ziel-SOC
-benötigt wird. Ändern sich später PV-Ertrag oder Hausverbrauch deutlich
-gegenüber der Prognose, kann das reale Abend-SOC trotzdem abweichen.
+Die Schutzwirkung bleibt prognosebasiert. Die SOC-Freigabe entlädt nicht
+absichtlich unter den höheren Wert aus:
 
-Bei einer verschlechterten Prognose steigt der prognosebasierte Mindest-SOC und
-damit die SOC-Freigabegrenze. Die Freigabe endet automatisch; bei Bedarf kann
-der dynamische Regler anschließend in **SOC-Nachladung** wechseln.
+- dynamischem SOC-Soll
+- prognosebasiertem Mindest-SOC für die Wiederaufladung
+- zusätzlicher 2-Prozentpunkte-Sicherheitsreserve
+
+Dabei gelten bewusst zwei unterschiedliche Prognosebetrachtungen:
+
+```text
+Dynamischer Ladeplan:
+Restprognose - erwarteter Hausenergiebedarf - Energiereserve
+
+SOC-Freigabe:
+Restprognose - Energiereserve
+```
+
+Die zweite Betrachtung setzt voraus, dass verbleibende PV-Energie bei Bedarf
+für das Wiederaufladen des Akkus priorisiert werden darf. Dadurch kann später
+Netzbezug für den Hausverbrauch entstehen. Das ist Teil der beabsichtigten
+Strategie, weil so jetzt Akkuenergie genutzt und gleichzeitig Aufnahmefähigkeit
+für späteren PV-Überschuss geschaffen werden kann.
+
+Ändert sich die Prognose, wird die Freigabegrenze neu berechnet. Sinkt die
+erwartete Wiederaufladeenergie, steigt der prognosebasierte Mindest-SOC und die
+Freigabe endet früher.
+
+Die Berechnung ist keine absolute Garantie. Ist Forecast.Solar zu optimistisch,
+kann der Ziel-SOC am Abend trotz Schutzgrenze unterschritten werden.
 
 Wurde der letzte Stellbefehl im Modus **SOC-Freigabe** gesendet und muss der
 Sollwert anschließend sinken, wird diese Reduzierung als sicherheitsrelevant
@@ -638,14 +726,17 @@ behind    = Hinter Ladeplan
 
 ### Dynamisch erforderliche Ladeleistung
 
-Zusätzliche Ladeleistung zum Aufholen eines SOC-Rückstands innerhalb der
-konfigurierten SOC-Nachholzeit.
+Zusätzliche Ladeleistung zum Aufholen eines SOC-Rückstands. Ab Beta 12 wird
+dafür das vorausberechnete dynamische SOC-Soll am Ende des Nachholfensters
+verwendet, damit die Nachladung einer steigenden Sollkurve nicht dauerhaft
+hinterherläuft.
 
 ### Prognosebasierter Mindest-SOC
 
-Konservativer Mindest-SOC, der nach aktueller Restprognose bereits vorhanden
-sein muss, damit der Ziel-SOC bis Sonnenuntergang rechnerisch noch erreichbar
-bleibt.
+Mindest-SOC für die vorausschauende Wiederaufladung. Er wird aus wirksamer
+Restprognose minus zusätzlicher Energiereserve berechnet. Der erwartete
+Hausenergiebedarf wird bei diesem Freigabe-Diagnosewert bewusst nicht
+abgezogen.
 
 ### SOC-Freigabegrenze
 
@@ -759,3 +850,6 @@ die Standardvorlage ersetzt.
 Beta 11 erhöht wegen der neuen Dashboardelemente die Dashboard-Template-Version
 von 9 auf 10. Bestehende Benutzeranpassungen werden nicht pauschal
 überschrieben.
+
+Beta 12 verändert die Dashboard-Struktur nicht. Die Dashboard-Template-Version
+bleibt deshalb bei Version 10.

@@ -1,6 +1,6 @@
-﻿# HACS Beta
+# HACS Beta
 
-Current beta: `2.0.0-beta.11`
+Current beta: `2.0.0-beta.12`
 
 ## Direct HACS repository button
 
@@ -147,6 +147,35 @@ Default catch-up time:
 The effective catch-up window is never longer than the remaining time until
 sunset.
 
+Beta 12 corrects the catch-up target for the rising daytime SOC curve. Earlier
+versions calculated the energy needed to reach only the **current** dynamic SOC
+target. Because that target keeps rising during the catch-up interval, the
+battery could remain permanently behind schedule even while catch-up was
+active.
+
+Beta 12 projects daylight progress to the end of the catch-up window and
+evaluates the same dynamic SOC curve at that future point. The current forecast
+requirement is kept for this short projection and is recalculated on every
+coordinator update.
+
+```text
+catch-up target
+= dynamic SOC target at the end of the catch-up window
+
+SOC shortfall
+= max(catch-up target - actual SOC, 0)
+
+required PV energy
+= battery capacity × SOC shortfall / 100 / charging efficiency
+
+dynamic catch-up power
+= required PV energy / catch-up window
+```
+
+Catch-up control still becomes active only when the battery is more than 2
+percentage points behind the **current** dynamic SOC target. The ahead,
+on-track, and behind status therefore remains unchanged.
+
 ### Safe opt-in
 
 The switch:
@@ -157,7 +186,7 @@ Dynamic SOC control
 
 is disabled by default for a new setup.
 
-Before updating to Beta 11, disable active control and dynamic SOC control:
+Before updating to Beta 12, disable active control and dynamic SOC control:
 
 ```text
 Active NOAH control
@@ -205,15 +234,46 @@ in `automatic` mode.
 
 ### Forecast-required minimum SOC
 
-The conservative remaining forecast already determines how much SOC must be
-present now if the target SOC is still to be reachable by sunset:
+Predictive SOC release uses a separate forecast-based refill reserve.
+
+The dynamic charging schedule remains conservative and still calculates its
+forecast requirement from:
 
 ```text
+PV energy for charging schedule
+= effective remaining forecast
+  - expected household energy
+  - additional energy reserve
+```
+
+Predictive release answers a different question: how much battery SOC may be
+released now if later forecast PV can be reserved for restoring that SOC?
+
+For the release reserve:
+
+```text
+PV energy available for refilling
+= effective remaining forecast
+  - additional energy reserve
+
+storable refill energy
+= PV energy available for refilling × charging efficiency
+
+possible refill SOC
+= storable refill energy / battery capacity × 100
+
 forecast-required minimum SOC
-= target SOC - possible future SOC gain
+= target SOC - possible refill SOC
 ```
 
 The result is clamped between minimum SOC and target SOC.
+
+Expected household energy is intentionally **not deducted from the predictive
+release refill reserve**. If necessary, later household demand may be supplied
+from the grid while remaining forecast PV is used to restore the battery.
+
+This prevents a full battery from being locked at 100% merely because the
+normal forecast margin is negative due to expected household demand.
 
 ### SOC release floor
 
@@ -287,10 +347,61 @@ remaining active while the release floor rises or household load falls.
 
 ### Forecast-based safety
 
-The release floor is based on the currently available forecast and configured
-load assumptions. The controller does not intentionally discharge below that
-calculated floor. It cannot, however, guarantee the evening SOC if later PV
-production or household demand differs materially from the forecast.
+The release floor is based on two deliberately different forecast views:
+
+```text
+Dynamic charging schedule:
+remaining forecast - expected household energy - energy reserve
+
+Predictive release refill reserve:
+remaining forecast - energy reserve
+```
+
+The predictive release calculation assumes that remaining PV may be prioritized
+for restoring released battery SOC. Later household demand can therefore cause
+grid import if the PV energy is needed for battery refilling.
+
+This is intentional: predictive release uses safe battery headroom for current
+household demand and creates capacity for later PV surplus.
+
+The controller does not intentionally discharge below the calculated release
+floor. The calculation is still forecast-based and cannot guarantee the evening
+target if actual PV production is lower than forecast.
+
+If the previous output command was issued in `soc_release` mode and the new
+target must decrease, that reduction bypasses the normal two-minute command
+interval and deadband. This prevents a stale high discharge target from
+remaining active while the release floor rises or household load falls.
+
+## Beta 12 predictive-release correction
+
+Beta 12 corrects the forecast reserve used by predictive SOC release.
+
+Beta 11 reused the same conservative forecast requirement as the dynamic
+charging schedule. That calculation deducted expected household energy and
+could therefore raise the forecast-required minimum SOC to the target SOC even
+when a full battery still had forecast PV available for later refilling.
+
+Beta 12 separates the two forecast views:
+
+```text
+Dynamic charging schedule:
+effective remaining forecast
+- expected household energy
+- additional energy reserve
+
+Predictive release refill reserve:
+effective remaining forecast
+- additional energy reserve
+```
+
+Expected household energy is deliberately not deducted from the predictive
+release refill reserve.
+
+The dynamic charging schedule itself is unchanged.
+
+No new entities or dashboard elements are added in Beta 12, so dashboard
+template version remains `10`.
 
 ## Automatic dashboard
 
@@ -616,6 +727,19 @@ Predictive SOC release:
 - does not intentionally request battery export to the grid
 - increases dashboard template version to 10
 - preserves manual, self-consumption, charge-priority, and night behavior
+
+### 2.0.0-beta.12
+
+Predictive SOC release reserve and dynamic catch-up fix:
+
+- separates the predictive-release refill reserve from the dynamic charging schedule
+- no longer deducts expected household demand from the refill reserve
+- prevents a negative normal forecast margin from unnecessarily locking the release floor at 100%
+- keeps the dynamic SOC target curve unchanged
+- projects the catch-up target to the end of the configured catch-up window
+- prevents catch-up charging from permanently trailing a rising SOC target
+- keeps dashboard template version 10
+- adds no new entities, switches, or controller modes 
 
 ## Current limitations 
 
