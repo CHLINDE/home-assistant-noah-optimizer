@@ -25,7 +25,7 @@ Eine HACS-kompatible Custom Integration ist als Beta verfügbar.
 Aktuelle Beta:
 
 ```text
-2.0.0-beta.12
+2.0.0-beta.13
 ```
 
 Ab Beta 5 kann die Integration den berechneten Sollwert optional aktiv an
@@ -66,6 +66,13 @@ wenn noch genügend PV-Energie für eine spätere Wiederaufladung prognostiziert
 ist. Zusätzlich berücksichtigt die SOC-Nachladung jetzt, dass das dynamische
 SOC-Soll während der Nachholzeit weiter ansteigt. Die Sollkurve selbst bleibt
 unverändert.
+
+Beta 13 beschleunigt die **Lastnachführung während der SOC-Freigabe**. Die
+Regellogik wird alle 15 Sekunden ausgewertet. Während `SOC-Freigabe` dürfen
+erforderliche Sollwerterhöhungen im Abstand von 30 Sekunden geschrieben
+werden; normale Betriebsarten behalten den konservativen Mindestabstand von
+zwei Minuten. Sicherheitsrelevante Reduzierungen nach einer SOC-Freigabe
+bleiben weiterhin sofort möglich.
 
 ## Voraussetzungen
 
@@ -363,7 +370,7 @@ Speicher bis zum konfigurierten Mindest-SOC entladen.
 
 ### Sichere Aktivierung
 
-Nach dem Update auf Beta 12 sollte zunächst gelten:
+Nach dem Update auf Beta 13 sollte zunächst gelten:
 
 ```text
 NOAH-Steuerung aktiv = Aus
@@ -535,7 +542,9 @@ Der Controller enthält unter anderem:
 
 - Schalt-Hysterese
 - Stellgrößenraster
-- Mindestabstand zwischen normalen Stellbefehlen
+- Mindestabstand von zwei Minuten zwischen normalen Stellbefehlen
+- schnellere Lastnachführung während SOC-Freigabe mit 30 Sekunden Mindestabstand für Sollwerterhöhungen
+- Controller-Auswertung alle 15 Sekunden
 - sofortige sicherheitsrelevante Sollwertreduzierung nach SOC-Freigabe
 - Wiederholungsversuch bei nicht übernommenem Sollwert
 - Failsafe bei längerem Verlust kritischer Daten
@@ -731,6 +740,18 @@ SOC-Freigabe-Reserve und SOC-Nachladung korrigiert:
 - verhindert eine unnötige 100-%-Freigabegrenze nur wegen negativer normaler Prognosemarge
 - prognosebasierter Mindest-SOC beschreibt nun den für spätere Wiederaufladung notwendigen SOC
 - Dashboard-Struktur unverändert; Template-Version bleibt 10
+
+### 2.0.0-beta.13
+
+Schnellere Lastnachführung der SOC-Freigabe:
+
+- Controller-Auswertung von 60 auf 15 Sekunden verkürzt
+- Sollwerterhöhungen in `SOC-Freigabe` können alle 30 Sekunden geschrieben werden
+- normale Betriebsarten behalten den 2-Minuten-Mindestabstand
+- SOC-Freigabe verwendet intern eine engere Deadband von maximal 25 W; das Stellgrößenraster bleibt maßgeblich
+- sicherheitsrelevante Reduzierungen nach SOC-Freigabe bleiben ohne Wartezeit möglich
+- `rate_limited` wird nur noch angezeigt, wenn tatsächlich ein neuer Stellbefehl ansteht und noch auf den Mindestabstand wartet
+- keine neuen Entitäten oder Dashboardelemente; Template-Version bleibt 10
 
 ## Legacy-YAML-Optimizer
 

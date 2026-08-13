@@ -1,7 +1,7 @@
 # Konfiguration
 
 Dieses Dokument beschreibt die HACS-Integration **Growatt NOAH Optimizer**
-für Version `2.0.0-beta.12`.
+für Version `2.0.0-beta.13`.
 
 Die tatsächlichen Entity-IDs können durch Bereichsnamen oder manuelle
 Umbenennungen abweichen. Die Integration und das automatische Dashboard lösen
@@ -507,6 +507,30 @@ behandelt. Sie umgeht die normale 2-Minuten-Wartezeit und die übliche
 Schalt-Hysterese, damit eine steigende Freigabegrenze oder sinkende Hauslast
 nicht unnötig lange mit dem alten höheren Entladesollwert weiterläuft.
 
+#### Schnellere Lastnachführung ab Beta 13
+
+Die SOC-Freigabe reagiert auf den **aktuellen positiven Netzbezug** und muss
+deshalb schneller nachgeführt werden als die prognosegetriebenen normalen
+Regelzustände. Ab Beta 13 gilt:
+
+```text
+Controller-Auswertung:                 15 s
+Normale Stellbefehle:                 120 s Mindestabstand
+Sollwerterhöhung bei SOC-Freigabe:     30 s Mindestabstand
+SOC-Freigabe-Deadband:             max. 25 W
+Sollwertreduzierung nach Freigabe:   sofort möglich
+```
+
+Ist die konfigurierte Schalt-Hysterese kleiner als `25 W`, wird auch während
+der SOC-Freigabe der kleinere konfigurierte Wert verwendet. Das
+**Stellgrößenraster** bleibt unverändert maßgeblich; bei einem Raster von
+beispielsweise `50 W` werden deshalb weiterhin nur entsprechend gerasterte
+Sollwerte angefordert.
+
+Die schnellere 15-Sekunden-Auswertung ändert den Mindestabstand der normalen
+Betriebsarten nicht. Sie ermöglicht lediglich, eine aktive SOC-Freigabe bei
+veränderter Hauslast zeitnah neu zu bewerten.
+
 ## 4. Parameter
 
 ### Nutzbare Akkukapazität
@@ -778,7 +802,7 @@ Typische `control_status`-Werte:
 | `critical_data_missing` | Kritische Messwerte fehlen |
 | `actuator_unavailable` | Stellgröße nicht erreichbar |
 | `target_unavailable` | Kein gültiger Sollwert |
-| `rate_limited` | Mindestabstand noch nicht erreicht |
+| `rate_limited` | Ein erforderlicher Stellbefehl wartet noch auf seinen Mindestabstand |
 | `waiting_for_retry` | Wartet auf Wiederholungsversuch |
 | `in_sync` | Stellgröße liegt innerhalb der Hysterese |
 | `command_sent` | Stellbefehl gesendet |
@@ -851,5 +875,5 @@ Beta 11 erhöht wegen der neuen Dashboardelemente die Dashboard-Template-Version
 von 9 auf 10. Bestehende Benutzeranpassungen werden nicht pauschal
 überschrieben.
 
-Beta 12 verändert die Dashboard-Struktur nicht. Die Dashboard-Template-Version
-bleibt deshalb bei Version 10.
+Beta 12 und Beta 13 verändern die Dashboard-Struktur nicht. Die
+Dashboard-Template-Version bleibt deshalb bei Version 10.

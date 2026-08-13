@@ -1,6 +1,6 @@
 # HACS Beta
 
-Current beta: `2.0.0-beta.12`
+Current beta: `2.0.0-beta.13`
 
 ## Direct HACS repository button
 
@@ -186,7 +186,7 @@ Dynamic SOC control
 
 is disabled by default for a new setup.
 
-Before updating to Beta 12, disable active control and dynamic SOC control:
+Before updating to the current beta, disable active control and dynamic SOC control:
 
 ```text
 Active NOAH control
@@ -401,6 +401,27 @@ release refill reserve.
 The dynamic charging schedule itself is unchanged.
 
 No new entities or dashboard elements are added in Beta 12, so dashboard
+template version remains `10`.
+
+## Beta 13 faster predictive-release response
+
+Beta 13 changes only the low-level command cadence used while predictive SOC
+release is active. The predictive SOC calculations and release floor remain
+unchanged.
+
+The controller is evaluated every 15 seconds. Normal controller modes keep the
+existing two-minute minimum command interval, while `soc_release` may increase
+the NOAH output target every 30 seconds when a real target change is pending.
+
+During `soc_release`, the effective command deadband is limited to at most
+`25 W`; a smaller configured deadband is preserved. Final command-step rounding
+remains unchanged. Safety-relevant reductions after a SOC-release command still
+bypass the command interval and deadband.
+
+The `rate_limited` controller status is now set only when an actual command is
+required but still has to wait for the applicable minimum interval.
+
+No new entities or dashboard elements are added in Beta 13, so dashboard
 template version remains `10`.
 
 ## Automatic dashboard
@@ -739,7 +760,20 @@ Predictive SOC release reserve and dynamic catch-up fix:
 - projects the catch-up target to the end of the configured catch-up window
 - prevents catch-up charging from permanently trailing a rising SOC target
 - keeps dashboard template version 10
-- adds no new entities, switches, or controller modes 
+- adds no new entities, switches, or controller modes
+
+### 2.0.0-beta.13
+
+Faster predictive SOC release response:
+
+- evaluates the active controller every 15 seconds
+- allows SOC-release target increases every 30 seconds
+- keeps the two-minute minimum interval for normal controller modes
+- uses a release-specific effective deadband of at most 25 W
+- keeps immediate safety reductions after SOC release
+- reports `rate_limited` only for an actual pending command
+- keeps dashboard template version 10
+- adds no new entities, switches, or controller modes
 
 ## Current limitations 
 
