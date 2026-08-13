@@ -30,11 +30,19 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 
-# How often the control logic is evaluated.
-CONTROL_CHECK_INTERVAL = timedelta(minutes=1)
+# How often the control logic is evaluated. A shorter interval lets
+# predictive SOC release follow changing household load without making the
+# normal control modes write more frequently.
+CONTROL_CHECK_INTERVAL = timedelta(seconds=15)
 
 # Normal output commands must be at least this far apart.
 MIN_COMMAND_INTERVAL = timedelta(minutes=2)
+
+# Predictive SOC release is a load-following mode. Increases may therefore be
+# written more frequently than normal commands, while reductions remain
+# safety-relevant and can still be applied immediately.
+SOC_RELEASE_COMMAND_INTERVAL = timedelta(seconds=30)
+SOC_RELEASE_DEADBAND = 25.0
 
 # Retry if the NOAH has not taken over the requested value.
 RETRY_INTERVAL = timedelta(minutes=20)
@@ -493,28 +501,31 @@ class NoahOptimizerController:
                     now - self._last_command_at
                 )
 
+            release_mode_active = (
+                controller_mode == CONTROLLER_SOC_RELEASE
+            )
+
+            # SOC release follows the current grid import more closely than
+            # the forecast-driven normal modes. Keep the user's configured
+            # deadband when it is already smaller, otherwise use the tighter
+            # release-specific threshold. The coordinator's command-step
+            # rounding still limits the actual setpoint granularity.
+            if release_mode_active:
+                effective_deadband = min(
+                    deadband,
+                    SOC_RELEASE_DEADBAND,
+                )
+            else:
+                effective_deadband = deadband
+
             # A target reduction after a command issued in SOC release mode
             # is safety-relevant. Apply it immediately so falling household
             # load or a rising SOC release floor cannot keep the previous
-            # discharge target active until the normal rate limit expires.
+            # discharge target active until a rate limit expires.
             release_reduction_required = (
                 self._last_command_mode == CONTROLLER_SOC_RELEASE
                 and target < actual_setpoint
             )
-
-            # Normal commands must never be sent faster
-            # than once every two minutes. SOC-release reductions are the
-            # exception because delaying them could use battery energy below
-            # the newly calculated safe release range.
-            if (
-                elapsed is not None
-                and elapsed < MIN_COMMAND_INTERVAL
-                and not release_reduction_required
-            ):
-                self._set_status(
-                    "rate_limited"
-                )
-                return
 
             if self._last_command_target is None:
                 reference = actual_setpoint
@@ -525,14 +536,14 @@ class NoahOptimizerController:
 
             change_required = (
                 abs(target - reference)
-                >= deadband
+                >= effective_deadband
             )
 
             first_sync_required = (
                 self._last_command_at is None
                 and abs(
                     target - actual_setpoint
-                ) >= deadband
+                ) >= effective_deadband
             )
 
             retry_required = (
@@ -540,19 +551,21 @@ class NoahOptimizerController:
                 and elapsed >= RETRY_INTERVAL
                 and abs(
                     target - actual_setpoint
-                ) >= deadband
+                ) >= effective_deadband
             )
 
-            if not (
+            command_required = (
                 change_required
                 or first_sync_required
                 or retry_required
                 or release_reduction_required
-            ):
+            )
+
+            if not command_required:
                 if (
                     abs(
                         target - actual_setpoint
-                    ) < deadband
+                    ) < effective_deadband
                 ):
                     self._set_status(
                         "in_sync"
@@ -562,6 +575,26 @@ class NoahOptimizerController:
                         "waiting_for_retry"
                     )
 
+                return
+
+            # Normal modes retain the conservative two-minute command
+            # interval. Predictive SOC release may raise the output every
+            # 30 seconds so it can track changing household load. A reduction
+            # after a SOC-release command remains immediate.
+            command_interval = (
+                SOC_RELEASE_COMMAND_INTERVAL
+                if release_mode_active
+                else MIN_COMMAND_INTERVAL
+            )
+
+            if (
+                elapsed is not None
+                and elapsed < command_interval
+                and not release_reduction_required
+            ):
+                self._set_status(
+                    "rate_limited"
+                )
                 return
 
             success = await self._async_write_output(

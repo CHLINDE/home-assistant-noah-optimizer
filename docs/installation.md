@@ -1,7 +1,7 @@
 # Installation
 
 Diese Anleitung beschreibt die Installation und das Update des **Home
-Assistant Growatt NOAH Optimizers** für Version `2.0.0-beta.12`.
+Assistant Growatt NOAH Optimizers** für Version `2.0.0-beta.13`.
 
 Für neue Installationen wird die HACS-Integration empfohlen.
 
@@ -94,12 +94,12 @@ Typ:
 Integration
 ```
 
-## 5. Beta 12 installieren
+## 5. Beta 13 installieren
 
 Zu installierende Version:
 
 ```text
-2.0.0-beta.12
+2.0.0-beta.13
 ```
 
 Nach der Installation Home Assistant vollständig neu starten.
@@ -136,7 +136,7 @@ Standard:
 Ein
 ```
 
-## 7. Update auf Beta 12
+## 7. Update auf Beta 13
 
 Vor dem Update:
 
@@ -146,11 +146,30 @@ Dynamische SOC-Steuerung aktiv = Aus
 Vorausschauende SOC-Freigabe aktiv = Aus
 ```
 
-Danach Beta 12 über HACS installieren und Home Assistant vollständig neu starten.
+Danach Beta 13 über HACS installieren und Home Assistant vollständig neu starten.
+
+### Update von Beta 12
+
+Beta 13 übernimmt alle vorhandenen Einstellungen und Entitäten aus Beta 12.
+Es werden **keine neuen Entitäten, Schalter oder Dashboardelemente** angelegt.
+
+Geändert wird ausschließlich die aktive Controller-Nachführung:
+
+```text
+Controller-Auswertung:                 15 s
+Normale Stellbefehle:                 120 s Mindestabstand
+Sollwerterhöhung bei SOC-Freigabe:     30 s Mindestabstand
+Sollwertreduzierung nach Freigabe:   sofort möglich
+```
+
+Normale Betriebsarten behalten damit ihr bisheriges ruhiges Stellverhalten.
+Nur die aktive SOC-Freigabe kann erhöhten Netzbezug schneller durch zusätzliche
+NOAH-Ausgangsleistung nachführen.
 
 ### Update von Beta 11
 
-Beta 12 übernimmt alle vorhandenen Einstellungen und Entitäten aus Beta 11.
+Beta 13 übernimmt alle vorhandenen Einstellungen und Entitäten aus Beta 11
+und enthält zusätzlich sämtliche Berechnungsänderungen aus Beta 12.
 
 Es werden **keine neuen Entitäten oder Schalter** angelegt.
 
@@ -194,7 +213,7 @@ ansteigt.
 
 ### Update von Beta 10 oder älter
 
-Beim direkten Update auf Beta 12 bleiben alle bisherigen Migrationen erhalten.
+Beim direkten Update auf Beta 13 bleiben alle bisherigen Migrationen erhalten.
 
 Falls die Beta-11-Elemente noch fehlen, werden weiterhin ergänzt:
 
@@ -218,7 +237,7 @@ Die Funktion ist bei einer neuen Einrichtung standardmäßig ausgeschaltet.
 
 ## 8. Dashboard und Migration
 
-Beta 12 verändert die Dashboard-Struktur nicht.
+Beta 13 verändert die Dashboard-Struktur nicht.
 
 Deshalb bleibt:
 
@@ -485,7 +504,7 @@ Die aktive Steuerung enthält weiterhin:
 - persistente Home-Assistant-Benachrichtigung
 - Sperre gegen den Legacy-YAML-Controller
 
-Zusätzlich schützt Beta 12 die SOC-Freigabe durch:
+Seit Beta 12 schützt die SOC-Freigabe zusätzlich durch:
 
 - dynamisches SOC-Soll
 - prognosebasierten Mindest-SOC

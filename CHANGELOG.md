@@ -1,3 +1,38 @@
+## [2.0.0-beta.13]
+
+### Fixed
+
+- Reduced the delayed response of predictive SOC release to changing household load and grid import
+- `rate_limited` is now reported only when an actual pending command is waiting for its minimum command interval
+
+### Changed
+
+- Controller evaluation interval reduced from 60 seconds to 15 seconds
+- Output increases while `soc_release` is active may be written every 30 seconds instead of using the normal two-minute command interval
+- Normal controller modes keep the existing two-minute minimum command interval
+- Predictive SOC release uses an internal deadband of at most 25 W while respecting any smaller configured command deadband
+- Command-step rounding remains unchanged and still defines the final output target granularity
+- Safety-relevant target reductions after SOC-release commands continue to bypass command interval and deadband
+- Dashboard structure and dashboard template version remain unchanged at version 10
+- No new entities, switches, or controller modes are introduced
+
+### Documentation
+
+- Updated README, installation, configuration, HACS beta, and troubleshooting documentation for the faster predictive-release controller response
+- Documented the different command intervals for normal control and predictive SOC release
+
+### Safety
+
+The faster command cadence applies only while the calculated controller mode is
+`soc_release`. Normal forecast-driven modes keep the existing conservative
+two-minute minimum command interval.
+
+Downward corrections after an SOC-release command remain immediate so falling
+household load or a rising release floor cannot leave an unnecessarily high
+discharge target active.
+
+---
+
 ## [2.0.0-beta.12]
 
 ### Fixed

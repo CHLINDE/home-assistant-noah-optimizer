@@ -1,7 +1,7 @@
 # Fehlerbehebung
 
 Dieses Dokument bezieht sich primär auf die HACS-Integration ab
-`2.0.0-beta.12`.
+`2.0.0-beta.13`.
 
 ## 1. Integration wird nicht geladen
 
@@ -17,7 +17,7 @@ Zusätzlich prüfen:
 
 - HACS-Installation vollständig
 - Home Assistant nach dem Update neu gestartet
-- `manifest.json` auf `2.0.0-beta.12`
+- `manifest.json` auf `2.0.0-beta.13`
 - alle Quell-Entitäten vorhanden
 - keine Python-Fehler im Protokoll
 
@@ -139,7 +139,7 @@ verursacht werden.
 
 Prüfen:
 
-- tatsächlich `2.0.0-beta.12` installiert
+- tatsächlich `2.0.0-beta.13` installiert
 - Home Assistant nach dem Update vollständig neu gestartet
 - `sun.sun` ist verfügbar
 - `sun.sun` steht tagsüber auf `above_horizon`
@@ -200,7 +200,7 @@ weiter ansteigende Soll zielt.
 
 Prüfen:
 
-- tatsächlich `2.0.0-beta.12` mit der aktuellen Branch-Version installiert
+- tatsächlich mindestens `2.0.0-beta.12` mit der aktuellen Berechnung installiert
 - `SOC-Ladeplan = Hinter Ladeplan`
 - `Dynamisch erforderliche Ladeleistung` ist größer als `0 W`
 - genügend aktuelle PV-Leistung ist vorhanden, um die berechnete Ladeleistung tatsächlich bereitzustellen
@@ -309,7 +309,10 @@ Die beschreibbare Stellgröße ist nicht verfügbar.
 
 ### `rate_limited`
 
-Normaler Zustand direkt nach einem Stellbefehl.
+Ein neuer Stellbefehl ist tatsächlich erforderlich, wartet aber noch auf den
+für den aktuellen Reglermodus geltenden Mindestabstand. Ab Beta 13 beträgt
+dieser bei `SOC-Freigabe` 30 Sekunden und bei normalen Regelzuständen weiterhin
+zwei Minuten.
 
 ### `waiting_for_retry`
 
@@ -372,7 +375,7 @@ Das Dashboard muss nicht gelöscht oder neu erstellt werden.
 
 Prüfen:
 
-- tatsächlich `2.0.0-beta.12` installiert
+- tatsächlich `2.0.0-beta.13` installiert
 - Home Assistant nach dem HACS-Update vollständig neu gestartet
 - Protokoll auf `noah_optimizer`-Fehler prüfen
 
@@ -518,7 +521,39 @@ Ist die aktive NOAH-Steuerung ausgeschaltet, werden Reglermodus und
 Ausgangssollwert zwar berechnet, aber nicht an die Stellgröße geschrieben.
 Das ist der empfohlene Testbetrieb.
 
-## 24. Bei SOC-Freigabe entsteht kurz Netzeinspeisung
+## 24. SOC-Freigabe reagiert zu träge auf Netzbezug
+
+Ab Beta 13 wird der aktive Controller alle `15 s` ausgewertet. Während
+`SOC-Freigabe` darf ein erforderlicher höherer Stellwert im Abstand von `30 s`
+geschrieben werden. Normale Betriebsarten behalten den bisherigen
+2-Minuten-Mindestabstand.
+
+Typisches Diagnosebild vor Beta 13:
+
+```text
+Reglermodus:          SOC-Freigabe
+Sollwert:             deutlich höher
+Letzter Stellwert:    deutlich niedriger
+Netzbezug:            weiterhin positiv
+```
+
+Ab Beta 13 sollte ein solcher Unterschied wesentlich schneller nachgeführt
+werden. Kurzzeitig kann weiterhin Netzbezug bestehen, weil Messwertaktualisierung,
+15-Sekunden-Auswertung, 30-Sekunden-Mindestabstand, Stellgrößenraster und die
+NOAH-Leistungsübernahme zusammenwirken.
+
+Prüfen:
+
+- `Reglermodus = SOC-Freigabe`
+- `SOC-Freigabe-Soll` beziehungsweise Ausgangssollwert liegt über dem letzten Stellwert
+- `Controller = Wartezeit nach Stellbefehl` darf höchstens bis zum nächsten zulässigen Freigabe-Stellbefehl bestehen bleiben
+- `NOAH System Output Power` übernimmt den geschriebenen Wert
+- Stellgrößenraster und maximale Ausgangsleistung begrenzen den Sollwert nicht unerwartet
+
+Sicherheitsrelevante **Reduzierungen** nach einem SOC-Freigabe-Befehl bleiben
+weiterhin ohne diese Wartezeit möglich.
+
+## 25. Bei SOC-Freigabe entsteht kurz Netzeinspeisung
 
 Die Funktion fordert keine absichtliche Batterieeinspeisung an. Das
 SOC-Freigabe-Soll orientiert sich am aktuell gemessenen positiven Netzbezug.
@@ -553,7 +588,7 @@ sicheren Wert gesetzt werden.
 Anschließend Netzleistung, Ausgangssollwert, SOC-Freigabe-Soll und tatsächliche
 NOAH-Ausgangsleistung vergleichen.
 
-## 25. Abend-SOC wird trotz SOC-Freigabe nicht erreicht
+## 26. Abend-SOC wird trotz SOC-Freigabe nicht erreicht
 
 Die SOC-Freigabe schützt den aufgrund der **aktuellen** Restprognose
 berechneten Wiederaufladebedarf. Sie ist keine absolute Garantie.
