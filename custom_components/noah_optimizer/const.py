@@ -157,6 +157,7 @@ STATUS_ACTUATOR_UNAVAILABLE: Final = "actuator_unavailable"
 DYNAMIC_SOC_AHEAD: Final = "ahead"
 DYNAMIC_SOC_ON_TRACK: Final = "on_track"
 DYNAMIC_SOC_BEHIND: Final = "behind"
+DYNAMIC_SOC_NIGHT: Final = "night"
 
 # ---------------------------------------------------------------------------
 # Controller modes

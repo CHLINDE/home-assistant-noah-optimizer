@@ -87,7 +87,7 @@ views:
                 'actuator_unavailable': 'Stellgröße nicht verfügbar',
                 'target_unavailable': 'Sollwert nicht verfügbar',
                 'rate_limited': 'Wartezeit nach Stellbefehl',
-                'waiting_for_retry': 'Warte auf Wiederholungsversuch',
+                'waiting_for_retry': 'Stellwert noch nicht bestätigt',
                 'in_sync': 'Synchron',
                 'command_sent': 'Stellbefehl gesendet',
                 'command_failed': 'Stellbefehl fehlgeschlagen',
@@ -107,7 +107,8 @@ views:
               {% set soc_plan_text = {
                 'ahead': 'Vor Ladeplan',
                 'on_track': 'Im Ladeplan',
-                'behind': 'Hinter Ladeplan'
+                'behind': 'Hinter Ladeplan',
+                'night': 'Nachtbetrieb'
               } %}
 
               {% set last_target = state_attr(ctrl, 'last_command_target') %}

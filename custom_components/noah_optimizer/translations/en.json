@@ -114,7 +114,8 @@
         "state": {
           "ahead": "Ahead of schedule",
           "on_track": "On schedule",
-          "behind": "Behind schedule"
+          "behind": "Behind schedule",
+          "night": "Night operation"
         }
       },
       "forecast_required_soc": {

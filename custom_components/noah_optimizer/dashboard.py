@@ -32,7 +32,7 @@ DASHBOARD_ICON = "mdi:home-battery"
 
 DASHBOARD_STORAGE_VERSION = 1
 DASHBOARD_STORAGE_KEY = f"{DOMAIN}.dashboard"
-DASHBOARD_TEMPLATE_VERSION = 10
+DASHBOARD_TEMPLATE_VERSION = 11
 
 DASHBOARD_TEMPLATE_DE = Path(__file__).with_name("dashboard_de.yaml")
 DASHBOARD_TEMPLATE_EN = Path(__file__).with_name("dashboard_en.yaml")
@@ -467,12 +467,73 @@ def _repair_beta8_status_expression(
 
     return "".join(lines), changed
 
+def _patch_night_soc_status(
+    content: str,
+    german: bool,
+) -> tuple[str, bool]:
+    """Add the localized night state to an existing SOC schedule map."""
+    if german:
+        behind_entry = "'behind': 'Hinter Ladeplan'"
+        night_entry = "'night': 'Nachtbetrieb'"
+        label = "**SOC-Ladeplan:**"
+    else:
+        behind_entry = "'behind': 'Behind schedule'"
+        night_entry = "'night': 'Night operation'"
+        label = "**SOC schedule:**"
+
+    # Current dashboards keep the mapping in a dedicated Jinja set block.
+    # Scope the check to that block so a separate controller-mode `night`
+    # entry does not suppress this migration.
+    map_start = content.find("{% set soc_plan_text = {")
+    if map_start >= 0:
+        map_end = content.find("} %}", map_start)
+        if map_end >= 0:
+            mapping = content[map_start:map_end]
+            if "'night':" in mapping:
+                return content, False
+
+            behind_pos = content.find(
+                behind_entry,
+                map_start,
+                map_end,
+            )
+            if behind_pos >= 0:
+                line_start = content.rfind("\n", map_start, behind_pos) + 1
+                indent = content[line_start:behind_pos]
+                replacement = (
+                    f"{behind_entry},\n{indent}{night_entry}"
+                )
+                content = (
+                    content[:behind_pos]
+                    + replacement
+                    + content[behind_pos + len(behind_entry):]
+                )
+                return content, True
+
+    # Legacy Beta 8/9 cards can contain the mapping directly on the visible
+    # status line. Patch only that line and preserve all unrelated content.
+    for line in content.splitlines(keepends=True):
+        if label not in line or behind_entry not in line:
+            continue
+        if "'night':" in line:
+            return content, False
+
+        patched_line = line.replace(
+            behind_entry,
+            f"{behind_entry}, {night_entry}",
+            1,
+        )
+        return content.replace(line, patched_line, 1), True
+
+    return content, False
+
+
 def _patch_status_markdown(
     content: str,
     replacements: dict[str, str],
     german: bool,
 ) -> tuple[str, bool]:
-    """Patch legacy SOC status content and add Beta 11 release diagnostics."""
+    """Patch legacy SOC status content and current dashboard diagnostics."""
     changed = False
 
     # Beta 9: repair the malformed Jinja expression that could have been
@@ -529,7 +590,7 @@ def _patch_status_markdown(
 
             status_expression = (
                 "{{ {'ahead': 'Vor Ladeplan', 'on_track': 'Im Ladeplan', "
-                "'behind': 'Hinter Ladeplan'}.get("
+                "'behind': 'Hinter Ladeplan', 'night': 'Nachtbetrieb'}.get("
                 f"states('{soc_status_entity}'), "
                 f"states('{soc_status_entity}')) "
                 "}}"
@@ -551,7 +612,7 @@ def _patch_status_markdown(
             status_expression = (
                 "{{ {'ahead': 'Ahead of schedule', "
                 "'on_track': 'On schedule', "
-                "'behind': 'Behind schedule'}.get("
+                "'behind': 'Behind schedule', 'night': 'Night operation'}.get("
                 f"states('{soc_status_entity}'), "
                 f"states('{soc_status_entity}')) "
                 "}}"
@@ -582,6 +643,14 @@ def _patch_status_markdown(
                 content += "\n" + addition
 
             changed = True
+
+    # Beta 14: add the dedicated night state to existing stored SOC schedule
+    # mappings without replacing unrelated user customizations.
+    content, night_status_changed = _patch_night_soc_status(
+        content,
+        german,
+    )
+    changed |= night_status_changed
 
     release_floor_entity = replacements["__SOC_RELEASE_FLOOR__"]
 
@@ -638,7 +707,7 @@ def _migrate_dashboard_to_beta11(
     config: dict[str, Any],
     replacements: dict[str, str],
 ) -> tuple[dict[str, Any], bool]:
-    """Apply legacy dashboard fixes and the Beta 11 release additions."""
+    """Apply legacy dashboard fixes and migrations through Beta 14."""
     migrated = deepcopy(config)
     changed = False
     labels = _localized_dynamic_labels(hass)

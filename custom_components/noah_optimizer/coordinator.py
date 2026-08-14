@@ -76,6 +76,7 @@ from .const import (
     DOMAIN,
     DYNAMIC_SOC_AHEAD,
     DYNAMIC_SOC_BEHIND,
+    DYNAMIC_SOC_NIGHT,
     DYNAMIC_SOC_ON_TRACK,
     DYNAMIC_SOC_TOLERANCE_PERCENT,
     MODE_AUTOMATIC,
@@ -625,6 +626,7 @@ class NoahOptimizerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         hours_to_sunset = self._hours_to_sunset()
         daylight_progress = self._daylight_progress()
+        night = self._is_night(solar_power)
 
         available_battery_energy = (
             capacity * max(soc - min_soc, 0.0) / 100
@@ -698,6 +700,9 @@ class NoahOptimizerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 catchup_hours=dynamic_soc_catchup_hours,
             )
 
+        if night:
+            dynamic_soc_status = DYNAMIC_SOC_NIGHT
+
         # Same behaviour as the YAML optimizer: react immediately to export
         # while the target SOC has not yet been reached. Otherwise use the
         # five-minute grid average to avoid excessive output changes.
@@ -728,8 +733,6 @@ class NoahOptimizerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             charge_priority_raw,
             self_consumption_target,
         )
-
-        night = self._is_night(solar_power)
 
         dynamic_catchup_active = (
             dynamic_soc_enabled

@@ -114,7 +114,8 @@
         "state": {
           "ahead": "Vor Ladeplan",
           "on_track": "Im Ladeplan",
-          "behind": "Hinter Ladeplan"
+          "behind": "Hinter Ladeplan",
+          "night": "Nachtbetrieb"
         }
       },
       "forecast_required_soc": {
