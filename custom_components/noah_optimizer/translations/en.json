@@ -114,7 +114,8 @@
         "state": {
           "ahead": "Ahead of schedule",
           "on_track": "On schedule",
-          "behind": "Behind schedule"
+          "behind": "Behind schedule",
+          "night": "Night operation"
         }
       },
       "forecast_required_soc": {
@@ -151,7 +152,8 @@
           "no_forecast": "Conservative without forecast",
           "blended_reserve": "Blended reserve",
           "soc_catchup": "SOC catch-up",
-          "soc_release": "SOC release"
+          "soc_release": "SOC release",
+          "pv_redirect": "PV diversion"
         }
       },
       "data_status": {
@@ -162,6 +164,23 @@
           "battery_data_missing": "Battery data missing",
           "forecast_unavailable": "Forecast unavailable",
           "actuator_unavailable": "Output control unavailable"
+        }
+      },
+      "controller_status": {
+        "name": "Controller status",
+        "state": {
+          "disabled": "Disabled",
+          "optimizer_disabled": "Calculation disabled",
+          "legacy_controller_active": "Legacy YAML controller active",
+          "critical_data_missing": "Critical data missing",
+          "actuator_unavailable": "Output control unavailable",
+          "target_unavailable": "Target unavailable",
+          "rate_limited": "Command rate limited",
+          "waiting_for_retry": "Waiting for setpoint confirmation",
+          "in_sync": "In sync",
+          "command_sent": "Command sent",
+          "command_failed": "Command failed",
+          "failsafe": "Failsafe active"
         }
       }
     },

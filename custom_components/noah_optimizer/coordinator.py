@@ -31,6 +31,7 @@ from .const import (
     CONTROLLER_NIGHT,
     CONTROLLER_NO_FORECAST,
     CONTROLLER_OFF,
+    CONTROLLER_PV_REDIRECT,
     CONTROLLER_SELF_CONSUMPTION,
     CONTROLLER_SOC_CATCHUP,
     CONTROLLER_SOC_RELEASE,
@@ -76,6 +77,7 @@ from .const import (
     DOMAIN,
     DYNAMIC_SOC_AHEAD,
     DYNAMIC_SOC_BEHIND,
+    DYNAMIC_SOC_NIGHT,
     DYNAMIC_SOC_ON_TRACK,
     DYNAMIC_SOC_TOLERANCE_PERCENT,
     MODE_AUTOMATIC,
@@ -322,6 +324,16 @@ class NoahOptimizerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             return round(limited)
 
         return round(limited / step) * step
+
+    @staticmethod
+    def _floor_to_step(value: float, step: float, maximum: float) -> float:
+        """Limit and round a target down to the configured output step."""
+        limited = min(max(value, 0.0), maximum)
+
+        if step <= 0:
+            return int(limited)
+
+        return int(limited // step) * step
 
     @staticmethod
     def _dynamic_soc_values(
@@ -625,6 +637,7 @@ class NoahOptimizerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         hours_to_sunset = self._hours_to_sunset()
         daylight_progress = self._daylight_progress()
+        night = self._is_night(solar_power)
 
         available_battery_energy = (
             capacity * max(soc - min_soc, 0.0) / 100
@@ -698,6 +711,9 @@ class NoahOptimizerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 catchup_hours=dynamic_soc_catchup_hours,
             )
 
+        if night:
+            dynamic_soc_status = DYNAMIC_SOC_NIGHT
+
         # Same behaviour as the YAML optimizer: react immediately to export
         # while the target SOC has not yet been reached. Otherwise use the
         # five-minute grid average to avoid excessive output changes.
@@ -720,6 +736,30 @@ class NoahOptimizerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             max_output,
         )
 
+        # If the battery is already at or above the dynamic SOC target while
+        # it is still charging, simultaneous grid import should not be used
+        # merely to keep that charging power high. Redirect only the smaller
+        # of current grid import and current battery charging power to the
+        # household. This raises NOAH output without deliberately discharging
+        # the battery.
+        pv_redirect_power = (
+            min(
+                max(grid_power, 0.0),
+                max(charging_power or 0.0, 0.0),
+            )
+            if battery_data_ok
+            else 0.0
+        )
+        pv_redirect_raw_target = min(
+            max(output_power + pv_redirect_power, 0.0),
+            max_output,
+        )
+        pv_redirect_target = self._floor_to_step(
+            pv_redirect_raw_target,
+            command_step,
+            max_output,
+        )
+
         charge_priority_raw = max(
             solar_power - required_charge_power,
             0.0,
@@ -728,8 +768,6 @@ class NoahOptimizerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             charge_priority_raw,
             self_consumption_target,
         )
-
-        night = self._is_night(solar_power)
 
         dynamic_catchup_active = (
             dynamic_soc_enabled
@@ -755,6 +793,22 @@ class NoahOptimizerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             and releasable_battery_energy is not None
             and releasable_battery_energy > 0
             and grid_power > 0
+        )
+
+        pv_redirect_active = (
+            dynamic_soc_enabled
+            and selected_mode == MODE_AUTOMATIC
+            and forecast_available
+            and not night
+            and soc > min_soc
+            and dynamic_soc_target is not None
+            and soc >= dynamic_soc_target
+            and battery_data_ok
+            and charging_power is not None
+            and charging_power > 0
+            and grid_power > 0
+            and pv_redirect_power > 0
+            and pv_redirect_target > output_power
         )
 
         if dynamic_catchup_active:
@@ -789,6 +843,8 @@ class NoahOptimizerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             controller_mode = CONTROLLER_SOC_CATCHUP
         elif soc_release_active:
             controller_mode = CONTROLLER_SOC_RELEASE
+        elif pv_redirect_active:
+            controller_mode = CONTROLLER_PV_REDIRECT
         elif soc >= target_soc:
             controller_mode = CONTROLLER_TARGET_SOC_REACHED
         elif not forecast_available:
@@ -814,6 +870,8 @@ class NoahOptimizerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             raw_target = soc_catchup_target
         elif soc_release_active:
             raw_target = soc_release_target
+        elif pv_redirect_active:
+            raw_target = pv_redirect_target
         elif soc >= target_soc:
             raw_target = self_consumption_target
         elif not forecast_available:
@@ -831,11 +889,23 @@ class NoahOptimizerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 self_consumption_target - charge_priority_target
             )
 
-        output_target = self._round_to_step(
-            raw_target,
-            command_step,
-            max_output,
-        )
+        # PV diversion must never round above its safe raw target. Otherwise
+        # nearest-step rounding could request slightly more power than is
+        # currently available from simultaneous battery charging and thereby
+        # cause unintended battery discharge. Other modes keep normal nearest
+        # step rounding.
+        if pv_redirect_active:
+            output_target = self._floor_to_step(
+                raw_target,
+                command_step,
+                max_output,
+            )
+        else:
+            output_target = self._round_to_step(
+                raw_target,
+                command_step,
+                max_output,
+            )
 
         return {
             DATA_GRID_POWER: round(grid_power),

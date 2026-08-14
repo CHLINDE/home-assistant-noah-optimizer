@@ -74,25 +74,11 @@ views:
                 'no_forecast': 'Konservativ ohne Prognose',
                 'blended_reserve': 'Gleitende Reserve',
                 'soc_catchup': 'SOC-Nachladung',
-                'soc_release': 'SOC-Freigabe'
+                'soc_release': 'SOC-Freigabe',
+                'pv_redirect': 'PV-Umlenkung'
               } %}
 
               {% set ctrl = '__CONTROL_ENABLED__' %}
-              {% set status = state_attr(ctrl, 'control_status') %}
-              {% set status_text = {
-                'disabled': 'Deaktiviert',
-                'optimizer_disabled': 'Berechnung deaktiviert',
-                'legacy_controller_active': 'Alter YAML-Regler aktiv',
-                'critical_data_missing': 'Kritische Daten fehlen',
-                'actuator_unavailable': 'Stellgröße nicht verfügbar',
-                'target_unavailable': 'Sollwert nicht verfügbar',
-                'rate_limited': 'Wartezeit nach Stellbefehl',
-                'waiting_for_retry': 'Warte auf Wiederholungsversuch',
-                'in_sync': 'Synchron',
-                'command_sent': 'Stellbefehl gesendet',
-                'command_failed': 'Stellbefehl fehlgeschlagen',
-                'failsafe': 'Failsafe aktiv'
-              } %}
 
               {% set data_status = states('__DATA_STATUS__') %}
               {% set data_status_text = {
@@ -107,7 +93,8 @@ views:
               {% set soc_plan_text = {
                 'ahead': 'Vor Ladeplan',
                 'on_track': 'Im Ladeplan',
-                'behind': 'Hinter Ladeplan'
+                'behind': 'Hinter Ladeplan',
+                'night': 'Nachtbetrieb'
               } %}
 
               {% set last_target = state_attr(ctrl, 'last_command_target') %}
@@ -115,7 +102,7 @@ views:
 
               ## {{ mode_text.get(mode, mode) }}
 
-              **Controller:** {{ status_text.get(status, status | default('–', true)) }}  
+              **Controller:** {{ state_translated('__CONTROLLER_STATUS__') }}  
               **Datenstatus:** {{ data_status_text.get(data_status, data_status) }}  
               **Sollwert:** {{ states('__OUTPUT_TARGET__') }} W  
               **Ausgang:** {{ states('__OUTPUT_POWER__') }} W  

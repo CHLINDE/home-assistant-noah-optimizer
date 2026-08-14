@@ -1,7 +1,7 @@
 # Installation
 
 Diese Anleitung beschreibt die Installation und das Update des **Home
-Assistant Growatt NOAH Optimizers** für Version `2.0.0-beta.13`.
+Assistant Growatt NOAH Optimizers** für Version `2.0.0-beta.14`.
 
 Für neue Installationen wird die HACS-Integration empfohlen.
 
@@ -94,12 +94,12 @@ Typ:
 Integration
 ```
 
-## 5. Beta 13 installieren
+## 5. Beta 14 installieren
 
 Zu installierende Version:
 
 ```text
-2.0.0-beta.13
+2.0.0-beta.14
 ```
 
 Nach der Installation Home Assistant vollständig neu starten.
@@ -136,7 +136,7 @@ Standard:
 Ein
 ```
 
-## 7. Update auf Beta 13
+## 7. Update auf Beta 14
 
 Vor dem Update:
 
@@ -146,14 +146,42 @@ Dynamische SOC-Steuerung aktiv = Aus
 Vorausschauende SOC-Freigabe aktiv = Aus
 ```
 
-Danach Beta 13 über HACS installieren und Home Assistant vollständig neu starten.
+Danach Beta 14 über HACS installieren und Home Assistant vollständig neu starten.
+
+### Update von Beta 13
+
+Beta 14 übernimmt alle Einstellungen aus Beta 13. Neu hinzu kommt der
+Enum-Sensor **Controllerstatus**. Der vorhandene Enum-Sensor **SOC-Ladeplan**
+erhält zusätzlich den Zustand:
+
+```text
+night = Nachtbetrieb
+```
+
+Die Tageszustände `Vor Ladeplan`, `Im Ladeplan` und `Hinter Ladeplan` bleiben
+unverändert. Sobald Nachtbetrieb gilt, wird stattdessen `Nachtbetrieb`
+angezeigt.
+
+Zusätzlich kommt der Reglermodus **PV-Umlenkung** hinzu. Er wird verwendet,
+wenn der Akku mindestens am dynamischen Soll liegt, gleichzeitig lädt und
+Netzbezug besteht. Dabei wird nur bis zur aktuell vorhandenen Akkuladeleistung
+zum Haus umgelenkt; eine absichtliche Akkuentladung ist dafür nicht nötig.
+Der endgültige PV-Umlenkungs-Sollwert wird dabei auf das konfigurierte
+Stellgrößenraster abgerundet. Ist damit kein sicherer höherer Rasterwert
+möglich, bleibt die PV-Umlenkung für diesen Zyklus inaktiv.
+
+Die Dashboard-Template-Version steigt von 10 auf 11. Die Migration ergänzt den
+Nachtstatus und `PV-Umlenkung` und stellt die Controllerstatus-Anzeige auf den
+neuen Enum-Sensor mit zentralen Übersetzungen um. Übrige Benutzeranpassungen
+werden nicht ersetzt.
 
 ### Update von Beta 12
 
-Beta 13 übernimmt alle vorhandenen Einstellungen und Entitäten aus Beta 12.
-Es werden **keine neuen Entitäten, Schalter oder Dashboardelemente** angelegt.
+Beta 14 übernimmt alle vorhandenen Einstellungen aus Beta 12 und enthält
+zusätzlich die Änderungen aus Beta 13 und Beta 14. Neu hinzu kommt der
+Enum-Sensor **Controllerstatus**; neue Schalter werden nicht angelegt.
 
-Geändert wird ausschließlich die aktive Controller-Nachführung:
+Beta 13 beschleunigt die aktive Controller-Nachführung:
 
 ```text
 Controller-Auswertung:                 15 s
@@ -162,16 +190,19 @@ Sollwerterhöhung bei SOC-Freigabe:     30 s Mindestabstand
 Sollwertreduzierung nach Freigabe:   sofort möglich
 ```
 
-Normale Betriebsarten behalten damit ihr bisheriges ruhiges Stellverhalten.
-Nur die aktive SOC-Freigabe kann erhöhten Netzbezug schneller durch zusätzliche
-NOAH-Ausgangsleistung nachführen.
+Beta 14 ergänzt am vorhandenen Enum-Sensor **SOC-Ladeplan** den Zustand
+`night = Nachtbetrieb`, den Reglermodus **PV-Umlenkung** und den neuen
+Enum-Sensor **Controllerstatus**. Die Reglerstatus-Karte wird auf
+Dashboard-Template-Version 11 migriert.
 
 ### Update von Beta 11
 
-Beta 13 übernimmt alle vorhandenen Einstellungen und Entitäten aus Beta 11
-und enthält zusätzlich sämtliche Berechnungsänderungen aus Beta 12.
+Beta 14 übernimmt alle vorhandenen Einstellungen und Entitäten aus Beta 11
+und enthält zusätzlich die Berechnungsänderungen aus Beta 12, die schnellere
+SOC-Freigabe-Nachführung aus Beta 13 und den Nachtstatus aus Beta 14.
 
-Es werden **keine neuen Entitäten oder Schalter** angelegt.
+Neu hinzu kommt in Beta 14 der Enum-Sensor **Controllerstatus**. Neue Schalter
+werden nicht angelegt.
 
 Beta 12 korrigiert zwei Berechnungen der dynamischen SOC-Regelung:
 
@@ -213,7 +244,7 @@ ansteigt.
 
 ### Update von Beta 10 oder älter
 
-Beim direkten Update auf Beta 13 bleiben alle bisherigen Migrationen erhalten.
+Beim direkten Update auf Beta 14 bleiben alle bisherigen Migrationen erhalten.
 
 Falls die Beta-11-Elemente noch fehlen, werden weiterhin ergänzt:
 
@@ -223,7 +254,16 @@ Prognosebasierter Mindest-SOC
 SOC-Freigabegrenze
 Freigebare Akkuenergie
 SOC-Freigabe-Soll
+Controllerstatus
 ```
+
+Im Nachtbetrieb muss `SOC-Ladeplan` ab Beta 14 `Nachtbetrieb` anzeigen und nicht
+mehr `Vor Ladeplan`, nur weil der Ist-SOC über dem Mindest-SOC liegt.
+
+Für die PV-Umlenkung eignet sich ein Test mit Ist-SOC mindestens am dynamischen
+Soll, positiver Akkuladeleistung und gleichzeitig positivem Netzbezug. Der
+Reglermodus soll dann `PV-Umlenkung` anzeigen und den Ausgang höchstens um
+`min(Netzbezug, Akkuladeleistung)` erhöhen.
 
 Zusätzlich steht der Reglermodus:
 
@@ -237,16 +277,18 @@ Die Funktion ist bei einer neuen Einrichtung standardmäßig ausgeschaltet.
 
 ## 8. Dashboard und Migration
 
-Beta 13 verändert die Dashboard-Struktur nicht.
-
-Deshalb bleibt:
+Beta 14 migriert die vorhandene Reglerstatus-Karte gezielt. Ergänzt werden der
+neue Nachtstatus, der Reglermodus **PV-Umlenkung** und die Anzeige des neuen
+Enum-Sensors **Controllerstatus**. Deshalb steigt die interne Version auf:
 
 ```text
-Dashboard-Template-Version = 10
+Dashboard-Template-Version = 11
 ```
 
-Bei einem Update von Beta 11 ist keine zusätzliche Dashboard-Migration
-erforderlich.
+Bei einem Update von Beta 13 wird die vorhandene Reglerstatus-Karte gezielt um
+`Nachtbetrieb` beziehungsweise `Night operation` und `PV-Umlenkung` /
+`PV diversion` ergänzt. Die bisherige lokale Jinja-Tabelle für Controllerstatus
+wird durch `state_translated()` auf dem neuen Enum-Sensor ersetzt.
 
 Bei älteren Installationen bleiben die bisherigen Migrationen aktiv:
 
@@ -260,7 +302,7 @@ Das Dashboard wird **nicht vollständig ersetzt**. Eigene Anpassungen bleiben
 bestehen, soweit die bekannten Standardkarten eindeutig erkannt werden.
 
 Bei einer Neuinstallation wird direkt die vollständige aktuelle
-Dashboard-Vorlage mit Template-Version 10 erzeugt.
+Dashboard-Vorlage mit Template-Version 11 erzeugt.
 
 ## 9. Erste Prüfung nach dem Update
 

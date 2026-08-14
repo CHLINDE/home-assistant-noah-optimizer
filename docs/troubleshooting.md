@@ -1,7 +1,7 @@
 # Fehlerbehebung
 
 Dieses Dokument bezieht sich primär auf die HACS-Integration ab
-`2.0.0-beta.13`.
+`2.0.0-beta.14`.
 
 ## 1. Integration wird nicht geladen
 
@@ -17,7 +17,7 @@ Zusätzlich prüfen:
 
 - HACS-Installation vollständig
 - Home Assistant nach dem Update neu gestartet
-- `manifest.json` auf `2.0.0-beta.13`
+- `manifest.json` auf `2.0.0-beta.14`
 - alle Quell-Entitäten vorhanden
 - keine Python-Fehler im Protokoll
 
@@ -139,7 +139,7 @@ verursacht werden.
 
 Prüfen:
 
-- tatsächlich `2.0.0-beta.13` installiert
+- tatsächlich `2.0.0-beta.14` installiert
 - Home Assistant nach dem Update vollständig neu gestartet
 - `sun.sun` ist verfügbar
 - `sun.sun` steht tagsüber auf `above_horizon`
@@ -158,6 +158,30 @@ Prüfen:
 
 Außerhalb der Tageslichtzeit ist der Mindest-SOC als dynamisches Soll
 beabsichtigt.
+
+### SOC-Ladeplan zeigt nachts „Vor Ladeplan“
+
+Ab Beta 14 ist das nicht mehr vorgesehen. Während die Nachtbedingung aktiv ist,
+muss der Enum-Sensor **SOC-Ladeplan** unabhängig von der rechnerischen
+SOC-Abweichung anzeigen:
+
+```text
+Nachtbetrieb
+```
+
+Die numerische SOC-Abweichung kann nachts weiterhin deutlich positiv sein,
+weil das dynamische SOC-Soll auf den Mindest-SOC zurückfällt. Diese Abweichung
+ist nur noch ein Diagnosewert und wird nachts nicht als `Vor Ladeplan`
+klassifiziert.
+
+Falls weiterhin `Vor Ladeplan` erscheint, prüfen:
+
+- tatsächlich `2.0.0-beta.14` installiert
+- Home Assistant nach dem Update vollständig neu gestartet
+- `sun.sun` verfügbar
+- Dashboard-Template-Version 11 wurde übernommen
+- bei stark angepasster Reglerstatus-Karte den Rohzustand des Sensors unter
+  **Werkzeuge → Zustände** prüfen
 
 ## 8. Dynamische SOC-Steuerung ist an, aber nichts ändert sich
 
@@ -310,14 +334,18 @@ Die beschreibbare Stellgröße ist nicht verfügbar.
 ### `rate_limited`
 
 Ein neuer Stellbefehl ist tatsächlich erforderlich, wartet aber noch auf den
-für den aktuellen Reglermodus geltenden Mindestabstand. Ab Beta 13 beträgt
-dieser bei `SOC-Freigabe` 30 Sekunden und bei normalen Regelzuständen weiterhin
-zwei Minuten.
+für den aktuellen Reglermodus geltenden Mindestabstand. Ab Beta 14 beträgt
+dieser bei `SOC-Freigabe` und `PV-Umlenkung` 30 Sekunden und bei normalen
+Regelzuständen weiterhin zwei Minuten.
 
 ### `waiting_for_retry`
 
-Sollwert und Stellgröße weichen noch ab; der Controller wartet auf den
-Wiederholungszeitpunkt.
+Die Anzeige lautet ab Beta 14 **Warte auf Stellwertübernahme** beziehungsweise
+**Waiting for setpoint confirmation**. Der gewünschte Sollwert wurde bereits
+gesendet, die beschreibbare Stellgröße meldet ihn aber noch nicht innerhalb der
+Hysterese zurück. Das ist nicht automatisch ein Schreibfehler. Erst nach dem
+Retry-Intervall wird derselbe Sollwert bei weiterhin bestehender Abweichung
+erneut gesendet.
 
 ### `in_sync`
 
@@ -375,7 +403,7 @@ Das Dashboard muss nicht gelöscht oder neu erstellt werden.
 
 Prüfen:
 
-- tatsächlich `2.0.0-beta.13` installiert
+- tatsächlich `2.0.0-beta.14` installiert
 - Home Assistant nach dem HACS-Update vollständig neu gestartet
 - Protokoll auf `noah_optimizer`-Fehler prüfen
 
@@ -506,7 +534,53 @@ Wichtig: Der **erwartete Hausenergiebedarf gehört nicht mehr zu dieser
 Fehlerprüfung**. Er beeinflusst weiterhin den dynamischen Ladeplan, aber nicht
 die separate Wiederauflade-Reserve der SOC-Freigabe.
 
-## 23. Akku wird trotz Netzbezug nicht entladen
+## 23. Netzbezug trotz ausreichender PV-Leistung und gleichzeitiger Akkuladung
+
+Typisches Bild:
+
+```text
+Ist-SOC >= dynamisches SOC-Soll
+Netzbezug > 0 W
+Akkuladeleistung > 0 W
+Reglermodus vor Beta 14: Ladepriorität
+```
+
+Vor Beta 14 konnte die negative Prognosemarge die Ladepriorität aktiv halten,
+obwohl der Akku bereits am oder über dem dynamischen SOC-Soll lag. Dadurch
+konnte der Speicher gleichzeitig geladen und Hausleistung aus dem Netz bezogen
+werden.
+
+Beta 14 führt dafür **PV-Umlenkung** ein. Sie berechnet:
+
+```text
+PV-Umlenkungsleistung = min(Netzbezug, Akkuladeleistung)
+PV-Umlenkungs-Soll = aktuelle NOAH-Ausgangsleistung + PV-Umlenkungsleistung
+```
+
+Die Funktion reduziert damit zuerst nur die vorhandene Akkuladung und fordert
+keine absichtliche Akkuentladung an. Voraussetzung ist unter anderem:
+
+- `Betriebsart = Automatik`
+- `Dynamische SOC-Steuerung aktiv = Ein`
+- Tagbetrieb
+- Forecast verfügbar
+- `Ist-SOC >= dynamisches SOC-Soll`
+- Akkuladeleistung größer als `0 W`
+- positiver Netzbezug
+- keine aktive SOC-Nachladung
+
+Der Schalter **Vorausschauende SOC-Freigabe aktiv** ist für die PV-Umlenkung
+nicht erforderlich. Eine zusätzliche Akkuentladung bleibt weiterhin Aufgabe
+der separaten SOC-Freigabe.
+
+Wenn die Bedingungen erfüllt sind, sollte der Reglermodus **PV-Umlenkung**
+anzeigen. Das Ausgangssoll wird in diesem Modus auf das Stellgrößenraster
+abgerundet und kann deshalb etwas unter dem rechnerischen Rohwert liegen. Die
+Abrundung verhindert, dass das Raster den sicheren Umlenkungswert überschreitet.
+Ist die sicher umlenkbare Leistung kleiner als der nächste mögliche
+Raster-Schritt, kann die PV-Umlenkung deshalb bewusst aussetzen.
+
+## 24. Akku wird trotz Netzbezug nicht entladen
 
 Prüfen:
 
@@ -521,12 +595,12 @@ Ist die aktive NOAH-Steuerung ausgeschaltet, werden Reglermodus und
 Ausgangssollwert zwar berechnet, aber nicht an die Stellgröße geschrieben.
 Das ist der empfohlene Testbetrieb.
 
-## 24. SOC-Freigabe reagiert zu träge auf Netzbezug
+## 25. SOC-Freigabe reagiert zu träge auf Netzbezug
 
-Ab Beta 13 wird der aktive Controller alle `15 s` ausgewertet. Während
-`SOC-Freigabe` darf ein erforderlicher höherer Stellwert im Abstand von `30 s`
-geschrieben werden. Normale Betriebsarten behalten den bisherigen
-2-Minuten-Mindestabstand.
+Ab Beta 14 wird der aktive Controller weiterhin alle `15 s` ausgewertet.
+Während `SOC-Freigabe` und `PV-Umlenkung` darf ein erforderlicher höherer
+Stellwert im Abstand von `30 s` geschrieben werden. Normale Betriebsarten
+behalten den bisherigen 2-Minuten-Mindestabstand.
 
 Typisches Diagnosebild vor Beta 13:
 
@@ -553,7 +627,7 @@ Prüfen:
 Sicherheitsrelevante **Reduzierungen** nach einem SOC-Freigabe-Befehl bleiben
 weiterhin ohne diese Wartezeit möglich.
 
-## 25. Bei SOC-Freigabe entsteht kurz Netzeinspeisung
+## 26. Bei SOC-Freigabe entsteht kurz Netzeinspeisung
 
 Die Funktion fordert keine absichtliche Batterieeinspeisung an. Das
 SOC-Freigabe-Soll orientiert sich am aktuell gemessenen positiven Netzbezug.
@@ -588,7 +662,7 @@ sicheren Wert gesetzt werden.
 Anschließend Netzleistung, Ausgangssollwert, SOC-Freigabe-Soll und tatsächliche
 NOAH-Ausgangsleistung vergleichen.
 
-## 26. Abend-SOC wird trotz SOC-Freigabe nicht erreicht
+## 27. Abend-SOC wird trotz SOC-Freigabe nicht erreicht
 
 Die SOC-Freigabe schützt den aufgrund der **aktuellen** Restprognose
 berechneten Wiederaufladebedarf. Sie ist keine absolute Garantie.

@@ -24,10 +24,23 @@ from .const import (
     CONTROLLER_NIGHT,
     CONTROLLER_NO_FORECAST,
     CONTROLLER_OFF,
+    CONTROLLER_PV_REDIRECT,
     CONTROLLER_SELF_CONSUMPTION,
     CONTROLLER_SOC_CATCHUP,
     CONTROLLER_SOC_RELEASE,
     CONTROLLER_TARGET_SOC_REACHED,
+    CONTROL_STATUS_ACTUATOR_UNAVAILABLE,
+    CONTROL_STATUS_COMMAND_FAILED,
+    CONTROL_STATUS_COMMAND_SENT,
+    CONTROL_STATUS_CRITICAL_DATA_MISSING,
+    CONTROL_STATUS_DISABLED,
+    CONTROL_STATUS_FAILSAFE,
+    CONTROL_STATUS_IN_SYNC,
+    CONTROL_STATUS_LEGACY_CONTROLLER_ACTIVE,
+    CONTROL_STATUS_OPTIMIZER_DISABLED,
+    CONTROL_STATUS_RATE_LIMITED,
+    CONTROL_STATUS_TARGET_UNAVAILABLE,
+    CONTROL_STATUS_WAITING_FOR_RETRY,
     DATA_AVAILABLE_BATTERY_ENERGY,
     DATA_BATTERY_POWER,
     DATA_CHARGE_NEED,
@@ -64,6 +77,7 @@ from .const import (
     DATA_STATUS,
     DYNAMIC_SOC_AHEAD,
     DYNAMIC_SOC_BEHIND,
+    DYNAMIC_SOC_NIGHT,
     DYNAMIC_SOC_ON_TRACK,
     STATUS_ACTUATOR_UNAVAILABLE,
     STATUS_BATTERY_DATA_MISSING,
@@ -273,6 +287,7 @@ SENSORS: tuple[NoahSensorDescription, ...] = (
             DYNAMIC_SOC_AHEAD,
             DYNAMIC_SOC_ON_TRACK,
             DYNAMIC_SOC_BEHIND,
+            DYNAMIC_SOC_NIGHT,
         ],
     ),
     NoahSensorDescription(
@@ -346,6 +361,7 @@ SENSORS: tuple[NoahSensorDescription, ...] = (
             CONTROLLER_BLEND,
             CONTROLLER_SOC_CATCHUP,
             CONTROLLER_SOC_RELEASE,
+            CONTROLLER_PV_REDIRECT,
         ],
     ),
     NoahSensorDescription(
@@ -364,20 +380,43 @@ SENSORS: tuple[NoahSensorDescription, ...] = (
 )
 
 
+CONTROL_STATUS_OPTIONS = [
+    CONTROL_STATUS_DISABLED,
+    CONTROL_STATUS_OPTIMIZER_DISABLED,
+    CONTROL_STATUS_LEGACY_CONTROLLER_ACTIVE,
+    CONTROL_STATUS_CRITICAL_DATA_MISSING,
+    CONTROL_STATUS_ACTUATOR_UNAVAILABLE,
+    CONTROL_STATUS_TARGET_UNAVAILABLE,
+    CONTROL_STATUS_RATE_LIMITED,
+    CONTROL_STATUS_WAITING_FOR_RETRY,
+    CONTROL_STATUS_IN_SYNC,
+    CONTROL_STATUS_COMMAND_SENT,
+    CONTROL_STATUS_COMMAND_FAILED,
+    CONTROL_STATUS_FAILSAFE,
+]
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: NoahOptimizerConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     """Set up NOAH Optimizer sensors."""
-    async_add_entities(
+    sensors: list[SensorEntity] = [
         NoahOptimizerSensor(
             entry.runtime_data,
             entry,
             description,
         )
         for description in SENSORS
+    ]
+    sensors.append(
+        NoahOptimizerControllerStatusSensor(
+            entry.runtime_data,
+            entry,
+        )
     )
+    async_add_entities(sensors)
 
 
 class NoahOptimizerSensor(NoahOptimizerEntity, SensorEntity):
@@ -407,3 +446,24 @@ class NoahOptimizerSensor(NoahOptimizerEntity, SensorEntity):
             and self.coordinator.data.get(self.entity_description.data_key)
             is not None
         )
+
+
+class NoahOptimizerControllerStatusSensor(NoahOptimizerEntity, SensorEntity):
+    """Represent the low-level NOAH controller status."""
+
+    _attr_device_class = SensorDeviceClass.ENUM
+    _attr_translation_key = "controller_status"
+    _attr_options = CONTROL_STATUS_OPTIONS
+
+    def __init__(self, coordinator, entry) -> None:
+        """Initialize the controller status sensor."""
+        super().__init__(coordinator, entry)
+        self._attr_unique_id = f"{entry.entry_id}_controller_status"
+
+    @property
+    def native_value(self) -> str:
+        """Return the current low-level controller status."""
+        controller = getattr(self.coordinator, "controller", None)
+        if controller is None:
+            return CONTROL_STATUS_DISABLED
+        return controller.status
