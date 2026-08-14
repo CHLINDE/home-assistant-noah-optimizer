@@ -25,7 +25,7 @@ Eine HACS-kompatible Custom Integration ist als Beta verfügbar.
 Aktuelle Beta:
 
 ```text
-2.0.0-beta.13
+2.0.0-beta.14
 ```
 
 Ab Beta 5 kann die Integration den berechneten Sollwert optional aktiv an
@@ -73,6 +73,18 @@ erforderliche Sollwerterhöhungen im Abstand von 30 Sekunden geschrieben
 werden; normale Betriebsarten behalten den konservativen Mindestabstand von
 zwei Minuten. Sicherheitsrelevante Reduzierungen nach einer SOC-Freigabe
 bleiben weiterhin sofort möglich.
+
+Beta 14 bündelt drei Korrekturen und eine Diagnoseverbesserung. Der
+**SOC-Ladeplan** erhält nachts den eindeutigen Status `Nachtbetrieb`. Zusätzlich
+führt die Automatik die neue **PV-Umlenkung** ein: Liegt der Ist-SOC mindestens
+am dynamischen Soll, während der Akku gleichzeitig lädt und Netzbezug besteht,
+wird nur der gleichzeitig vorhandene Ladestrom zum Haus umgelenkt. Dadurch soll
+kein Netzstrom mehr bezogen werden, nur um den Akku stärker zu laden; eine
+gezielte Akkuentladung ist für diese Funktion nicht erforderlich. Außerdem gibt
+es jetzt einen eigenen Enum-Sensor **Controllerstatus** mit zentralen deutschen
+und englischen Übersetzungen. `waiting_for_retry` wird dabei als **Warte auf
+Stellwertübernahme** beziehungsweise **Waiting for setpoint confirmation**
+angezeigt.
 
 ## Voraussetzungen
 
@@ -190,6 +202,7 @@ Die Integration berechnet unter anderem:
 - freigebare Akkuenergie
 - SOC-Freigabe-Sollwert
 - Reglermodus
+- Controllerstatus
 - endgültigen Ausgangssollwert
 
 Die ursprüngliche Berechnungslogik wurde in Beta 4 gegen den bisherigen
@@ -218,7 +231,9 @@ Ist zusätzlich **Dynamische SOC-Steuerung aktiv** eingeschaltet, kann die
 Automatik den Reglermodus **SOC-Nachladung** verwenden. Ist außerdem die
 **Vorausschauende SOC-Freigabe** aktiviert und ausreichend sicherer
 SOC-Vorsprung vorhanden, kann der Reglermodus **SOC-Freigabe** verwendet
-werden.
+werden. Ab Beta 14 kann die Automatik außerdem **PV-Umlenkung** verwenden,
+wenn der Akku mindestens am dynamischen SOC-Soll liegt, gleichzeitig geladen
+wird und dennoch Netzbezug besteht.
 
 ### Eigenverbrauch
 
@@ -233,6 +248,44 @@ reserviert.
 ### Manuell
 
 Die konfigurierte manuelle Ausgangsleistung wird als Sollwert verwendet.
+
+### PV-Umlenkung ab Beta 14
+
+Die PV-Umlenkung behandelt einen Zustand, der keine Akkuentladung erfordert:
+Der Akku liegt bereits mindestens am dynamischen SOC-Soll, wird aber weiter
+geladen, während das Haus gleichzeitig Leistung aus dem Netz bezieht.
+
+Dann wird höchstens der kleinere Wert aus aktuellem Netzbezug und aktueller
+Akkuladeleistung zum Haus umgelenkt:
+
+```text
+PV-Umlenkungsleistung
+= min(Netzbezug, Akkuladeleistung)
+
+Ausgangssollwert
+= aktuelle NOAH-Ausgangsleistung + PV-Umlenkungsleistung
+```
+
+Beispiel:
+
+```text
+NOAH-Ausgang:       480 W
+Netzbezug:          191 W
+Akkuladung:         269 W
+
+PV-Umlenkung:       191 W
+neues Roh-Soll:     671 W
+```
+
+Die Umlenkung reduziert damit zunächst nur die Akkuladung. Sie fordert nicht
+absichtlich mehr Leistung an, als gleichzeitig als Akkuladung vorhanden ist.
+Der endgültige Sollwert wird für diesen Modus auf das konfigurierte
+Stellgrößenraster **abgerundet**, damit das Rastern den sicheren Rohwert nicht
+überschreitet. Ergibt das Raster keinen Sollwert oberhalb der aktuell gemessenen
+NOAH-Ausgangsleistung, wird keine PV-Umlenkung aktiviert. Erst wenn eine
+zusätzliche Entladung zulässig und erforderlich ist, greift die separate
+vorausschauende SOC-Freigabe. **SOC-Nachladung** hat weiterhin Vorrang, wenn
+der Speicher hinter dem Ladeplan liegt.
 
 ## Dynamischer SOC-Ladeplan ab Beta 10
 
@@ -337,12 +390,19 @@ SOC-Abweichung = Ist-SOC - dynamisches SOC-Soll
 
 berechnet.
 
-Mit einer Toleranz von 2 Prozentpunkten entstehen die Zustände:
+Mit einer Toleranz von 2 Prozentpunkten entstehen tagsüber die Zustände:
 
 ```text
 Vor Ladeplan
 Im Ladeplan
 Hinter Ladeplan
+```
+
+Ab Beta 14 wird diese Tagesklassifikation im Nachtbetrieb bewusst ausgesetzt.
+Der SOC-Ladeplan zeigt dann unabhängig von der rechnerischen Abweichung:
+
+```text
+Nachtbetrieb
 ```
 
 Liegt der Speicher hinter dem Ladeplan, wird zusätzlich eine dynamisch
@@ -368,9 +428,14 @@ Nach Sonnenuntergang gilt für den dynamischen SOC-Ladeplan wieder der
 Mindest-SOC. Die eigentliche Nachtregelung bleibt unverändert und darf den
 Speicher bis zum konfigurierten Mindest-SOC entladen.
 
+Ab Beta 14 erhält der SOC-Ladeplan während dieses Nachtbetriebs den eigenen
+Status `Nachtbetrieb`. Dadurch wird ein Akku mit beispielsweise 80 % SOC bei
+einem Nacht-Soll von 10 % nicht mehr irreführend als `Vor Ladeplan` angezeigt.
+Die numerische SOC-Abweichung bleibt weiterhin verfügbar.
+
 ### Sichere Aktivierung
 
-Nach dem Update auf Beta 13 sollte zunächst gelten:
+Nach dem Update auf Beta 14 sollte zunächst gelten:
 
 ```text
 NOAH-Steuerung aktiv = Aus
@@ -543,10 +608,11 @@ Der Controller enthält unter anderem:
 - Schalt-Hysterese
 - Stellgrößenraster
 - Mindestabstand von zwei Minuten zwischen normalen Stellbefehlen
-- schnellere Lastnachführung während SOC-Freigabe mit 30 Sekunden Mindestabstand für Sollwerterhöhungen
+- schnellere Lastnachführung während SOC-Freigabe und PV-Umlenkung mit 30 Sekunden Mindestabstand für Sollwerterhöhungen
 - Controller-Auswertung alle 15 Sekunden
-- sofortige sicherheitsrelevante Sollwertreduzierung nach SOC-Freigabe
-- Wiederholungsversuch bei nicht übernommenem Sollwert
+- sofortige sicherheitsrelevante Sollwertreduzierung nach SOC-Freigabe oder PV-Umlenkung
+- eigener Enum-Sensor `Controllerstatus` mit zentralen Übersetzungen
+- erneute Sollwertübernahme, wenn ein zuvor geschriebener Sollwert nicht bestätigt wurde
 - Failsafe bei längerem Verlust kritischer Daten
 - persistente Home-Assistant-Benachrichtigung
 - Sperre gegen den alten YAML-Controller
@@ -591,6 +657,15 @@ bestehende Dashboards. Dafür wird die Dashboard-Template-Version von 9 auf 10
 erhöht. Das Dashboard wird nicht vollständig ersetzt; vorhandene
 Benutzeranpassungen bleiben erhalten, soweit die bekannten Standardkarten
 eindeutig erkannt werden können.
+
+### Dashboard-Migration in Beta 14
+
+Beta 14 erhöht die Dashboard-Template-Version von 10 auf 11. Die gezielte
+Migration ergänzt den SOC-Ladeplanstatus `night`, den Reglermodus `PV-Umlenkung`
+und stellt die Controllerstatus-Anzeige auf den neuen Enum-Sensor um. Die
+Statusübersetzungen kommen damit aus `translations/de.json` beziehungsweise
+`translations/en.json` statt aus einer separaten Jinja-Tabelle im Dashboard.
+Benutzeranpassungen am übrigen Dashboard werden nicht ersetzt.
 
 ### Energiefluss
 
@@ -752,6 +827,24 @@ Schnellere Lastnachführung der SOC-Freigabe:
 - sicherheitsrelevante Reduzierungen nach SOC-Freigabe bleiben ohne Wartezeit möglich
 - `rate_limited` wird nur noch angezeigt, wenn tatsächlich ein neuer Stellbefehl ansteht und noch auf den Mindestabstand wartet
 - keine neuen Entitäten oder Dashboardelemente; Template-Version bleibt 10
+
+### 2.0.0-beta.14
+
+Nachtstatus, PV-Umlenkung und zentrale Controllerstatus-Anzeige:
+
+- neuer Enum-Zustand `night` für den Sensor `SOC-Ladeplan`
+- deutsche Anzeige `Nachtbetrieb`, englische Anzeige `Night operation`
+- neuer Reglermodus `pv_redirect` / `PV-Umlenkung` / `PV diversion`
+- bei Ist-SOC mindestens am dynamischen Soll wird gleichzeitig vorhandene Akkuladung bevorzugt zum Abbau von Netzbezug verwendet
+- PV-Umlenkung ist auf `min(Netzbezug, Akkuladeleistung)` begrenzt und fordert damit keine absichtliche Akkuentladung an
+- PV-Umlenkungs-Sollwerte werden auf das Stellgrößenraster abgerundet, damit das Rastern den sicheren Umlenkungswert nicht überschreitet
+- SOC-Nachladung und SOC-Freigabe behalten ihre bisherigen Schutzbedingungen und Prioritäten
+- eigener Enum-Sensor `Controllerstatus` hinzugefügt
+- Controllerstatus wird zentral über `translations/de.json` und `translations/en.json` lokalisiert
+- `waiting_for_retry`: `Warte auf Stellwertübernahme` / `Waiting for setpoint confirmation`
+- PV-Umlenkung verwendet wie SOC-Freigabe die schnelle 15-/30-Sekunden-Lastnachführung und sofortige Absenkung
+- Dashboard-Template-Version von 10 auf 11 erhöht
+- bestehende Reglerstatus-Karten werden gezielt migriert
 
 ## Legacy-YAML-Optimizer
 

@@ -17,7 +17,20 @@ from homeassistant.util import dt as dt_util
 
 from .const import (
     CONF_SYSTEM_OUTPUT_POWER,
+    CONTROLLER_PV_REDIRECT,
     CONTROLLER_SOC_RELEASE,
+    CONTROL_STATUS_ACTUATOR_UNAVAILABLE,
+    CONTROL_STATUS_COMMAND_FAILED,
+    CONTROL_STATUS_COMMAND_SENT,
+    CONTROL_STATUS_CRITICAL_DATA_MISSING,
+    CONTROL_STATUS_DISABLED,
+    CONTROL_STATUS_FAILSAFE,
+    CONTROL_STATUS_IN_SYNC,
+    CONTROL_STATUS_LEGACY_CONTROLLER_ACTIVE,
+    CONTROL_STATUS_OPTIMIZER_DISABLED,
+    CONTROL_STATUS_RATE_LIMITED,
+    CONTROL_STATUS_TARGET_UNAVAILABLE,
+    CONTROL_STATUS_WAITING_FOR_RETRY,
     DATA_ACTUATOR_AVAILABLE,
     DATA_CONTROLLER_MODE,
     DATA_CRITICAL_DATA_OK,
@@ -38,11 +51,11 @@ CONTROL_CHECK_INTERVAL = timedelta(seconds=15)
 # Normal output commands must be at least this far apart.
 MIN_COMMAND_INTERVAL = timedelta(minutes=2)
 
-# Predictive SOC release is a load-following mode. Increases may therefore be
-# written more frequently than normal commands, while reductions remain
-# safety-relevant and can still be applied immediately.
-SOC_RELEASE_COMMAND_INTERVAL = timedelta(seconds=30)
-SOC_RELEASE_DEADBAND = 25.0
+# Predictive SOC release and PV diversion are load-following modes. Increases
+# may therefore be written more frequently than normal commands, while
+# reductions remain safety-relevant and can still be applied immediately.
+LOAD_FOLLOWING_COMMAND_INTERVAL = timedelta(seconds=30)
+LOAD_FOLLOWING_DEADBAND = 25.0
 
 # Retry if the NOAH has not taken over the requested value.
 RETRY_INTERVAL = timedelta(minutes=20)
@@ -84,7 +97,7 @@ class NoahOptimizerController:
         self._failsafe_sent = False
         self._failsafe_notified = False
 
-        self._status = "disabled"
+        self._status = CONTROL_STATUS_DISABLED
 
     @property
     def status(self) -> str:
@@ -197,7 +210,7 @@ class NoahOptimizerController:
 
         if state is None:
             self._set_status(
-                "actuator_unavailable"
+                CONTROL_STATUS_ACTUATOR_UNAVAILABLE
             )
             return False
 
@@ -207,7 +220,7 @@ class NoahOptimizerController:
             "",
         }:
             self._set_status(
-                "actuator_unavailable"
+                CONTROL_STATUS_ACTUATOR_UNAVAILABLE
             )
             return False
 
@@ -230,7 +243,7 @@ class NoahOptimizerController:
             )
 
             self._set_status(
-                "actuator_unavailable"
+                CONTROL_STATUS_ACTUATOR_UNAVAILABLE
             )
 
             return False
@@ -254,7 +267,7 @@ class NoahOptimizerController:
             )
 
             self._set_status(
-                "command_failed"
+                CONTROL_STATUS_COMMAND_FAILED
             )
 
             return False
@@ -335,7 +348,7 @@ class NoahOptimizerController:
 
         if missing_duration < FAILSAFE_DELAY:
             self._set_status(
-                "critical_data_missing"
+                CONTROL_STATUS_CRITICAL_DATA_MISSING
             )
             return
 
@@ -347,7 +360,7 @@ class NoahOptimizerController:
 
         if self._failsafe_sent:
             self._set_status(
-                "failsafe"
+                CONTROL_STATUS_FAILSAFE
             )
             return
 
@@ -356,7 +369,7 @@ class NoahOptimizerController:
             False,
         ):
             self._set_status(
-                "actuator_unavailable"
+                CONTROL_STATUS_ACTUATOR_UNAVAILABLE
             )
             return
 
@@ -371,7 +384,7 @@ class NoahOptimizerController:
         self._failsafe_sent = True
 
         self._set_status(
-            "failsafe"
+            CONTROL_STATUS_FAILSAFE
         )
 
     async def _async_handle_data_recovered(
@@ -409,7 +422,7 @@ class NoahOptimizerController:
                 OPT_CONTROL_ENABLED
             ):
                 self._set_status(
-                    "disabled"
+                    CONTROL_STATUS_DISABLED
                 )
                 return
 
@@ -418,7 +431,7 @@ class NoahOptimizerController:
                 OPT_ENABLED
             ):
                 self._set_status(
-                    "optimizer_disabled"
+                    CONTROL_STATUS_OPTIMIZER_DISABLED
                 )
                 return
 
@@ -426,7 +439,7 @@ class NoahOptimizerController:
             # controller to write to the same NOAH simultaneously.
             if self._legacy_optimizer_active():
                 self._set_status(
-                    "legacy_controller_active"
+                    CONTROL_STATUS_LEGACY_CONTROLLER_ACTIVE
                 )
 
                 _LOGGER.warning(
@@ -456,7 +469,7 @@ class NoahOptimizerController:
                 False,
             ):
                 self._set_status(
-                    "actuator_unavailable"
+                    CONTROL_STATUS_ACTUATOR_UNAVAILABLE
                 )
                 return
 
@@ -466,7 +479,7 @@ class NoahOptimizerController:
 
             if target is None:
                 self._set_status(
-                    "target_unavailable"
+                    CONTROL_STATUS_TARGET_UNAVAILABLE
                 )
                 return
 
@@ -484,7 +497,7 @@ class NoahOptimizerController:
 
             if actual_setpoint is None:
                 self._set_status(
-                    "actuator_unavailable"
+                    CONTROL_STATUS_ACTUATOR_UNAVAILABLE
                 )
                 return
 
@@ -501,29 +514,33 @@ class NoahOptimizerController:
                     now - self._last_command_at
                 )
 
-            release_mode_active = (
-                controller_mode == CONTROLLER_SOC_RELEASE
-            )
+            load_following_mode_active = controller_mode in {
+                CONTROLLER_SOC_RELEASE,
+                CONTROLLER_PV_REDIRECT,
+            }
 
-            # SOC release follows the current grid import more closely than
-            # the forecast-driven normal modes. Keep the user's configured
-            # deadband when it is already smaller, otherwise use the tighter
-            # release-specific threshold. The coordinator's command-step
-            # rounding still limits the actual setpoint granularity.
-            if release_mode_active:
+            # SOC release and PV diversion follow the current grid import more
+            # closely than the forecast-driven normal modes. Keep the user's
+            # configured deadband when it is already smaller, otherwise use
+            # the tighter load-following threshold. The coordinator's command
+            # step still limits the actual setpoint granularity.
+            if load_following_mode_active:
                 effective_deadband = min(
                     deadband,
-                    SOC_RELEASE_DEADBAND,
+                    LOAD_FOLLOWING_DEADBAND,
                 )
             else:
                 effective_deadband = deadband
 
-            # A target reduction after a command issued in SOC release mode
-            # is safety-relevant. Apply it immediately so falling household
-            # load or a rising SOC release floor cannot keep the previous
-            # discharge target active until a rate limit expires.
-            release_reduction_required = (
-                self._last_command_mode == CONTROLLER_SOC_RELEASE
+            # A target reduction after a load-following command is
+            # safety-relevant. Apply it immediately so falling household load
+            # cannot keep a previously elevated output target active until a
+            # rate limit expires.
+            load_following_reduction_required = (
+                self._last_command_mode in {
+                    CONTROLLER_SOC_RELEASE,
+                    CONTROLLER_PV_REDIRECT,
+                }
                 and target < actual_setpoint
             )
 
@@ -558,7 +575,7 @@ class NoahOptimizerController:
                 change_required
                 or first_sync_required
                 or retry_required
-                or release_reduction_required
+                or load_following_reduction_required
             )
 
             if not command_required:
@@ -568,32 +585,32 @@ class NoahOptimizerController:
                     ) < effective_deadband
                 ):
                     self._set_status(
-                        "in_sync"
+                        CONTROL_STATUS_IN_SYNC
                     )
                 else:
                     self._set_status(
-                        "waiting_for_retry"
+                        CONTROL_STATUS_WAITING_FOR_RETRY
                     )
 
                 return
 
             # Normal modes retain the conservative two-minute command
-            # interval. Predictive SOC release may raise the output every
-            # 30 seconds so it can track changing household load. A reduction
-            # after a SOC-release command remains immediate.
+            # interval. The two load-following modes may raise the output every
+            # 30 seconds so they can track changing household load. A required
+            # reduction after either mode remains immediate.
             command_interval = (
-                SOC_RELEASE_COMMAND_INTERVAL
-                if release_mode_active
+                LOAD_FOLLOWING_COMMAND_INTERVAL
+                if load_following_mode_active
                 else MIN_COMMAND_INTERVAL
             )
 
             if (
                 elapsed is not None
                 and elapsed < command_interval
-                and not release_reduction_required
+                and not load_following_reduction_required
             ):
                 self._set_status(
-                    "rate_limited"
+                    CONTROL_STATUS_RATE_LIMITED
                 )
                 return
 
@@ -605,5 +622,5 @@ class NoahOptimizerController:
             if success:
                 self._last_command_mode = controller_mode
                 self._set_status(
-                    "command_sent"
+                    CONTROL_STATUS_COMMAND_SENT
                 )

@@ -114,7 +114,8 @@
         "state": {
           "ahead": "Vor Ladeplan",
           "on_track": "Im Ladeplan",
-          "behind": "Hinter Ladeplan"
+          "behind": "Hinter Ladeplan",
+          "night": "Nachtbetrieb"
         }
       },
       "forecast_required_soc": {
@@ -151,7 +152,8 @@
           "no_forecast": "Konservativ ohne Prognose",
           "blended_reserve": "Gleitende Reserve",
           "soc_catchup": "SOC-Nachladung",
-          "soc_release": "SOC-Freigabe"
+          "soc_release": "SOC-Freigabe",
+          "pv_redirect": "PV-Umlenkung"
         }
       },
       "data_status": {
@@ -162,6 +164,23 @@
           "battery_data_missing": "Batteriedaten fehlen",
           "forecast_unavailable": "Prognose nicht verfügbar",
           "actuator_unavailable": "Stellgröße nicht verfügbar"
+        }
+      },
+      "controller_status": {
+        "name": "Controllerstatus",
+        "state": {
+          "disabled": "Deaktiviert",
+          "optimizer_disabled": "Berechnung deaktiviert",
+          "legacy_controller_active": "Alter YAML-Regler aktiv",
+          "critical_data_missing": "Kritische Daten fehlen",
+          "actuator_unavailable": "Stellgröße nicht verfügbar",
+          "target_unavailable": "Sollwert nicht verfügbar",
+          "rate_limited": "Wartezeit nach Stellbefehl",
+          "waiting_for_retry": "Warte auf Stellwertübernahme",
+          "in_sync": "Synchron",
+          "command_sent": "Stellbefehl gesendet",
+          "command_failed": "Stellbefehl fehlgeschlagen",
+          "failsafe": "Failsafe aktiv"
         }
       }
     },

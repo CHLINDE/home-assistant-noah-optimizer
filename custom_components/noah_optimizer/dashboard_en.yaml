@@ -74,25 +74,11 @@ views:
                 'no_forecast': 'Conservative without forecast',
                 'blended_reserve': 'Blended reserve',
                 'soc_catchup': 'SOC catch-up',
-                'soc_release': 'SOC release'
+                'soc_release': 'SOC release',
+                'pv_redirect': 'PV diversion'
               } %}
 
               {% set ctrl = '__CONTROL_ENABLED__' %}
-              {% set status = state_attr(ctrl, 'control_status') %}
-              {% set status_text = {
-                'disabled': 'Disabled',
-                'optimizer_disabled': 'Calculation disabled',
-                'legacy_controller_active': 'Legacy YAML controller active',
-                'critical_data_missing': 'Critical data missing',
-                'actuator_unavailable': 'Output control unavailable',
-                'target_unavailable': 'Target unavailable',
-                'rate_limited': 'Command rate limited',
-                'waiting_for_retry': 'Waiting for retry',
-                'in_sync': 'In sync',
-                'command_sent': 'Command sent',
-                'command_failed': 'Command failed',
-                'failsafe': 'Failsafe active'
-              } %}
 
               {% set data_status = states('__DATA_STATUS__') %}
               {% set data_status_text = {
@@ -107,7 +93,8 @@ views:
               {% set soc_plan_text = {
                 'ahead': 'Ahead of schedule',
                 'on_track': 'On schedule',
-                'behind': 'Behind schedule'
+                'behind': 'Behind schedule',
+                'night': 'Night operation'
               } %}
 
               {% set last_target = state_attr(ctrl, 'last_command_target') %}
@@ -115,7 +102,7 @@ views:
 
               ## {{ mode_text.get(mode, mode) }}
 
-              **Controller:** {{ status_text.get(status, status | default('–', true)) }}  
+              **Controller:** {{ state_translated('__CONTROLLER_STATUS__') }}  
               **Data status:** {{ data_status_text.get(data_status, data_status) }}  
               **Target:** {{ states('__OUTPUT_TARGET__') }} W  
               **Output:** {{ states('__OUTPUT_POWER__') }} W  

@@ -1,6 +1,6 @@
 # HACS Beta
 
-Current beta: `2.0.0-beta.13`
+Current beta: `2.0.0-beta.14`
 
 ## Direct HACS repository button
 
@@ -424,6 +424,59 @@ required but still has to wait for the applicable minimum interval.
 No new entities or dashboard elements are added in Beta 13, so dashboard
 template version remains `10`.
 
+## Beta 14 night status, PV diversion, and controller status
+
+Beta 14 adds a dedicated `night` state to the existing dynamic SOC schedule
+status sensor. During night operation, the sensor no longer reports the
+daytime classifications `ahead`, `on_track`, or `behind` merely because the
+dynamic target has returned to minimum SOC.
+
+```text
+German:  Nachtbetrieb
+English: Night operation
+```
+
+Beta 14 also adds the automatic controller mode `pv_redirect`. It is used when
+the actual SOC is at least at the dynamic SOC target, the battery is still
+charging, and positive grid import exists. The controller only redirects the
+smaller of current grid import and current battery charging power:
+
+```text
+PV diversion power = min(grid import, battery charging power)
+PV diversion target = current NOAH output + PV diversion power
+```
+
+This mode therefore reduces simultaneous battery charging before intentionally
+using battery energy. Its final target is rounded **down** to the configured
+command step so step rounding cannot exceed the safe diversion raw target. If
+no stepped target above the currently measured NOAH output is safely available,
+PV diversion remains inactive for that cycle. Dynamic SOC catch-up still has
+priority when the battery is behind schedule.
+Predictive SOC release can still use additional battery energy when its separate
+release floor permits it.
+
+`pv_redirect` uses the same load-following cadence introduced for SOC release:
+15-second controller evaluation, 30-second minimum interval for target
+increases, a maximum 25 W effective deadband, and immediate required downward
+corrections.
+
+A new enum sensor `Controller status` exposes the low-level controller state.
+Its state translations are provided by the integration instead of a separate
+Jinja lookup table in the dashboard. In particular:
+
+```text
+waiting_for_retry
+German:  Warte auf Stellwertübernahme
+English: Waiting for setpoint confirmation
+```
+
+The raw `control_status` switch attribute remains available for compatibility.
+
+Dashboard template version increases from `10` to `11`. Existing stored
+controller-status cards are migrated selectively to add the night and PV
+diversion states and to display the translated controller-status enum sensor.
+Unrelated dashboard customizations are preserved.
+
 ## Automatic dashboard
 
 Starting with `2.0.0-beta.6`, the integration creates a dedicated Lovelace
@@ -502,6 +555,15 @@ Existing dashboards are migrated selectively. The integration adds the
 predictive release switch, forecast-required minimum SOC, SOC release floor,
 releasable battery energy, SOC release target, and the `soc_release` controller
 mode where the standard cards can be identified. Unrelated user customizations
+are preserved.
+
+### Beta 14 dashboard migration
+
+Beta 14 increases dashboard template version from `10` to `11`. The targeted
+migration extends the SOC schedule status mapping with `night`, adds
+`pv_redirect` to the controller-mode mapping, and replaces the dashboard-local
+controller-status translation table with `state_translated()` on the new
+controller-status enum sensor. Other dashboard content and user customizations
 are preserved.
 
 ## Dashboard requirements
@@ -774,6 +836,23 @@ Faster predictive SOC release response:
 - reports `rate_limited` only for an actual pending command
 - keeps dashboard template version 10
 - adds no new entities, switches, or controller modes
+
+### 2.0.0-beta.14
+
+Night status, PV diversion, and centralized controller status:
+
+- adds `night` to the existing SOC schedule enum sensor
+- shows `Nachtbetrieb` in German and `Night operation` in English
+- adds `pv_redirect` / `PV-Umlenkung` / `PV diversion` as an automatic controller mode
+- redirects at most `min(grid import, battery charging power)` when the battery is at or above its dynamic SOC target
+- avoids deliberate battery discharge in PV diversion; predictive SOC release remains responsible for safe battery-energy release
+- rounds PV-diversion targets down to the configured command step so step rounding cannot exceed the safe diversion value
+- applies the 15-/30-second load-following cadence to both SOC release and PV diversion
+- adds a translated `Controller status` enum sensor
+- translates `waiting_for_retry` as `Warte auf Stellwertübernahme` / `Waiting for setpoint confirmation`
+- keeps the raw switch `control_status` attribute for compatibility
+- increases dashboard template version from 10 to 11
+- selectively migrates existing controller-status cards
 
 ## Current limitations 
 

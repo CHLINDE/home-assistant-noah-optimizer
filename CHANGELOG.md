@@ -1,3 +1,47 @@
+## [2.0.0-beta.14]
+
+### Added
+
+- Added the automatic `pv_redirect` controller mode for redirecting simultaneous battery charging to household consumption when the battery is already at or above the dynamic SOC target
+- Added a dedicated `controller_status` enum sensor for the low-level active-control state
+- Added central German and English state translations for all controller-status values
+- Added `night` as a dedicated state of the dynamic SOC schedule status sensor
+
+### Fixed
+
+- Prevented avoidable grid import while PV power is simultaneously charging the battery and the battery is already at or above the dynamic SOC target
+- Replaced the misleading `ahead` / `Vor Ladeplan` classification during night operation with the dedicated night status
+- Replaced the misleading `waiting_for_retry` display text with `Warte auf Stellwertübernahme` / `Waiting for setpoint confirmation`
+- PV diversion now rounds its final target down to the configured output step so command-step rounding cannot intentionally request more power than the simultaneously available battery charging power
+
+### Changed
+
+- PV diversion is limited to `min(grid import, battery charging power)` and therefore reduces charging before any battery discharge is requested
+- Predictive SOC release remains the separate mechanism for intentionally using safely releasable battery energy
+- SOC catch-up keeps higher priority than PV diversion while the battery is behind the dynamic SOC schedule
+- The 15-second controller evaluation and 30-second load-following command interval now apply to both `soc_release` and `pv_redirect`
+- Downward corrections after either load-following mode can still bypass the normal command interval and deadband
+- The existing `control_status` switch attribute is retained for compatibility, while dashboards use the new translated enum sensor
+- Dashboard template version increased from 10 to 11
+- Existing stored controller-status cards are migrated selectively to use the translated controller-status sensor and to display `PV-Umlenkung` / `PV diversion` and the dedicated night SOC status
+
+### Documentation
+
+- Updated README, installation, configuration, HACS beta, and troubleshooting documentation for PV diversion, the controller-status sensor, the revised retry text, and the dedicated night status
+- Added troubleshooting guidance for simultaneous grid import and battery charging
+
+### Safety
+
+PV diversion does not require predictive SOC release to be enabled because it is
+not intended to discharge the battery. Its raw increase is capped by the lower
+of current grid import and current battery charging power, and the final target
+is rounded downward to the configured command step.
+
+If battery energy must be used beyond the simultaneously available charging
+power, the existing predictive SOC-release limits continue to apply.
+
+---
+
 ## [2.0.0-beta.13]
 
 ### Fixed

@@ -157,6 +157,7 @@ STATUS_ACTUATOR_UNAVAILABLE: Final = "actuator_unavailable"
 DYNAMIC_SOC_AHEAD: Final = "ahead"
 DYNAMIC_SOC_ON_TRACK: Final = "on_track"
 DYNAMIC_SOC_BEHIND: Final = "behind"
+DYNAMIC_SOC_NIGHT: Final = "night"
 
 # ---------------------------------------------------------------------------
 # Controller modes
@@ -173,3 +174,21 @@ CONTROLLER_NO_FORECAST: Final = "no_forecast"
 CONTROLLER_BLEND: Final = "blended_reserve"
 CONTROLLER_SOC_CATCHUP: Final = "soc_catchup"
 CONTROLLER_SOC_RELEASE: Final = "soc_release"
+CONTROLLER_PV_REDIRECT: Final = "pv_redirect"
+
+# ---------------------------------------------------------------------------
+# Low-level controller status values
+# ---------------------------------------------------------------------------
+
+CONTROL_STATUS_DISABLED: Final = "disabled"
+CONTROL_STATUS_OPTIMIZER_DISABLED: Final = "optimizer_disabled"
+CONTROL_STATUS_LEGACY_CONTROLLER_ACTIVE: Final = "legacy_controller_active"
+CONTROL_STATUS_CRITICAL_DATA_MISSING: Final = "critical_data_missing"
+CONTROL_STATUS_ACTUATOR_UNAVAILABLE: Final = "actuator_unavailable"
+CONTROL_STATUS_TARGET_UNAVAILABLE: Final = "target_unavailable"
+CONTROL_STATUS_RATE_LIMITED: Final = "rate_limited"
+CONTROL_STATUS_WAITING_FOR_RETRY: Final = "waiting_for_retry"
+CONTROL_STATUS_IN_SYNC: Final = "in_sync"
+CONTROL_STATUS_COMMAND_SENT: Final = "command_sent"
+CONTROL_STATUS_COMMAND_FAILED: Final = "command_failed"
+CONTROL_STATUS_FAILSAFE: Final = "failsafe"

@@ -1,7 +1,7 @@
 # Konfiguration
 
 Dieses Dokument beschreibt die HACS-Integration **Growatt NOAH Optimizer**
-für Version `2.0.0-beta.13`.
+für Version `2.0.0-beta.14`.
 
 Die tatsächlichen Entity-IDs können durch Bereichsnamen oder manuelle
 Umbenennungen abweichen. Die Integration und das automatische Dashboard lösen
@@ -117,6 +117,7 @@ Eigenverbrauch
 Ladepriorität
 SOC-Nachladung
 SOC-Freigabe
+PV-Umlenkung
 Mindest-SOC
 Nachtbetrieb
 Ziel-SOC erreicht
@@ -258,13 +259,18 @@ SOC-Abweichung
 = Ist-SOC - dynamisches SOC-Soll
 ```
 
-Es gilt eine feste Toleranz von 2 Prozentpunkten:
+Tagsüber gilt eine feste Toleranz von 2 Prozentpunkten:
 
 ```text
 mehr als +2 %-Punkte    = Vor Ladeplan
 -2 bis +2 %-Punkte      = Im Ladeplan
 weniger als -2 %-Punkte = Hinter Ladeplan
 ```
+
+Im Nachtbetrieb ist diese Einteilung nicht sinnvoll, weil das dynamische
+SOC-Soll auf den Mindest-SOC zurückfällt. Ab Beta 14 meldet der SOC-Ladeplan
+deshalb während des Nachtbetriebs unabhängig von der numerischen Abweichung
+den eigenen Zustand `night` beziehungsweise `Nachtbetrieb`.
 
 ### 3.7 Dynamisch erforderliche Ladeleistung
 
@@ -531,6 +537,78 @@ Die schnellere 15-Sekunden-Auswertung ändert den Mindestabstand der normalen
 Betriebsarten nicht. Sie ermöglicht lediglich, eine aktive SOC-Freigabe bei
 veränderter Hauslast zeitnah neu zu bewerten.
 
+### 3.10 PV-Umlenkung ab Beta 14
+
+Die PV-Umlenkung löst einen von der SOC-Freigabe getrennten Fall. Wenn der
+Akku bereits mindestens am dynamischen SOC-Soll liegt, gleichzeitig noch lädt
+und dennoch Netzbezug besteht, soll der Netzbezug nicht nur deshalb bestehen
+bleiben, damit die Akkuladung höher bleibt.
+
+Die maximal umlenkbare Leistung ist deshalb:
+
+```text
+PV-Umlenkungsleistung
+= min(aktueller Netzbezug, aktuelle Akkuladeleistung)
+```
+
+Der Roh-Sollwert lautet:
+
+```text
+PV-Umlenkungs-Soll
+= aktuelle NOAH-Ausgangsleistung + PV-Umlenkungsleistung
+```
+
+Danach gelten weiterhin maximale Ausgangsleistung und Stellgrößenraster.
+Für die PV-Umlenkung wird der endgültige Sollwert auf das Raster **abgerundet**.
+Dadurch kann das Rastern den sicheren Rohwert nicht überschreiten und nicht
+allein durch Aufrundung eine absichtliche Akkuentladung anfordern. Ergibt das
+Raster keinen Sollwert oberhalb der aktuell gemessenen NOAH-Ausgangsleistung,
+wird die PV-Umlenkung für diesen Zyklus nicht aktiviert.
+
+Aktivierungsbedingungen:
+
+- Optimierer-Berechnung aktiv
+- Betriebsart **Automatik**
+- Dynamische SOC-Steuerung aktiv
+- Forecast verfügbar
+- Tagbetrieb
+- Ist-SOC größer oder gleich dynamischem SOC-Soll
+- Akkuladeleistung größer als `0 W`
+- positiver Netzbezug
+- keine aktive SOC-Nachladung
+
+Die PV-Umlenkung benötigt den Schalter **Vorausschauende SOC-Freigabe aktiv**
+**nicht**, weil sie keine absichtliche Akkuentladung anfordert. Sie reduziert
+lediglich die gleichzeitig vorhandene Akkuladung.
+
+Die Priorität in der Automatik ist dabei:
+
+```text
+Mindest-SOC / Nacht
+SOC-Nachladung
+SOC-Freigabe
+PV-Umlenkung
+restliche Prognose-/Ladeprioritätslogik
+```
+
+Ist der SOC so weit voraus, dass die separate SOC-Freigabe zulässig ist, darf
+diese weiterhin auch zusätzliche Akkuenergie einsetzen. Andernfalls kann die
+PV-Umlenkung zumindest den Anteil des Netzbezugs beseitigen, der gleichzeitig
+als Akkuladung vorhanden ist.
+
+#### Schnelle Lastnachführung
+
+Ab Beta 14 gelten die schnelleren Lastfolgeparameter sowohl für
+**SOC-Freigabe** als auch für **PV-Umlenkung**:
+
+```text
+Controller-Auswertung:                  15 s
+Normale Stellbefehle:                  120 s Mindestabstand
+SOC-Freigabe / PV-Umlenkung:            30 s Mindestabstand
+Deadband in Lastfolgemodi:          max. 25 W
+Sollwertreduzierung nach Lastfolgemodus: sofort möglich
+```
+
 ## 4. Parameter
 
 ### Nutzbare Akkukapazität
@@ -746,7 +824,12 @@ Enum-Sensor mit:
 ahead     = Vor Ladeplan
 on_track  = Im Ladeplan
 behind    = Hinter Ladeplan
+night     = Nachtbetrieb
 ```
+
+Die ersten drei Zustände gelten für den Tages-Ladeplan. `night` wird gesetzt,
+sobald dieselbe Nachtbedingung gilt, die auch den Reglermodus `Nachtbetrieb`
+aktiviert. Die numerische SOC-Abweichung wird dadurch nicht verändert.
 
 ### Dynamisch erforderliche Ladeleistung
 
@@ -784,7 +867,12 @@ dynamischer SOC-Regelung und Stellgrößenraster.
 
 ## 6. Controllerdiagnose
 
-Der Schalter **NOAH-Steuerung aktiv** stellt bereit:
+Ab Beta 14 gibt es einen eigenen Enum-Sensor **Controllerstatus**. Seine
+Zustände werden über die Integrationsübersetzungen lokalisiert und stehen damit
+auch außerhalb des NOAH-Dashboards sauber zur Verfügung.
+
+Der Schalter **NOAH-Steuerung aktiv** behält aus Kompatibilitätsgründen die
+Attribute:
 
 ```text
 control_status
@@ -792,7 +880,8 @@ last_command_target
 last_command_at
 ```
 
-Typische `control_status`-Werte:
+Der neue Sensor und das Attribut `control_status` verwenden dieselben Rohwerte.
+Typische Werte:
 
 | Status | Bedeutung |
 |---|---|
@@ -803,7 +892,7 @@ Typische `control_status`-Werte:
 | `actuator_unavailable` | Stellgröße nicht erreichbar |
 | `target_unavailable` | Kein gültiger Sollwert |
 | `rate_limited` | Ein erforderlicher Stellbefehl wartet noch auf seinen Mindestabstand |
-| `waiting_for_retry` | Wartet auf Wiederholungsversuch |
+| `waiting_for_retry` | Warte auf Stellwertübernahme; der gewünschte Sollwert wurde bereits gesendet, ist an der Stellgröße aber noch nicht bestätigt |
 | `in_sync` | Stellgröße liegt innerhalb der Hysterese |
 | `command_sent` | Stellbefehl gesendet |
 | `command_failed` | Stellbefehl fehlgeschlagen |
@@ -875,5 +964,9 @@ Beta 11 erhöht wegen der neuen Dashboardelemente die Dashboard-Template-Version
 von 9 auf 10. Bestehende Benutzeranpassungen werden nicht pauschal
 überschrieben.
 
-Beta 12 und Beta 13 verändern die Dashboard-Struktur nicht. Die
-Dashboard-Template-Version bleibt deshalb bei Version 10.
+Beta 12 und Beta 13 verändern die Dashboard-Struktur nicht und verwenden
+Template-Version 10. Beta 14 erhöht die Dashboard-Template-Version auf 11.
+Die Migration ergänzt `Nachtbetrieb` für den SOC-Ladeplan, `PV-Umlenkung` als
+Reglermodus und stellt die Controllerstatus-Zeile auf den neuen Enum-Sensor um.
+Die Controllerstatus-Texte kommen dadurch zentral aus den Übersetzungsdateien.
+Benutzeranpassungen am übrigen Dashboard werden nicht pauschal ersetzt.
