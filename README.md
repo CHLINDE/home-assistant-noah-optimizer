@@ -3,8 +3,9 @@
 Prognosebasierte Steuerung der Ausgangsleistung eines Growatt NOAH 2000
 über Home Assistant und Noah-MQTT.
 
-> **Status:** Beta. Die aktive Steuerung kann die NOAH-Ausgangsleistung
-> verändern und sollte während der Testphase überwacht werden.
+> **Status:** Stabiler Release `2.0.0`. Die aktive Steuerung kann die
+> NOAH-Ausgangsleistung verändern. Vor der Aktivierung sollten Quellwerte,
+> Netzvorzeichen und Stellgröße geprüft werden.
 
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=CHLINDE&repository=home-assistant-noah-optimizer&category=integration)
 
@@ -20,13 +21,18 @@ Prognosebasierte Steuerung der Ausgangsleistung eines Growatt NOAH 2000
 
 ## HACS-Integration
 
-Eine HACS-kompatible Custom Integration ist als Beta verfügbar.
+Eine HACS-kompatible Custom Integration ist verfügbar.
 
-Aktuelle Beta:
+Aktuelle stabile Version:
 
 ```text
-2.0.0-beta.14
+2.0.0
 ```
+
+Version `2.0.0` übernimmt den Funktionsstand von `2.0.0-beta.14` unverändert.
+Gegenüber Beta 14 wurden keine Berechnungs- oder Regelalgorithmen geändert;
+nur Versionierung und Release-Dokumentation wurden auf den stabilen Stand
+umgestellt.
 
 Ab Beta 5 kann die Integration den berechneten Sollwert optional aktiv an
 `NOAH System Output Power` übertragen.
@@ -142,7 +148,7 @@ Die vollständige Anleitung steht unter:
 - [Installation](docs/installation.md)
 - [Konfiguration](docs/configuration.md)
 - [Fehlerbehebung](docs/troubleshooting.md)
-- [HACS Beta](docs/hacs-beta.md)
+- [HACS Beta / Pre-Release](docs/hacs-beta.md)
 
 ## Benötigte Quell-Entitäten
 
@@ -435,7 +441,7 @@ Die numerische SOC-Abweichung bleibt weiterhin verfügbar.
 
 ### Sichere Aktivierung
 
-Nach dem Update auf Beta 14 sollte zunächst gelten:
+Nach einer Neuinstallation oder dem Update auf `2.0.0` sollte zunächst gelten:
 
 ```text
 NOAH-Steuerung aktiv = Aus
@@ -845,6 +851,16 @@ Nachtstatus, PV-Umlenkung und zentrale Controllerstatus-Anzeige:
 - PV-Umlenkung verwendet wie SOC-Freigabe die schnelle 15-/30-Sekunden-Lastnachführung und sofortige Absenkung
 - Dashboard-Template-Version von 10 auf 11 erhöht
 - bestehende Reglerstatus-Karten werden gezielt migriert
+
+### 2.0.0
+
+Erster stabiler Release der 2.x-Reihe:
+
+- Funktionsstand entspricht `2.0.0-beta.14`
+- keine Änderung an Optimizer-Berechnung oder aktiver NOAH-Regelung gegenüber Beta 14
+- keine neuen Entitäten, Schalter oder Dashboardelemente
+- Dashboard-Template-Version bleibt 11
+- Versions- und Release-Dokumentation auf stabilen Betrieb umgestellt
 
 ## Legacy-YAML-Optimizer
 

@@ -1,3 +1,25 @@
+## [2.0.0]
+
+### Release
+
+- First stable release of the 2.x integration
+- Promoted the tested `2.0.0-beta.14` feature set to stable `2.0.0`
+- No optimizer-calculation, active-control, entity-model, or dashboard-logic changes compared with `2.0.0-beta.14`
+
+### Changed
+
+- Integration version changed from `2.0.0-beta.14` to `2.0.0`
+- README, installation, configuration, HACS pre-release, and troubleshooting documentation updated for the stable release
+- Dashboard template version remains 11
+
+### Safety
+
+Active NOAH control remains opt-in and all existing controller safeguards remain
+unchanged. Upgrading from `2.0.0-beta.14` does not change the configured control
+behavior.
+
+---
+
 ## [2.0.0-beta.14]
 
 ### Added
