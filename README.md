@@ -3,7 +3,8 @@
 Prognosebasierte Steuerung der Ausgangsleistung eines Growatt NOAH 2000
 über Home Assistant und Noah-MQTT.
 
-> **Status:** Stabiler Release `2.0.0`. Die aktive Steuerung kann die
+> **Status:** Stabiler Release `2.0.0`. Aktueller Pre-Release:
+> `2.1.0-beta.1` mit passivem PV-Learning. Die aktive Steuerung kann die
 > NOAH-Ausgangsleistung verändern. Vor der Aktivierung sollten Quellwerte,
 > Netzvorzeichen und Stellgröße geprüft werden.
 
@@ -17,6 +18,7 @@ Prognosebasierte Steuerung der Ausgangsleistung eines Growatt NOAH 2000
 - Nachtentladung bis zu einem Mindest-SOC ermöglichen
 - Forecast.Solar in die Ladeplanung einbeziehen
 - dynamischen SOC-Ladeplan aus der verbleibenden PV-Prognose ableiten
+- systematische Abweichungen zwischen Forecast.Solar und realem PV-Ertrag automatisch lernen
 - Regelzustand, Prognose und Energiefluss in einem Dashboard darstellen
 
 ## HACS-Integration
@@ -33,6 +35,18 @@ Version `2.0.0` übernimmt den Funktionsstand von `2.0.0-beta.14` unverändert.
 Gegenüber Beta 14 wurden keine Berechnungs- oder Regelalgorithmen geändert;
 nur Versionierung und Release-Dokumentation wurden auf den stabilen Stand
 umgestellt.
+
+Aktueller Pre-Release:
+
+```text
+2.1.0-beta.1
+```
+
+`2.1.0-beta.1` ergänzt ein zunächst passiv arbeitendes **PV-Learning**. Es
+vergleicht den gemessenen PV-Tagesertrag mit Forecast.Solar, bildet aus bis zu
+sieben gültigen Tagen einen robusten Lernfaktor und kann diesen optional auf
+die bestehende Restprognose anwenden. Die Anwendung ist nach dem Update
+standardmäßig ausgeschaltet.
 
 Ab Beta 5 kann die Integration den berechneten Sollwert optional aktiv an
 `NOAH System Output Power` übertragen.
@@ -193,6 +207,11 @@ Die Integration berechnet unter anderem:
 - verfügbare Akkuenergie
 - benötigte Ladeenergie
 - wirksame PV-Restprognose
+- PV-Prognosereferenz des aktuellen Tages
+- gemessene PV-Energie des aktuellen Tages
+- PV-Lernfaktor aus bis zu sieben gültigen Lerntagen
+- wirksamen Prognosefaktor aus Sicherheits- und optionalem Lernfaktor
+- Bereitschaftsstatus des PV-Learnings
 - erwarteten Hausenergiebedarf
 - Prognosemarge
 - Prognosedeckung
@@ -215,6 +234,59 @@ Die ursprüngliche Berechnungslogik wurde in Beta 4 gegen den bisherigen
 YAML-Optimizer verglichen. Bei identischen Einstellungen stimmten die
 relevanten Berechnungsergebnisse, der Reglermodus und der Ausgangssollwert mit
 der YAML-Version überein.
+
+## PV-Learning ab 2.1.0-beta.1
+
+PV-Learning gleicht systematische Unterschiede zwischen der Forecast.Solar-
+Prognose und dem tatsächlich vom NOAH gemessenen PV-Ertrag aus. Es benötigt
+keine zusätzliche Quellentität. Verwendet werden die bereits konfigurierte
+**NOAH Solar Power**-Entität, die **Forecast.Solar Restprognose heute** und die
+Sun-Integration.
+
+Die Integration integriert die PV-Leistung über den Tag und bildet für jeden
+gültigen Lerntag:
+
+```text
+Tagesverhältnis
+= gemessene PV-Energie / PV-Prognosereferenz
+```
+
+Der **PV-Lernfaktor** ist der Median der letzten maximal sieben gültigen
+Tagesverhältnisse. Ein Tageswert wird für das Learning auf `0,50 ... 1,50`
+begrenzt, damit einzelne Ausreißer das Ergebnis nicht übermäßig verändern.
+Mindestens drei gültige Lerntage sind erforderlich, bevor der Lernfaktor auf
+die Regelung angewendet werden kann.
+
+Ohne angewendetes PV-Learning gilt unverändert:
+
+```text
+wirksamer Prognosefaktor
+= Prognose-Sicherheitsfaktor
+```
+
+Ist PV-Learning bereit und **Gelernte PV-Korrektur verwenden** eingeschaltet:
+
+```text
+wirksamer Prognosefaktor
+= Prognose-Sicherheitsfaktor × PV-Lernfaktor
+
+wirksame Restprognose
+= Forecast.Solar Restprognose × wirksamer Prognosefaktor
+```
+
+Das Learning selbst läuft immer passiv. Der neue Schalter ist standardmäßig
+**Aus**, sodass sich das Regelverhalten unmittelbar nach dem Update gegenüber
+Version `2.0.0` nicht ändert. Mit **PV-Lerndaten zurücksetzen** kann die
+gespeicherte Lernhistorie gelöscht werden.
+
+Ein Tag wird unter anderem verworfen, wenn die Integration erst deutlich nach
+Tagesbeginn gestartet wurde, keine ausreichende Prognosereferenz vorliegt,
+weniger als zwei Stunden gültige Tagesdaten beobachtet wurden oder der Tag nicht
+bis mindestens 85 % des Tageslichtfensters verfolgt werden konnte. Eine
+Messlücke von mehr als zehn Minuten, die die Tagesbeobachtung berührt, macht den
+gesamten Lerntag ungültig, damit fehlende PV-Produktion nicht als zu geringer
+Tagesertrag angelernt wird. Nach begonnener Tagesbeobachtung wird nachts keine
+neue Prognosereferenz mehr übernommen.
 
 ## Betriebsarten
 
@@ -861,6 +933,17 @@ Erster stabiler Release der 2.x-Reihe:
 - keine neuen Entitäten, Schalter oder Dashboardelemente
 - Dashboard-Template-Version bleibt 11
 - Versions- und Release-Dokumentation auf stabilen Betrieb umgestellt
+
+### 2.1.0-beta.1
+
+- passives, persistentes PV-Learning ergänzt
+- Median aus bis zu sieben gültigen Lerntagen; ab drei Tagen einsatzbereit
+- neue Diagnoseentitäten für Lernfaktor, Lerntage, Tagesertrag und Prognosereferenz
+- neuer Opt-in-Schalter **Gelernte PV-Korrektur verwenden**
+- neue Schaltfläche **PV-Lerndaten zurücksetzen**
+- wirksamer Prognosefaktor optional aus Sicherheitsfaktor × Lernfaktor
+- Dashboard-Template-Version von 11 auf 12 erhöht
+- bei ausgeschaltetem Lern-Schalter bleibt das Regelverhalten von 2.0.0 erhalten
 
 ## Legacy-YAML-Optimizer
 

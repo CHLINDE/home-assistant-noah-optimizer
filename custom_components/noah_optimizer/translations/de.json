@@ -85,6 +85,24 @@
       "effective_forecast": {
         "name": "Wirksame Restprognose"
       },
+      "pv_learning_factor": {
+        "name": "PV-Lernfaktor"
+      },
+      "effective_forecast_factor": {
+        "name": "Wirksamer Prognosefaktor"
+      },
+      "pv_learning_sample_count": {
+        "name": "PV-Lerntage"
+      },
+      "pv_learning_last_ratio": {
+        "name": "Letztes PV-Tagesverhältnis"
+      },
+      "pv_energy_today": {
+        "name": "PV-Energie heute"
+      },
+      "pv_forecast_reference": {
+        "name": "PV-Prognosereferenz heute"
+      },
       "expected_load_energy": {
         "name": "Erwarteter Hausenergiebedarf"
       },
@@ -254,6 +272,14 @@
       },
       "soc_release_enabled": {
         "name": "Vorausschauende SOC-Freigabe aktiv"
+      },
+      "pv_learning_apply": {
+        "name": "Gelernte PV-Korrektur verwenden"
+      }
+    },
+    "button": {
+      "pv_learning_reset": {
+        "name": "PV-Lerndaten zurücksetzen"
       }
     },
     "binary_sensor": {
@@ -265,6 +291,9 @@
       },
       "actuator_available": {
         "name": "Stellgröße"
+      },
+      "pv_learning_ready": {
+        "name": "PV-Learning bereit"
       }
     }
   }

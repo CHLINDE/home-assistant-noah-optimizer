@@ -19,6 +19,7 @@ from .const import (
     DATA_ACTUATOR_AVAILABLE,
     DATA_CRITICAL_DATA_OK,
     DATA_FORECAST_AVAILABLE,
+    DATA_PV_LEARNING_READY,
 )
 from .entity import NoahOptimizerEntity
 
@@ -56,6 +57,11 @@ BINARY_SENSORS: tuple[
         translation_key="actuator_available",
         data_key=DATA_ACTUATOR_AVAILABLE,
         device_class=BinarySensorDeviceClass.CONNECTIVITY,
+    ),
+    NoahBinarySensorDescription(
+        key="pv_learning_ready",
+        translation_key="pv_learning_ready",
+        data_key=DATA_PV_LEARNING_READY,
     ),
 )
 

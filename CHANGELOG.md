@@ -1,3 +1,37 @@
+## [2.1.0-beta.1] - 2026-08-24
+
+### Added
+
+- Passive PV learning based on measured NOAH solar power and Forecast.Solar
+- Persistent PV-learning history across Home Assistant restarts
+- Robust learned correction factor using the median of up to 7 valid learning days
+- Minimum of 3 valid learning days before learned correction can be applied
+- Opt-in switch for applying the learned PV correction
+- Button for resetting all PV-learning data
+- Diagnostic sensors for learning factor, effective forecast factor, learning days, last daily ratio, measured PV energy, and forecast reference
+- PV-learning readiness binary sensor
+- PV-learning diagnostics and controls in the automatic dashboard
+
+### Changed
+
+- Effective remaining PV forecast can optionally use `forecast safety factor × learned PV factor`
+- Dashboard template version increased from 11 to 12
+- Existing forecast and control behavior remains unchanged while learned PV correction is disabled
+
+### Safety
+
+- PV learning runs passively by default
+- Applying learned PV correction is opt-in and disabled by default
+- Individual daily learning factors are limited to `0.50 ... 1.50`
+- At least 3 valid learning days are required before the learned factor can affect the forecast
+- A learning day must reach at least 85% of the daylight window before it can be accepted
+- Daytime measurement gaps longer than 10 minutes invalidate the complete learning day instead of treating missing production as zero
+- A forecast reference is no longer captured at night after daytime observation has already started
+- The current PV-learning state is saved immediately during controlled integration unloads/reloads so a short Home Assistant restart does not appear as a long measurement gap
+- Existing active-control safeguards remain unchanged
+
+---
+
 ## [2.0.0]
 
 ### Release

@@ -2,9 +2,10 @@
 
 Stable release: `2.0.0`
 
-At the time of the `2.0.0` stable release, no newer pre-release is published.
-This document remains the guide and historical reference for the HACS
-beta/pre-release channel.
+Current pre-release: `2.1.0-beta.1`
+
+The `2.1.0-beta.1` pre-release adds passive, persistent PV learning. Applying
+the learned correction is opt-in and disabled by default.
 
 ## Direct HACS repository button
 
@@ -20,6 +21,46 @@ HACS.
 > The HACS button itself does not contain the Home Assistant port. If My Home
 > Assistant still opens an instance URL containing `:8123`, update the instance
 > URL stored by My Home Assistant in the browser.
+
+## PV learning in 2.1.0-beta.1
+
+PV learning compares measured NOAH solar production with an early-day
+Forecast.Solar reference. It integrates the configured **NOAH Solar Power**
+source over the day and stores one ratio for each valid completed learning day:
+
+```text
+daily ratio
+= measured PV energy / PV forecast reference
+```
+
+The learned PV factor is the median of up to the latest seven valid daily
+ratios. Individual ratios used for learning are limited to `0.50 ... 1.50`.
+At least three valid learning days are required before the factor is ready.
+
+Learning itself always runs passively. The new switch:
+
+```text
+Use learned PV correction
+```
+
+is disabled by default. While it is off, forecast and control behavior remains
+the same as `2.0.0`. When it is enabled and learning is ready:
+
+```text
+effective forecast factor
+= forecast safety factor × learned PV factor
+
+effective remaining forecast
+= Forecast.Solar remaining forecast × effective forecast factor
+```
+
+The **Reset PV learning data** button clears all persisted learning samples.
+The integration then needs at least three new valid learning days before the
+learned factor can affect the forecast again.
+
+A first partial day started well after sunrise is not learned. Measurement gaps
+longer than 10 minutes are not integrated, and at least two hours of daytime
+observation are required for a valid learning day.
 
 ## Dynamic SOC plan
 
@@ -195,7 +236,11 @@ Before updating to the current beta, disable active control and dynamic SOC cont
 ```text
 Active NOAH control
 Dynamic SOC control
+Predictive SOC release
 ```
+
+The new **Use learned PV correction** switch is disabled by default after the
+update.
 
 After the update, the new SOC plan sensors can be observed before control is
 enabled again.
@@ -570,6 +615,13 @@ controller-status translation table with `state_translated()` on the new
 controller-status enum sensor. Other dashboard content and user customizations
 are preserved.
 
+### 2.1.0-beta.1 dashboard migration
+
+The dashboard template version increases from 11 to 12. Existing dashboards
+are selectively extended with PV-learning diagnostics, the opt-in learning
+switch, and the reset button. Existing user customizations are preserved where
+possible.
+
 ## Dashboard requirements
 
 The enhanced dashboard requires:
@@ -868,9 +920,19 @@ First stable 2.x release:
 - keeps dashboard template version 11
 - updates release and installation documentation for the stable channel
 
+### 2.1.0-beta.1
+
+- passive persistent PV learning
+- median learning factor from up to seven valid days
+- three valid days required before application
+- optional learned correction multiplied with the existing forecast safety factor
+- new learning diagnostics, readiness sensor, opt-in switch, and reset button
+- dashboard template version 12
+- active control behavior unchanged while learned correction is disabled
+
 ## Current limitations 
 
-Version `2.0.0` does not yet include:
+The current `2.1.0-beta.1` pre-release does not yet include:
 
 - learned household load
 - multiple independent NOAH systems

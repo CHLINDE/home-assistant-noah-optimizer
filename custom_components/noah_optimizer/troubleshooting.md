@@ -688,3 +688,76 @@ In diesem Fall die vorausschauende SOC-Freigabe zunächst deaktivieren und
 Prognose-Sicherheitsfaktor beziehungsweise Energiereserve konservativer
 einstellen. Die dynamische **SOC-Nachladung** sollte aktiviert bleiben, damit
 ein später erkannter SOC-Rückstand wieder aufgeholt werden kann.
+
+## 28. PV-Learning wird nicht bereit
+
+Der Binary Sensor **PV-Learning bereit** wird erst nach mindestens drei
+gültigen, vollständig abgeschlossenen Lerntagen aktiv.
+
+Prüfen:
+
+- **NOAH Solar Power** liefert tagsüber plausible Werte.
+- **Forecast.Solar Restprognose heute** liefert Werte in Wh oder kWh.
+- **PV-Prognosereferenz heute** wird früh am Tag gesetzt.
+- **PV-Energie heute** steigt während der PV-Erzeugung an.
+- Home Assistant beziehungsweise die Integration lief bereits früh genug am
+  Lerntag. Ein erster deutlich zu spät gestarteter Teil-Tag wird verworfen.
+- Die Beobachtung erreichte mindestens 85 % des Tageslichtfensters. Ein Ausfall
+  bis weit vor den Abend kann deshalb keinen unvollständigen Tagesertrag lernen.
+- Es gab während der Tagesbeobachtung keine Messlücke über zehn Minuten. Eine
+  solche Lücke verwirft den gesamten Lerntag; die fehlende PV-Produktion wird
+  nicht als Nullertrag angelernt.
+- Mindestens zwei Stunden gültige Tagesbeobachtung lagen vor.
+
+**PV-Lerntage** wird erst beim Abschluss eines gültigen Tages erhöht, also
+typischerweise beim ersten Coordinator-Update des Folgetags.
+
+Nach **PV-Lerndaten zurücksetzen** beginnt die Lernhistorie wieder bei null.
+
+## 29. Gelernte PV-Korrektur hat keine Wirkung
+
+Prüfen:
+
+```text
+PV-Learning bereit = Ein
+Gelernte PV-Korrektur verwenden = Ein
+```
+
+Ist einer der beiden Zustände nicht erfüllt, verwendet der Optimizer weiterhin
+nur den konfigurierten Prognose-Sicherheitsfaktor.
+
+Zum Vergleich die Sensoren prüfen:
+
+```text
+PV-Lernfaktor
+Wirksamer Prognosefaktor
+Wirksame Restprognose
+```
+
+Bei aktivem und bereitem Learning muss gelten:
+
+```text
+Wirksamer Prognosefaktor
+= Prognose-Sicherheitsfaktor × PV-Lernfaktor
+```
+
+Der Lern-Schalter ändert keine Betriebsart und umgeht keine vorhandenen
+Sicherheitsmechanismen der aktiven NOAH-Steuerung.
+
+## 30. PV-Lernfaktor wirkt unplausibel
+
+Der Faktor basiert auf dem Median der letzten maximal sieben gültigen Tage.
+Ein einzelner schlechter Tag sollte den Median deshalb nur begrenzt
+beeinflussen. Für das Learning wird jeder Tageswert zusätzlich auf
+`0,50 ... 1,50` begrenzt.
+
+Bei dauerhaft unplausiblen Werten prüfen:
+
+- ob **NOAH Solar Power** wirklich die gesamte zu Forecast.Solar passende
+  PV-Leistung beschreibt
+- ob Forecast.Solar dieselbe PV-Anlage beziehungsweise Modulausrichtung
+  prognostiziert
+- ob es häufige Neustarts oder längere Datenlücken während der PV-Zeit gibt
+
+Sind die Quellen inzwischen korrigiert worden, **PV-Lerndaten zurücksetzen**
+und eine neue Lernhistorie aufbauen.

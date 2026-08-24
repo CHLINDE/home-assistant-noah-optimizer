@@ -13,6 +13,7 @@ from .const import (
     OPT_CONTROL_ENABLED,
     OPT_DYNAMIC_SOC_ENABLED,
     OPT_ENABLED,
+    OPT_PV_LEARNING_APPLY,
     OPT_SOC_RELEASE_ENABLED,
 )
 from .entity import NoahOptimizerEntity
@@ -30,6 +31,7 @@ async def async_setup_entry(
             NoahOptimizerControlEnabledSwitch(entry.runtime_data, entry),
             NoahOptimizerDynamicSocSwitch(entry.runtime_data, entry),
             NoahOptimizerSocReleaseSwitch(entry.runtime_data, entry),
+            NoahOptimizerPvLearningApplySwitch(entry.runtime_data, entry),
         ]
     )
 
@@ -175,3 +177,36 @@ class NoahOptimizerSocReleaseSwitch(NoahOptimizerEntity, SwitchEntity):
         if controller is not None:
             await controller.async_control_tick()
 
+
+
+class NoahOptimizerPvLearningApplySwitch(NoahOptimizerEntity, SwitchEntity):
+    """Enable application of the learned PV correction."""
+
+    _attr_translation_key = "pv_learning_apply"
+
+    def __init__(self, coordinator, entry) -> None:
+        """Initialize the switch."""
+        super().__init__(coordinator, entry)
+        self.entry = entry
+        self._attr_unique_id = f"{entry.entry_id}_pv_learning_apply"
+
+    @property
+    def is_on(self) -> bool:
+        """Return whether learned PV correction is applied."""
+        return bool(self.coordinator.get_option(OPT_PV_LEARNING_APPLY))
+
+    async def async_turn_on(self, **kwargs) -> None:
+        """Enable learned PV correction."""
+        await self.coordinator.async_set_option(OPT_PV_LEARNING_APPLY, True)
+        await self._async_refresh_controller()
+
+    async def async_turn_off(self, **kwargs) -> None:
+        """Disable learned PV correction."""
+        await self.coordinator.async_set_option(OPT_PV_LEARNING_APPLY, False)
+        await self._async_refresh_controller()
+
+    async def _async_refresh_controller(self) -> None:
+        """Evaluate the controller immediately after a switch change."""
+        controller = getattr(self.coordinator, "controller", None)
+        if controller is not None:
+            await controller.async_control_tick()

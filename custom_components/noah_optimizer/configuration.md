@@ -1,10 +1,11 @@
 # Konfiguration
 
 Dieses Dokument beschreibt die HACS-Integration **Growatt NOAH Optimizer**
-für Version `2.0.0`.
+für den Pre-Release `2.1.0-beta.1`.
 
-Version `2.0.0` entspricht funktional `2.0.0-beta.14`; die Beförderung zum
-stabilen Release ändert keine Berechnungs- oder Regelparameter.
+`2.1.0-beta.1` baut auf dem stabilen Stand `2.0.0` auf und ergänzt passives,
+persistentes PV-Learning. Solange die gelernte PV-Korrektur nicht aktiviert
+wird, bleibt die bestehende Prognose- und Regelberechnung unverändert.
 
 Die tatsächlichen Entity-IDs können durch Bereichsnamen oder manuelle
 Umbenennungen abweichen. Die Integration und das automatische Dashboard lösen
@@ -86,6 +87,30 @@ dass bei einer späteren Verschlechterung der Prognose auch die
 
 Die Betriebsarten **Manuell**, **Eigenverbrauch**, **Ladepriorität** und die
 Nachtregelung werden nicht verändert.
+
+### Gelernte PV-Korrektur verwenden
+
+Neu in `2.1.0-beta.1`.
+
+Das PV-Learning selbst sammelt unabhängig von diesem Schalter Tagesdaten. Erst
+wenn mindestens drei gültige Lerntage vorliegen und dieser Schalter
+eingeschaltet ist, wird der gelernte PV-Faktor auf die Forecast.Solar-
+Restprognose angewendet.
+
+Standard:
+
+```text
+Aus
+```
+
+Dadurch bleibt das Regelverhalten nach dem Update zunächst identisch zu
+Version `2.0.0`.
+
+### PV-Lerndaten zurücksetzen
+
+Die Schaltfläche löscht die gespeicherte Lernhistorie. Danach beginnt das
+Learning wieder bei null und benötigt erneut mindestens drei gültige
+Lerntage, bevor eine gelernte Korrektur wirksam werden kann.
 
 ## 2. Betriebsarten
 
@@ -656,13 +681,80 @@ Standard:
 0,80
 ```
 
+Der Prognose-Sicherheitsfaktor bleibt die bewusst konfigurierte konservative
+Bewertung der Forecast.Solar-Prognose. Ohne angewendetes PV-Learning gilt:
+
+```text
+wirksamer Prognosefaktor
+= Prognose-Sicherheitsfaktor
+
+wirksame Restprognose
+= Restprognose × Prognose-Sicherheitsfaktor
+```
+
 Beispiel:
 
 ```text
-Restprognose: 5,0 kWh
-Faktor:        0,80
-wirksam:       4,0 kWh
+Restprognose:                5,0 kWh
+Prognose-Sicherheitsfaktor:  0,80
+Wirksame Restprognose:       4,0 kWh
 ```
+
+Ist PV-Learning bereit und **Gelernte PV-Korrektur verwenden** aktiviert:
+
+```text
+wirksamer Prognosefaktor
+= Prognose-Sicherheitsfaktor × PV-Lernfaktor
+
+wirksame Restprognose
+= Restprognose × wirksamer Prognosefaktor
+```
+
+### PV-Learning
+
+PV-Learning verwendet keine zusätzliche Quellentität. Es nutzt:
+
+- NOAH Solar Power
+- Forecast.Solar Restprognose heute
+- Sun-Integration
+
+Die tatsächliche PV-Energie wird aus der NOAH-Solarleistung zeitlich
+integriert. Für einen gültigen Lerntag gilt:
+
+```text
+Tagesverhältnis
+= tatsächlicher PV-Ertrag / PV-Prognosereferenz
+```
+
+Die letzten maximal sieben gültigen Tagesverhältnisse werden persistent
+gespeichert. Ihr Median ergibt den PV-Lernfaktor.
+
+```text
+Lernfenster:                    7 gültige Tage
+Mindestens erforderlich:        3 gültige Tage
+Lernfaktor pro Tag:             0,50 ... 1,50
+Maximale Tages-Messlücke:       10 Minuten
+Mindestbeobachtungszeit:        2 Stunden Tagesbetrieb
+Mindest-Tageslichtfortschritt:  85 %
+```
+
+Die Prognosereferenz wird möglichst früh am Tag aus der Forecast.Solar-
+Restprognose gebildet. Startet die Beobachtung kurz nach Sonnenaufgang, wird
+der bereits gemessene PV-Ertrag zur Restprognose addiert, um eine angenäherte
+Tagesreferenz zu erhalten. Vor Sonnenaufgang kann eine verfügbare Restprognose
+als Referenz übernommen werden. Sobald die Tagesbeobachtung begonnen hat, wird
+nachts keine neue Referenz mehr angelegt; ein Restwert nach Sonnenuntergang
+kann damit nicht versehentlich zur Tagesreferenz werden.
+
+Ein erster deutlich zu spät begonnener Teil-Tag wird nicht gelernt. Zusätzlich
+muss ein gültiger Lerntag mindestens 85 % des Tageslichtfensters erreicht haben.
+Eine Messlücke von mehr als zehn Minuten, die die Tagesbeobachtung berührt,
+verwirft den gesamten Lerntag statt die fehlende PV-Produktion als Nullertrag
+zu behandeln.
+
+Das Learning läuft passiv. Der gelernte Faktor beeinflusst die Regelung erst,
+wenn **Gelernte PV-Korrektur verwenden** eingeschaltet ist und mindestens drei
+gültige Lerntage vorliegen.
 
 ### Zusätzliche Energiereserve
 
@@ -795,7 +887,43 @@ Ladewirkungsgrads.
 
 ### Wirksame Restprognose
 
-Restprognose multipliziert mit dem Prognose-Sicherheitsfaktor.
+Forecast.Solar-Restprognose multipliziert mit dem **wirksamen
+Prognosefaktor**. Ohne aktive gelernte Korrektur entspricht dieser dem
+Prognose-Sicherheitsfaktor. Mit bereitem und aktiviertem PV-Learning ist er
+das Produkt aus Prognose-Sicherheitsfaktor und PV-Lernfaktor.
+
+### PV-Lernfaktor
+
+Median der letzten maximal sieben gültigen Tagesverhältnisse. Vor dem ersten
+gültigen Lerntag wird `1,0` angezeigt.
+
+### Wirksamer Prognosefaktor
+
+Tatsächlich auf Forecast.Solar angewendeter Faktor. Solange die gelernte
+Korrektur ausgeschaltet oder noch nicht bereit ist, entspricht er dem
+Prognose-Sicherheitsfaktor.
+
+### PV-Lerntage
+
+Anzahl der aktuell gespeicherten gültigen Lerntage, maximal sieben.
+
+### Letztes PV-Tagesverhältnis
+
+Unbegrenztes Verhältnis aus gemessenem PV-Tagesertrag und der zugehörigen
+Prognosereferenz des zuletzt abgeschlossenen gültigen Lerntags.
+
+### PV-Energie heute
+
+Aus der NOAH-Solarleistung integrierter PV-Ertrag des laufenden Tages.
+
+### PV-Prognosereferenz heute
+
+Früh am Tag erfasste beziehungsweise angenäherte Forecast.Solar-Tagesreferenz
+für das aktuelle Learning.
+
+### PV-Learning bereit
+
+Ist **Ein**, sobald mindestens drei gültige Lerntage gespeichert sind.
 
 ### Erwarteter Hausenergiebedarf
 
@@ -973,3 +1101,8 @@ Die Migration ergänzt `Nachtbetrieb` für den SOC-Ladeplan, `PV-Umlenkung` als
 Reglermodus und stellt die Controllerstatus-Zeile auf den neuen Enum-Sensor um.
 Die Controllerstatus-Texte kommen dadurch zentral aus den Übersetzungsdateien.
 Benutzeranpassungen am übrigen Dashboard werden nicht pauschal ersetzt.
+
+`2.1.0-beta.1` erhöht die Dashboard-Template-Version von 11 auf 12. Ergänzt
+werden die PV-Learning-Diagnosewerte, **Gelernte PV-Korrektur verwenden** und
+**PV-Lerndaten zurücksetzen**. Auch diese Migration ergänzt nur gezielt die
+neuen Zeilen und ersetzt das übrige gespeicherte Dashboard nicht.

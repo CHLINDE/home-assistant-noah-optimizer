@@ -385,6 +385,20 @@ views:
                 name: Remaining forecast today
               - entity: __EFFECTIVE_FORECAST__
                 name: Effective remaining forecast
+              - entity: __PV_FORECAST_REFERENCE__
+                name: PV forecast reference today
+              - entity: __PV_ENERGY_TODAY__
+                name: PV energy today
+              - entity: __PV_LEARNING_FACTOR__
+                name: PV learning factor
+              - entity: __EFFECTIVE_FORECAST_FACTOR__
+                name: Effective forecast factor
+              - entity: __PV_LEARNING_SAMPLE_COUNT__
+                name: PV learning days
+              - entity: __PV_LEARNING_LAST_RATIO__
+                name: Last PV daily ratio
+              - entity: __PV_LEARNING_READY__
+                name: PV learning ready
               - entity: __CHARGE_NEED__
                 name: Required charging energy
               - entity: __EXPECTED_LOAD_ENERGY__
@@ -432,6 +446,10 @@ views:
                 name: Dynamic SOC control enabled
               - entity: __SOC_RELEASE_ENABLED__
                 name: Predictive SOC release enabled
+              - entity: __PV_LEARNING_APPLY__
+                name: Use learned PV correction
+              - entity: __PV_LEARNING_RESET__
+                name: Reset PV learning data
               - entity: __OPTIMIZER_MODE__
                 name: Operating mode
               - entity: __TARGET_SOC__
