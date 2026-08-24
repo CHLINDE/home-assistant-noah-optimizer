@@ -176,9 +176,10 @@ Automatikmodus. Neu gegenüber `2.0.0` sind unter anderem:
 - Dashboard-Template-Version 13
 
 Das Learning startet nach dem Neustart automatisch mit der Datensammlung. Die
-gelernte Korrektur ist jedoch standardmäßig ausgeschaltet und kann frühestens
-nach drei gültigen Lerntagen wirksam werden. Dadurch bleibt die Regelung
-unmittelbar nach dem Update identisch zu `2.0.0`.
+gelernte PV-Korrektur ist jedoch standardmäßig ausgeschaltet und kann
+frühestens nach drei gültigen Lerntagen auf die Forecast-Berechnung wirken.
+Der neue Modus **SOC-Ladeplan halten** kann dagegen bereits bei aktivierter
+dynamischer SOC-Steuerung das Regelverhalten gegenüber `2.0.0` verändern.
 
 Empfohlen ist, zunächst **PV-Energie heute**, **PV-Prognosereferenz heute**,
 **PV-Lerntage** und **PV-Lernfaktor** zu beobachten. Erst nach plausiblen
@@ -187,14 +188,16 @@ Werten sollte die gelernte Korrektur eingeschaltet werden.
 ### Update von 2.0.0-beta.14
 
 Der stabile Zwischenstand `2.0.0` entspricht funktional `2.0.0-beta.14`.
-`2.1.0-beta.2` baut auf genau diesem Regelstand auf, enthält das PV-Learning aus Beta 1 und ergänzt außerdem
-das oben beschriebene PV-Learning.
+`2.1.0-beta.2` baut auf genau diesem Regelstand auf, enthält das PV-Learning
+aus Beta 1 und ergänzt außerdem den oben beschriebenen Modus
+**SOC-Ladeplan halten**.
 
 Damit gelten gegenüber Beta 14 zusätzlich die Änderungen aus
 **Update von 2.0.0**: neue PV-Learning-Entitäten, der Opt-in-Schalter, die
-Reset-Schaltfläche, den SOC-Halten-Modus und Dashboard-Template-Version 13. Die vorhandenen
-Regelalgorithmen bleiben unverändert, solange die gelernte PV-Korrektur
-ausgeschaltet ist.
+Reset-Schaltfläche, den SOC-Halten-Modus und Dashboard-Template-Version 13.
+Die gelernte PV-Korrektur verändert die Forecast-Berechnung weiterhin erst
+nach ausdrücklicher Aktivierung; der SOC-Halten-Modus ist davon unabhängig und
+gehört zur dynamischen SOC-Steuerung.
 
 ### Update von Beta 13
 

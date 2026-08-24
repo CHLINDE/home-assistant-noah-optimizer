@@ -9,6 +9,7 @@
 - Prevented the legacy forecast-margin logic from selecting charge priority a second time when dynamic SOC control is active and the battery is already within tolerance at or ahead of the dynamic SOC target
 - Prevented the schedule-hold mode from intentionally discharging the battery by limiting its raw output target to the smaller of current PV power and the self-consumption target
 - Schedule-hold output is rounded down to the configured command step so rounding cannot request more output than the safe PV-only target
+- Required output reductions in `soc_hold` bypass the normal two-minute command interval so falling PV cannot temporarily cause unintended battery discharge
 
 ### Changed
 

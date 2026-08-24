@@ -194,8 +194,15 @@ Das kann korrekt sein. Die Funktion greift nur ein, wenn gleichzeitig:
 - SOC unter Ziel-SOC liegt
 - SOC mehr als 2 Prozentpunkte hinter dem Ladeplan liegt
 
-Steht `SOC-Ladeplan` auf **Im Ladeplan** oder **Vor Ladeplan**, bleibt die
-bestehende Automatik zuständig.
+Steht `SOC-Ladeplan` auf **Im Ladeplan** oder **Vor Ladeplan**, verwendet
+`2.1.0-beta.2` im Automatikbetrieb den Reglermodus **SOC-Ladeplan halten**.
+Dieser begrenzt den Sollwert auf die aktuell verfügbare PV-Leistung und den
+Eigenverbrauchs-Sollwert, ohne absichtliche Akkuentladung anzufordern.
+
+Sinkt die verfügbare PV-Leistung, darf eine erforderliche Sollwertreduzierung
+sofort ausgeführt werden und wartet nicht auf den normalen Mindestabstand von
+zwei Minuten. Sollwerterhöhungen im SOC-Halten bleiben weiterhin auf den
+normalen Mindestabstand begrenzt.
 
 ## 9. SOC-Nachladung wirkt zu stark
 
