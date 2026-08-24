@@ -49,6 +49,7 @@ from .const import (
     DATA_DYNAMIC_SOC_STATUS,
     DATA_DYNAMIC_SOC_TARGET,
     DATA_EFFECTIVE_FORECAST,
+    DATA_EFFECTIVE_FORECAST_FACTOR,
     DATA_EXPECTED_LOAD_ENERGY,
     DATA_FORECAST_AVAILABLE,
     DATA_FORECAST_COVERAGE,
@@ -64,6 +65,12 @@ from .const import (
     DATA_MINUTES_TO_TARGET,
     DATA_OUTPUT_POWER,
     DATA_OUTPUT_TARGET,
+    DATA_PV_ENERGY_TODAY,
+    DATA_PV_FORECAST_REFERENCE,
+    DATA_PV_LEARNING_FACTOR,
+    DATA_PV_LEARNING_LAST_RATIO,
+    DATA_PV_LEARNING_READY,
+    DATA_PV_LEARNING_SAMPLE_COUNT,
     DATA_REQUIRED_CHARGE_POWER,
     DATA_RELEASABLE_BATTERY_ENERGY,
     DATA_SELF_CONSUMPTION_TARGET,
@@ -99,6 +106,7 @@ from .const import (
     OPT_MIN_SOC,
     OPT_MODE,
     OPT_NIGHT_MAX_OUTPUT,
+    OPT_PV_LEARNING_APPLY,
     OPT_RELEASE_MARGIN,
     OPT_SOC_RELEASE_ENABLED,
     OPT_TARGET_SOC,
@@ -109,6 +117,7 @@ from .const import (
     STATUS_OK,
     UPDATE_INTERVAL,
 )
+from .pv_learning import PvLearning
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -132,6 +141,16 @@ class NoahOptimizerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.entry = entry
         self._grid_samples: deque[tuple[float, float]] = deque()
         self._last_grid_timestamp: float | None = None
+        self.pv_learning = PvLearning(hass, entry.entry_id)
+
+    async def async_initialize(self) -> None:
+        """Initialize persistent coordinator helpers."""
+        await self.pv_learning.async_load()
+
+    async def async_reset_pv_learning(self) -> None:
+        """Reset all persistent PV-learning data."""
+        await self.pv_learning.async_reset()
+        await self.async_update_from_states()
 
     def get_option(self, key: str) -> Any:
         """Return an option or its default value."""
@@ -543,6 +562,32 @@ class NoahOptimizerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             charging_power is not None and discharging_power is not None
         )
         forecast_available = forecast_remaining is not None
+
+        daylight_progress = self._daylight_progress()
+        learning_night = self._is_night(
+            solar_power if solar_power is not None else 0.0
+        )
+
+        if solar_power is not None:
+            await self.pv_learning.async_update(
+                solar_power_w=solar_power,
+                forecast_remaining_kwh=forecast_remaining,
+                daylight_progress=daylight_progress,
+                night=learning_night,
+            )
+
+        forecast_factor = float(self.get_option(OPT_FORECAST_FACTOR))
+        pv_learning_factor = self.pv_learning.factor
+        pv_learning_ready = self.pv_learning.ready
+        pv_learning_apply = bool(self.get_option(OPT_PV_LEARNING_APPLY))
+        applied_learning_factor = (
+            pv_learning_factor
+            if pv_learning_apply and pv_learning_ready
+            else 1.0
+        )
+        effective_forecast_factor = forecast_factor * applied_learning_factor
+        pv_learning_last_ratio = self.pv_learning.last_ratio
+
         actuator_available = self._entity_available(
             self.entry.data[CONF_SYSTEM_OUTPUT_POWER]
         )
@@ -576,6 +621,25 @@ class NoahOptimizerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 DATA_AVAILABLE_BATTERY_ENERGY: None,
                 DATA_CHARGE_NEED: None,
                 DATA_EFFECTIVE_FORECAST: None,
+                DATA_EFFECTIVE_FORECAST_FACTOR: round(
+                    effective_forecast_factor, 3
+                ),
+                DATA_PV_LEARNING_FACTOR: round(pv_learning_factor, 3),
+                DATA_PV_LEARNING_SAMPLE_COUNT: self.pv_learning.sample_count,
+                DATA_PV_LEARNING_LAST_RATIO: (
+                    round(pv_learning_last_ratio, 3)
+                    if pv_learning_last_ratio is not None
+                    else None
+                ),
+                DATA_PV_ENERGY_TODAY: round(
+                    self.pv_learning.actual_pv_today_kwh, 3
+                ),
+                DATA_PV_FORECAST_REFERENCE: (
+                    round(self.pv_learning.forecast_reference_kwh, 3)
+                    if self.pv_learning.forecast_reference_kwh is not None
+                    else None
+                ),
+                DATA_PV_LEARNING_READY: pv_learning_ready,
                 DATA_EXPECTED_LOAD_ENERGY: None,
                 DATA_FORECAST_MARGIN: None,
                 DATA_FORECAST_COVERAGE: None,
@@ -617,7 +681,6 @@ class NoahOptimizerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         target_soc = float(self.get_option(OPT_TARGET_SOC))
         min_soc = float(self.get_option(OPT_MIN_SOC))
         efficiency = float(self.get_option(OPT_CHARGE_EFFICIENCY))
-        forecast_factor = float(self.get_option(OPT_FORECAST_FACTOR))
         forecast_safety = float(self.get_option(OPT_FORECAST_SAFETY))
         release_margin = float(self.get_option(OPT_RELEASE_MARGIN))
         expected_day_load = float(self.get_option(OPT_EXPECTED_DAY_LOAD))
@@ -636,8 +699,7 @@ class NoahOptimizerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         soc_release_enabled = bool(self.get_option(OPT_SOC_RELEASE_ENABLED))
 
         hours_to_sunset = self._hours_to_sunset()
-        daylight_progress = self._daylight_progress()
-        night = self._is_night(solar_power)
+        night = learning_night
 
         available_battery_energy = (
             capacity * max(soc - min_soc, 0.0) / 100
@@ -651,7 +713,9 @@ class NoahOptimizerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             / max(efficiency, 0.1)
         )
 
-        effective_forecast = (forecast_remaining or 0.0) * forecast_factor
+        effective_forecast = (
+            (forecast_remaining or 0.0) * effective_forecast_factor
+        )
         expected_load_energy = hours_to_sunset * expected_day_load / 1000
 
         forecast_margin = (
@@ -939,6 +1003,25 @@ class NoahOptimizerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             ),
             DATA_CHARGE_NEED: round(charge_need, 3),
             DATA_EFFECTIVE_FORECAST: round(effective_forecast, 3),
+            DATA_EFFECTIVE_FORECAST_FACTOR: round(
+                effective_forecast_factor, 3
+            ),
+            DATA_PV_LEARNING_FACTOR: round(pv_learning_factor, 3),
+            DATA_PV_LEARNING_SAMPLE_COUNT: self.pv_learning.sample_count,
+            DATA_PV_LEARNING_LAST_RATIO: (
+                round(pv_learning_last_ratio, 3)
+                if pv_learning_last_ratio is not None
+                else None
+            ),
+            DATA_PV_ENERGY_TODAY: round(
+                self.pv_learning.actual_pv_today_kwh, 3
+            ),
+            DATA_PV_FORECAST_REFERENCE: (
+                round(self.pv_learning.forecast_reference_kwh, 3)
+                if self.pv_learning.forecast_reference_kwh is not None
+                else None
+            ),
+            DATA_PV_LEARNING_READY: pv_learning_ready,
             DATA_EXPECTED_LOAD_ENERGY: round(expected_load_energy, 3),
             DATA_FORECAST_MARGIN: round(forecast_margin, 3),
             DATA_FORECAST_COVERAGE: round(forecast_coverage),

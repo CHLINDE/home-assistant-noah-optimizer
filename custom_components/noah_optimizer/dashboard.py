@@ -32,7 +32,7 @@ DASHBOARD_ICON = "mdi:home-battery"
 
 DASHBOARD_STORAGE_VERSION = 1
 DASHBOARD_STORAGE_KEY = f"{DOMAIN}.dashboard"
-DASHBOARD_TEMPLATE_VERSION = 11
+DASHBOARD_TEMPLATE_VERSION = 12
 
 DASHBOARD_TEMPLATE_DE = Path(__file__).with_name("dashboard_de.yaml")
 DASHBOARD_TEMPLATE_EN = Path(__file__).with_name("dashboard_en.yaml")
@@ -58,6 +58,24 @@ ENTITY_TOKENS: dict[str, tuple[str, str]] = {
     ),
     "__CHARGE_NEED__": ("sensor", "charge_need"),
     "__EFFECTIVE_FORECAST__": ("sensor", "effective_forecast"),
+    "__PV_LEARNING_FACTOR__": ("sensor", "pv_learning_factor"),
+    "__EFFECTIVE_FORECAST_FACTOR__": (
+        "sensor",
+        "effective_forecast_factor",
+    ),
+    "__PV_LEARNING_SAMPLE_COUNT__": (
+        "sensor",
+        "pv_learning_sample_count",
+    ),
+    "__PV_LEARNING_LAST_RATIO__": (
+        "sensor",
+        "pv_learning_last_ratio",
+    ),
+    "__PV_ENERGY_TODAY__": ("sensor", "pv_energy_today"),
+    "__PV_FORECAST_REFERENCE__": (
+        "sensor",
+        "pv_forecast_reference",
+    ),
     "__EXPECTED_LOAD_ENERGY__": ("sensor", "expected_load_energy"),
     "__FORECAST_MARGIN__": ("sensor", "forecast_margin"),
     "__FORECAST_COVERAGE__": ("sensor", "forecast_coverage"),
@@ -92,10 +110,13 @@ ENTITY_TOKENS: dict[str, tuple[str, str]] = {
     "__CRITICAL_DATA_OK__": ("binary_sensor", "critical_data_ok"),
     "__FORECAST_AVAILABLE__": ("binary_sensor", "forecast_available"),
     "__ACTUATOR_AVAILABLE__": ("binary_sensor", "actuator_available"),
+    "__PV_LEARNING_READY__": ("binary_sensor", "pv_learning_ready"),
     "__OPTIMIZER_ENABLED__": ("switch", "optimizer_enabled"),
     "__CONTROL_ENABLED__": ("switch", "control_enabled"),
     "__DYNAMIC_SOC_ENABLED__": ("switch", "dynamic_soc_enabled"),
     "__SOC_RELEASE_ENABLED__": ("switch", "soc_release_enabled"),
+    "__PV_LEARNING_APPLY__": ("switch", "pv_learning_apply"),
+    "__PV_LEARNING_RESET__": ("button", "pv_learning_reset"),
     "__OPTIMIZER_MODE__": ("select", "optimizer_mode"),
     "__BATTERY_CAPACITY__": ("number", "battery_capacity"),
     "__TARGET_SOC__": ("number", "target_soc"),
@@ -361,6 +382,15 @@ def _localized_dynamic_labels(hass: HomeAssistant) -> dict[str, str]:
             "releasable_energy": "Freigebare Akkuenergie",
             "release_target": "SOC-Freigabe-Soll",
             "release_switch": "Vorausschauende SOC-Freigabe aktiv",
+            "pv_learning_apply": "Gelernte PV-Korrektur verwenden",
+            "pv_learning_reset": "PV-Lerndaten zurücksetzen",
+            "pv_learning_factor": "PV-Lernfaktor",
+            "effective_forecast_factor": "Wirksamer Prognosefaktor",
+            "pv_learning_sample_count": "PV-Lerntage",
+            "pv_learning_last_ratio": "Letztes PV-Tagesverhältnis",
+            "pv_energy_today": "PV-Energie heute",
+            "pv_forecast_reference": "PV-Prognosereferenz heute",
+            "pv_learning_ready": "PV-Learning bereit",
             "catchup_hours": "SOC-Nachholzeit",
             "chart_title": "Dynamischer SOC-Ladeplan",
             "actual_soc": "Ist-SOC",
@@ -379,6 +409,15 @@ def _localized_dynamic_labels(hass: HomeAssistant) -> dict[str, str]:
         "releasable_energy": "Releasable battery energy",
         "release_target": "SOC release target",
         "release_switch": "Predictive SOC release enabled",
+        "pv_learning_apply": "Use learned PV correction",
+        "pv_learning_reset": "Reset PV learning data",
+        "pv_learning_factor": "PV learning factor",
+        "effective_forecast_factor": "Effective forecast factor",
+        "pv_learning_sample_count": "PV learning days",
+        "pv_learning_last_ratio": "Last PV daily ratio",
+        "pv_energy_today": "PV energy today",
+        "pv_forecast_reference": "PV forecast reference today",
+        "pv_learning_ready": "PV learning ready",
         "catchup_hours": "SOC catch-up time",
         "chart_title": "Dynamic SOC charging schedule",
         "actual_soc": "Actual SOC",
@@ -786,7 +825,7 @@ def _migrate_dashboard_to_beta11(
     config: dict[str, Any],
     replacements: dict[str, str],
 ) -> tuple[dict[str, Any], bool]:
-    """Apply legacy dashboard fixes and migrations through Beta 14."""
+    """Apply legacy dashboard fixes and migrations through 2.1.0-beta.1."""
     migrated = deepcopy(config)
     changed = False
     labels = _localized_dynamic_labels(hass)
@@ -820,7 +859,7 @@ def _migrate_dashboard_to_beta11(
             battery_entity["production"] = replacements["__CHARGING_POWER__"]
             changed = True
 
-    # Add legacy dynamic-SOC and Beta 11 release entities where possible.
+    # Add legacy dynamic-SOC, SOC-release and PV-learning entities where possible.
     for item in _iter_dicts(migrated):
         if item.get("type") == "entities":
             if (
@@ -836,6 +875,16 @@ def _migrate_dashboard_to_beta11(
                     item,
                     replacements["__SOC_RELEASE_ENABLED__"],
                     labels["release_switch"],
+                )
+                changed |= _append_entity_row(
+                    item,
+                    replacements["__PV_LEARNING_APPLY__"],
+                    labels["pv_learning_apply"],
+                )
+                changed |= _append_entity_row(
+                    item,
+                    replacements["__PV_LEARNING_RESET__"],
+                    labels["pv_learning_reset"],
                 )
 
             if (
@@ -882,6 +931,31 @@ def _migrate_dashboard_to_beta11(
                     replacements["__SOC_RELEASE_TARGET__"],
                     labels["release_target"],
                 )
+                learning_rows = (
+                    ("__PV_FORECAST_REFERENCE__", "pv_forecast_reference"),
+                    ("__PV_ENERGY_TODAY__", "pv_energy_today"),
+                    ("__PV_LEARNING_FACTOR__", "pv_learning_factor"),
+                    (
+                        "__EFFECTIVE_FORECAST_FACTOR__",
+                        "effective_forecast_factor",
+                    ),
+                    (
+                        "__PV_LEARNING_SAMPLE_COUNT__",
+                        "pv_learning_sample_count",
+                    ),
+                    (
+                        "__PV_LEARNING_LAST_RATIO__",
+                        "pv_learning_last_ratio",
+                    ),
+                    ("__PV_LEARNING_READY__", "pv_learning_ready"),
+                )
+
+                for token, label_key in learning_rows:
+                    changed |= _append_entity_row(
+                        item,
+                        replacements[token],
+                        labels[label_key],
+                    )
 
             if (
                 _card_contains_entity(item, replacements["__BATTERY_CAPACITY__"])

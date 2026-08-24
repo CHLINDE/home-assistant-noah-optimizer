@@ -11,6 +11,7 @@ DOMAIN: Final = "noah_optimizer"
 
 PLATFORMS: list[Platform] = [
     Platform.BINARY_SENSOR,
+    Platform.BUTTON,
     Platform.NUMBER,
     Platform.SELECT,
     Platform.SENSOR,
@@ -43,6 +44,7 @@ OPT_MODE: Final = "mode"
 OPT_CONTROL_ENABLED: Final = "control_enabled"
 OPT_DYNAMIC_SOC_ENABLED: Final = "dynamic_soc_enabled"
 OPT_SOC_RELEASE_ENABLED: Final = "soc_release_enabled"
+OPT_PV_LEARNING_APPLY: Final = "pv_learning_apply"
 
 OPT_BATTERY_CAPACITY: Final = "battery_capacity"
 OPT_TARGET_SOC: Final = "target_soc"
@@ -77,6 +79,7 @@ DEFAULT_OPTIONS: Final = {
     OPT_CONTROL_ENABLED: False,
     OPT_DYNAMIC_SOC_ENABLED: False,
     OPT_SOC_RELEASE_ENABLED: False,
+    OPT_PV_LEARNING_APPLY: False,
     OPT_MODE: MODE_AUTOMATIC,
     OPT_BATTERY_CAPACITY: 2.048,
     OPT_TARGET_SOC: 95.0,
@@ -119,6 +122,13 @@ DATA_HOURS_TO_SUNSET: Final = "hours_to_sunset"
 DATA_AVAILABLE_BATTERY_ENERGY: Final = "available_battery_energy"
 DATA_CHARGE_NEED: Final = "charge_need"
 DATA_EFFECTIVE_FORECAST: Final = "effective_forecast"
+DATA_PV_LEARNING_FACTOR: Final = "pv_learning_factor"
+DATA_EFFECTIVE_FORECAST_FACTOR: Final = "effective_forecast_factor"
+DATA_PV_LEARNING_SAMPLE_COUNT: Final = "pv_learning_sample_count"
+DATA_PV_LEARNING_LAST_RATIO: Final = "pv_learning_last_ratio"
+DATA_PV_ENERGY_TODAY: Final = "pv_energy_today"
+DATA_PV_FORECAST_REFERENCE: Final = "pv_forecast_reference"
+DATA_PV_LEARNING_READY: Final = "pv_learning_ready"
 DATA_EXPECTED_LOAD_ENERGY: Final = "expected_load_energy"
 DATA_FORECAST_MARGIN: Final = "forecast_margin"
 DATA_FORECAST_COVERAGE: Final = "forecast_coverage"

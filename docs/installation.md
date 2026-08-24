@@ -1,7 +1,7 @@
 # Installation
 
 Diese Anleitung beschreibt die Installation und das Update des **Home
-Assistant Growatt NOAH Optimizers** für Version `2.0.0`.
+Assistant Growatt NOAH Optimizers** für den Pre-Release `2.1.0-beta.1`.
 
 Für neue Installationen wird die HACS-Integration empfohlen.
 
@@ -94,18 +94,21 @@ Typ:
 Integration
 ```
 
-## 5. Version 2.0.0 installieren
+## 5. Version 2.1.0-beta.1 installieren
 
 Zu installierende Version:
 
 ```text
-2.0.0
+2.1.0-beta.1
 ```
+
+In HACS müssen für dieses Repository Vorabversionen angezeigt beziehungsweise
+berücksichtigt werden. Danach `2.1.0-beta.1` auswählen und installieren.
 
 Nach der Installation Home Assistant vollständig neu starten.
 
-Für den stabilen Release `2.0.0` muss HACS für dieses Repository keine
-Vorabversionen berücksichtigen.
+Wer PV-Learning noch nicht testen möchte, kann beim stabilen Release `2.0.0`
+bleiben.
 
 ## 6. Neue Installation einrichten
 
@@ -136,7 +139,7 @@ Standard:
 Ein
 ```
 
-## 7. Update auf 2.0.0
+## 7. Update auf 2.1.0-beta.1
 
 Vor dem Update:
 
@@ -146,23 +149,44 @@ Dynamische SOC-Steuerung aktiv = Aus
 Vorausschauende SOC-Freigabe aktiv = Aus
 ```
 
-Danach Version `2.0.0` über HACS installieren und Home Assistant vollständig
-neu starten.
+Nach dem Update ist zusätzlich der neue Schalter **Gelernte PV-Korrektur
+verwenden** standardmäßig aus.
+
+Danach Version `2.1.0-beta.1` über HACS installieren und Home Assistant
+vollständig neu starten.
+
+### Update von 2.0.0
+
+`2.1.0-beta.1` übernimmt alle Einstellungen des stabilen Releases `2.0.0`.
+Neu hinzu kommen:
+
+- passives, persistentes PV-Learning
+- sechs PV-Learning-Diagnosesensoren
+- Binary Sensor **PV-Learning bereit**
+- Schalter **Gelernte PV-Korrektur verwenden**
+- Schaltfläche **PV-Lerndaten zurücksetzen**
+- Dashboard-Template-Version 12
+
+Das Learning startet nach dem Neustart automatisch mit der Datensammlung. Die
+gelernte Korrektur ist jedoch standardmäßig ausgeschaltet und kann frühestens
+nach drei gültigen Lerntagen wirksam werden. Dadurch bleibt die Regelung
+unmittelbar nach dem Update identisch zu `2.0.0`.
+
+Empfohlen ist, zunächst **PV-Energie heute**, **PV-Prognosereferenz heute**,
+**PV-Lerntage** und **PV-Lernfaktor** zu beobachten. Erst nach plausiblen
+Werten sollte die gelernte Korrektur eingeschaltet werden.
 
 ### Update von 2.0.0-beta.14
 
-Der stabile Release `2.0.0` entspricht funktional `2.0.0-beta.14`.
+Der stabile Zwischenstand `2.0.0` entspricht funktional `2.0.0-beta.14`.
+`2.1.0-beta.1` baut auf genau diesem Regelstand auf und ergänzt anschließend
+das oben beschriebene PV-Learning.
 
-Es gibt gegenüber Beta 14:
-
-- keine Änderung der Optimizer-Berechnung
-- keine Änderung der aktiven NOAH-Regelung
-- keine neuen Entitäten oder Schalter
-- keine neue Dashboard-Migration
-- keine Änderung der Dashboard-Template-Version 11
-
-Nach dem Update ist lediglich ein vollständiger Neustart von Home Assistant
-erforderlich.
+Damit gelten gegenüber Beta 14 zusätzlich die Änderungen aus
+**Update von 2.0.0**: neue PV-Learning-Entitäten, der Opt-in-Schalter, die
+Reset-Schaltfläche und Dashboard-Template-Version 12. Die vorhandenen
+Regelalgorithmen bleiben unverändert, solange die gelernte PV-Korrektur
+ausgeschaltet ist.
 
 ### Update von Beta 13
 
@@ -190,6 +214,7 @@ Die Dashboard-Template-Version steigt von 10 auf 11. Die Migration ergänzt den
 Nachtstatus und `PV-Umlenkung` und stellt die Controllerstatus-Anzeige auf den
 neuen Enum-Sensor mit zentralen Übersetzungen um. Übrige Benutzeranpassungen
 werden nicht ersetzt.
+
 
 ### Update von Beta 12
 
@@ -321,6 +346,10 @@ bestehen, soweit die bekannten Standardkarten eindeutig erkannt werden.
 Bei einer Neuinstallation wird direkt die vollständige aktuelle
 Dashboard-Vorlage mit Template-Version 11 erzeugt.
 
+Für `2.1.0-beta.1` steigt die Dashboard-Template-Version von 11 auf 12. Die
+Migration ergänzt die PV-Learning-Diagnosewerte, den neuen Anwendungsschalter
+und die Reset-Schaltfläche, ohne das übrige Dashboard pauschal zu ersetzen.
+
 ## 9. Erste Prüfung nach dem Update
 
 Zunächst:
@@ -349,6 +378,23 @@ SOC-Freigabe-Soll
 
 Alle neuen Diagnosewerte werden auch bei ausgeschalteter SOC-Freigabe
 berechnet. Es wird noch kein Stellbefehl an den NOAH gesendet.
+
+### PV-Learning nach dem Neustart prüfen
+
+Direkt nach dem Update sollte gelten:
+
+```text
+Gelernte PV-Korrektur verwenden = Aus
+PV-Learning bereit              = Aus
+PV-Lerntage                     = 0   # bei neuer Lernhistorie
+```
+
+Während PV-Erzeugung sollte **PV-Energie heute** ansteigen. Früh am Tag sollte
+**PV-Prognosereferenz heute** einen plausiblen Wert erhalten. Nach jedem
+vollständig ausgewerteten gültigen Lerntag steigt **PV-Lerntage**.
+
+Die gelernte Korrektur erst einschalten, wenn mindestens drei Lerntage
+vorliegen und der PV-Lernfaktor plausibel ist.
 
 ## 10. Dynamischen SOC-Ladeplan prüfen
 
