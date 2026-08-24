@@ -1,11 +1,12 @@
 # Konfiguration
 
 Dieses Dokument beschreibt die HACS-Integration **Growatt NOAH Optimizer**
-für den Pre-Release `2.1.0-beta.1`.
+für den Pre-Release `2.1.0-beta.2`.
 
-`2.1.0-beta.1` baut auf dem stabilen Stand `2.0.0` auf und ergänzt passives,
-persistentes PV-Learning. Solange die gelernte PV-Korrektur nicht aktiviert
-wird, bleibt die bestehende Prognose- und Regelberechnung unverändert.
+`2.1.0-beta.1` ergänzt auf Basis des stabilen Stands `2.0.0` passives,
+persistentes PV-Learning. `2.1.0-beta.2` korrigiert zusätzlich die Automatik
+bei aktivem dynamischem SOC-Ladeplan: Ein bereits erfüllter Ladeplan wird nicht
+mehr durch die klassische Prognosemarge erneut in Ladepriorität versetzt.
 
 Die tatsächlichen Entity-IDs können durch Bereichsnamen oder manuelle
 Umbenennungen abweichen. Die Integration und das automatische Dashboard lösen
@@ -144,6 +145,7 @@ Manuell
 Eigenverbrauch
 Ladepriorität
 SOC-Nachladung
+SOC-Ladeplan halten
 SOC-Freigabe
 PV-Umlenkung
 Mindest-SOC
@@ -162,6 +164,26 @@ bleibt und der gewünschte Rest-Netzbezug berücksichtigt wird.
 
 Ein Teil der verfügbaren PV-Leistung wird für das Erreichen des Ziel-SOC
 reserviert. Die Ausgangsleistung wird entsprechend begrenzt.
+
+### SOC-Ladeplan halten
+
+Neu in `2.1.0-beta.2`. Dieser interne Automatikmodus wird verwendet, wenn die
+dynamische SOC-Steuerung aktiv ist, Forecast-Daten verfügbar sind und der
+Ist-SOC innerhalb der SOC-Toleranz im oder vor dem dynamischen Soll liegt.
+
+Die klassische Prognosemarge wird in diesem Zustand nicht nochmals zur Wahl
+der Ladepriorität herangezogen, weil die dynamische Sollkurve die wirksame
+Restprognose, erwartete Hauslast und Sicherheitsreserve bereits berücksichtigt.
+
+Der sichere Ausgangs-Rohwert lautet:
+
+```text
+SOC-Halten-Soll = min(PV-Leistung, Eigenverbrauchs-Soll)
+```
+
+Damit wird vorhandene PV-Leistung für das Haus genutzt, ohne absichtlich
+Akkuenergie freizugeben. Der Sollwert wird auf das Stellgrößenraster abgerundet.
+Eine gezielte Akkuentladung bleibt der optionalen **SOC-Freigabe** vorbehalten.
 
 ### Manuell
 
@@ -1106,3 +1128,11 @@ Benutzeranpassungen am übrigen Dashboard werden nicht pauschal ersetzt.
 werden die PV-Learning-Diagnosewerte, **Gelernte PV-Korrektur verwenden** und
 **PV-Lerndaten zurücksetzen**. Auch diese Migration ergänzt nur gezielt die
 neuen Zeilen und ersetzt das übrige gespeicherte Dashboard nicht.
+
+
+### Dashboard-Migration in 2.1.0-beta.2
+
+`2.1.0-beta.2` erhöht die Dashboard-Template-Version von 12 auf 13. Bestehende
+Reglerstatus-Karten erhalten automatisch die Anzeige für den neuen internen
+Modus `soc_hold` als **SOC-Ladeplan halten** beziehungsweise **Hold SOC
+schedule**. Es werden keine neuen Entitäten benötigt.

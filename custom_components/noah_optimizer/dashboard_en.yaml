@@ -74,6 +74,7 @@ views:
                 'no_forecast': 'Conservative without forecast',
                 'blended_reserve': 'Blended reserve',
                 'soc_catchup': 'SOC catch-up',
+                'soc_hold': 'Hold SOC schedule',
                 'soc_release': 'SOC release',
                 'pv_redirect': 'PV diversion'
               } %}

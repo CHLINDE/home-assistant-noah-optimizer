@@ -34,6 +34,7 @@ from .const import (
     CONTROLLER_PV_REDIRECT,
     CONTROLLER_SELF_CONSUMPTION,
     CONTROLLER_SOC_CATCHUP,
+    CONTROLLER_SOC_HOLD,
     CONTROLLER_SOC_RELEASE,
     CONTROLLER_TARGET_SOC_REACHED,
     DATA_ACTUATOR_AVAILABLE,
@@ -837,6 +838,15 @@ class NoahOptimizerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             self_consumption_target,
         )
 
+        # Schedule-hold uses available PV for household consumption but
+        # never deliberately requests more output than current PV production.
+        # Predictive SOC release remains the only automatic mode that may
+        # intentionally use safely releasable battery energy above the plan.
+        soc_hold_target = min(
+            max(solar_power, 0.0),
+            self_consumption_target,
+        )
+
         dynamic_catchup_active = (
             dynamic_soc_enabled
             and selected_mode == MODE_AUTOMATIC
@@ -847,6 +857,24 @@ class NoahOptimizerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             and soc_deviation is not None
             and soc_deviation < -DYNAMIC_SOC_TOLERANCE_PERCENT
             and dynamic_required_charge_power is not None
+        )
+
+        # Once the dynamic charging schedule is satisfied, do not apply the
+        # legacy forecast-margin charge-priority decision a second time. The
+        # dynamic SOC target already includes the effective forecast, expected
+        # household load and forecast safety reserve. While predictive SOC
+        # release is not active, hold the schedule by serving the household
+        # only from currently available PV and avoid intentional battery
+        # discharge.
+        soc_hold_active = (
+            dynamic_soc_enabled
+            and selected_mode == MODE_AUTOMATIC
+            and forecast_available
+            and not night
+            and soc > min_soc
+            and soc < target_soc
+            and soc_deviation is not None
+            and soc_deviation >= -DYNAMIC_SOC_TOLERANCE_PERCENT
         )
 
         soc_release_active = (
@@ -915,6 +943,8 @@ class NoahOptimizerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             controller_mode = CONTROLLER_PV_REDIRECT
         elif soc >= target_soc:
             controller_mode = CONTROLLER_TARGET_SOC_REACHED
+        elif soc_hold_active:
+            controller_mode = CONTROLLER_SOC_HOLD
         elif not forecast_available:
             controller_mode = CONTROLLER_NO_FORECAST
         elif forecast_margin <= 0:
@@ -942,6 +972,8 @@ class NoahOptimizerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             raw_target = pv_redirect_target
         elif soc >= target_soc:
             raw_target = self_consumption_target
+        elif soc_hold_active:
+            raw_target = soc_hold_target
         elif not forecast_available:
             raw_target = charge_priority_target
         elif forecast_margin <= 0:
@@ -957,12 +989,11 @@ class NoahOptimizerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 self_consumption_target - charge_priority_target
             )
 
-        # PV diversion must never round above its safe raw target. Otherwise
-        # nearest-step rounding could request slightly more power than is
-        # currently available from simultaneous battery charging and thereby
-        # cause unintended battery discharge. Other modes keep normal nearest
-        # step rounding.
-        if pv_redirect_active:
+        # PV diversion and SOC schedule hold must never round above their safe
+        # raw targets. Otherwise nearest-step rounding could request slightly
+        # more power than is safely available and cause unintended battery
+        # discharge. Other modes keep normal nearest-step rounding.
+        if controller_mode in {CONTROLLER_PV_REDIRECT, CONTROLLER_SOC_HOLD}:
             output_target = self._floor_to_step(
                 raw_target,
                 command_step,

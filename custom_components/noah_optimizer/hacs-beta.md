@@ -2,10 +2,12 @@
 
 Stable release: `2.0.0`
 
-Current pre-release: `2.1.0-beta.1`
+Current pre-release: `2.1.0-beta.2`
 
 The `2.1.0-beta.1` pre-release adds passive, persistent PV learning. Applying
-the learned correction is opt-in and disabled by default.
+the learned correction is opt-in and disabled by default. `2.1.0-beta.2` keeps
+that learning model unchanged and fixes automatic control when the dynamic SOC
+schedule is already satisfied.
 
 ## Direct HACS repository button
 
@@ -21,6 +23,30 @@ HACS.
 > The HACS button itself does not contain the Home Assistant port. If My Home
 > Assistant still opens an instance URL containing `:8123`, update the instance
 > URL stored by My Home Assistant in the browser.
+
+
+## Dynamic SOC schedule hold in 2.1.0-beta.2
+
+With dynamic SOC control enabled, the dynamic target already includes the
+effective remaining forecast, expected household load and forecast safety
+reserve. Before Beta 2, the legacy forecast margin could still select charge
+priority afterwards even when the actual SOC was already within tolerance at
+or ahead of that dynamic target.
+
+Beta 2 adds the internal `soc_hold` mode. While the schedule is satisfied and
+neither SOC release nor PV diversion has higher priority:
+
+```text
+schedule-hold target = min(current PV power, self-consumption target)
+```
+
+The target is rounded down to the configured command step. This uses available
+PV for household consumption without deliberately requesting battery discharge.
+Predictive SOC release remains the separate opt-in mechanism for intentionally
+using safely releasable battery energy.
+
+The dashboard template version increases from 12 to 13 so existing controller
+status cards receive the localized new mode label automatically.
 
 ## PV learning in 2.1.0-beta.1
 
@@ -622,6 +648,13 @@ are selectively extended with PV-learning diagnostics, the opt-in learning
 switch, and the reset button. Existing user customizations are preserved where
 possible.
 
+### 2.1.0-beta.2 dashboard migration
+
+The dashboard template version increases from 12 to 13. Existing controller
+status cards are selectively extended with the localized `soc_hold` / **Hold
+SOC schedule** mode. Unrelated dashboard customizations are preserved where the
+standard card can be identified reliably.
+
 ## Dashboard requirements
 
 The enhanced dashboard requires:
@@ -920,6 +953,15 @@ First stable 2.x release:
 - keeps dashboard template version 11
 - updates release and installation documentation for the stable channel
 
+### 2.1.0-beta.2
+
+- Adds `soc_hold` / `Hold SOC schedule` when the dynamic charging schedule is already satisfied
+- Avoids applying the legacy negative forecast margin as charge priority a second time
+- Uses PV-only schedule holding unless predictive SOC release is explicitly active and safe
+- Rounds the safe schedule-hold target down to the command step
+- Increases dashboard template version from 12 to 13 and migrates the controller-status label
+- Keeps PV-learning behavior unchanged from Beta 1
+
 ### 2.1.0-beta.1
 
 - passive persistent PV learning
@@ -932,7 +974,7 @@ First stable 2.x release:
 
 ## Current limitations 
 
-The current `2.1.0-beta.1` pre-release does not yet include:
+The current `2.1.0-beta.2` pre-release does not yet include:
 
 - learned household load
 - multiple independent NOAH systems

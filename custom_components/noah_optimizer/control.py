@@ -14,10 +14,10 @@ from homeassistant.const import (
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.util import dt as dt_util
-
 from .const import (
     CONF_SYSTEM_OUTPUT_POWER,
     CONTROLLER_PV_REDIRECT,
+    CONTROLLER_SOC_HOLD,
     CONTROLLER_SOC_RELEASE,
     CONTROL_STATUS_ACTUATOR_UNAVAILABLE,
     CONTROL_STATUS_COMMAND_FAILED,
@@ -42,7 +42,6 @@ from .const import (
 
 _LOGGER = logging.getLogger(__name__)
 
-
 # How often the control logic is evaluated. A shorter interval lets
 # predictive SOC release follow changing household load without making the
 # normal control modes write more frequently.
@@ -50,7 +49,6 @@ CONTROL_CHECK_INTERVAL = timedelta(seconds=15)
 
 # Normal output commands must be at least this far apart.
 MIN_COMMAND_INTERVAL = timedelta(minutes=2)
-
 # Predictive SOC release and PV diversion are load-following modes. Increases
 # may therefore be written more frequently than normal commands, while
 # reductions remain safety-relevant and can still be applied immediately.
@@ -59,12 +57,9 @@ LOAD_FOLLOWING_DEADBAND = 25.0
 
 # Retry if the NOAH has not taken over the requested value.
 RETRY_INTERVAL = timedelta(minutes=20)
-
 # Set the output to 0 W after critical data has been missing
 # for this amount of time.
 FAILSAFE_DELAY = timedelta(minutes=10)
-
-
 # Entity used by the legacy YAML optimizer.
 # If it exists and is ON, active control is blocked.
 LEGACY_OPTIMIZER_ENABLE_ENTITY = (
@@ -86,7 +81,6 @@ class NoahOptimizerController:
 
         self.hass = hass
         self.coordinator = coordinator
-
         self._lock = asyncio.Lock()
 
         self._last_command_target: float | None = None
@@ -142,7 +136,6 @@ class NoahOptimizerController:
 
     def _legacy_optimizer_active(self) -> bool:
         """Return whether the legacy YAML optimizer is active."""
-
         state = self.hass.states.get(
             LEGACY_OPTIMIZER_ENABLE_ENTITY
         )
@@ -160,10 +153,8 @@ class NoahOptimizerController:
         ]
 
         state = self.hass.states.get(entity_id)
-
         if state is None:
             return None
-
         if state.state in {
             STATE_UNKNOWN,
             STATE_UNAVAILABLE,
@@ -189,7 +180,6 @@ class NoahOptimizerController:
             "",
         }:
             return value
-
         return None
 
     async def _async_write_output(
@@ -207,7 +197,6 @@ class NoahOptimizerController:
         target = float(round(target))
 
         state = self.hass.states.get(entity_id)
-
         if state is None:
             self._set_status(
                 CONTROL_STATUS_ACTUATOR_UNAVAILABLE
@@ -227,7 +216,6 @@ class NoahOptimizerController:
         unit = state.attributes.get(
             "unit_of_measurement"
         )
-
         if unit == "kW":
             service_value = target / 1000
         elif unit in {
@@ -265,7 +253,6 @@ class NoahOptimizerController:
                 target,
                 err,
             )
-
             self._set_status(
                 CONTROL_STATUS_COMMAND_FAILED
             )
@@ -288,7 +275,6 @@ class NoahOptimizerController:
         self,
     ) -> None:
         """Create Home Assistant failsafe notification."""
-
         try:
             await self.hass.services.async_call(
                 "persistent_notification",
@@ -306,7 +292,6 @@ class NoahOptimizerController:
                 },
                 blocking=False,
             )
-
         except HomeAssistantError:
             _LOGGER.exception(
                 "Could not create NOAH failsafe notification"
@@ -316,7 +301,6 @@ class NoahOptimizerController:
         self,
     ) -> None:
         """Dismiss Home Assistant failsafe notification."""
-
         try:
             await self.hass.services.async_call(
                 "persistent_notification",
@@ -476,7 +460,6 @@ class NoahOptimizerController:
             target = self.coordinator.data.get(
                 DATA_OUTPUT_TARGET
             )
-
             if target is None:
                 self._set_status(
                     CONTROL_STATUS_TARGET_UNAVAILABLE
@@ -494,7 +477,6 @@ class NoahOptimizerController:
             actual_setpoint = (
                 self._read_actuator_value()
             )
-
             if actual_setpoint is None:
                 self._set_status(
                     CONTROL_STATUS_ACTUATOR_UNAVAILABLE
@@ -532,15 +514,20 @@ class NoahOptimizerController:
             else:
                 effective_deadband = deadband
 
-            # A target reduction after a load-following command is
-            # safety-relevant. Apply it immediately so falling household load
-            # cannot keep a previously elevated output target active until a
-            # rate limit expires.
+            # A target reduction after a load-following command or while
+            # entering/holding the dynamic SOC schedule is safety-relevant.
+            # Apply it immediately so falling load or PV cannot keep a
+            # previously elevated output target active until a rate limit
+            # expires. SOC-hold increases remain on the normal interval.
             load_following_reduction_required = (
-                self._last_command_mode in {
-                    CONTROLLER_SOC_RELEASE,
-                    CONTROLLER_PV_REDIRECT,
-                }
+                (
+                    self._last_command_mode in {
+                        CONTROLLER_SOC_RELEASE,
+                        CONTROLLER_PV_REDIRECT,
+                        CONTROLLER_SOC_HOLD,
+                    }
+                    or controller_mode == CONTROLLER_SOC_HOLD
+                )
                 and target < actual_setpoint
             )
 
@@ -555,7 +542,6 @@ class NoahOptimizerController:
                 abs(target - reference)
                 >= effective_deadband
             )
-
             first_sync_required = (
                 self._last_command_at is None
                 and abs(
@@ -570,7 +556,6 @@ class NoahOptimizerController:
                     target - actual_setpoint
                 ) >= effective_deadband
             )
-
             command_required = (
                 change_required
                 or first_sync_required
@@ -595,15 +580,15 @@ class NoahOptimizerController:
                 return
 
             # Normal modes retain the conservative two-minute command
-            # interval. The two load-following modes may raise the output every
+            # interval. SOC release and PV diversion may raise the output every
             # 30 seconds so they can track changing household load. A required
-            # reduction after either mode remains immediate.
+            # reduction after either load-following mode or in SOC-hold remains
+            # immediate.
             command_interval = (
                 LOAD_FOLLOWING_COMMAND_INTERVAL
                 if load_following_mode_active
                 else MIN_COMMAND_INTERVAL
             )
-
             if (
                 elapsed is not None
                 and elapsed < command_interval
@@ -618,7 +603,6 @@ class NoahOptimizerController:
                 target,
                 now,
             )
-
             if success:
                 self._last_command_mode = controller_mode
                 self._set_status(

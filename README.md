@@ -4,9 +4,9 @@ Prognosebasierte Steuerung der Ausgangsleistung eines Growatt NOAH 2000
 über Home Assistant und Noah-MQTT.
 
 > **Status:** Stabiler Release `2.0.0`. Aktueller Pre-Release:
-> `2.1.0-beta.1` mit passivem PV-Learning. Die aktive Steuerung kann die
-> NOAH-Ausgangsleistung verändern. Vor der Aktivierung sollten Quellwerte,
-> Netzvorzeichen und Stellgröße geprüft werden.
+> `2.1.0-beta.2` mit PV-Learning und korrigierter dynamischer SOC-Regelung.
+> Die aktive Steuerung kann die NOAH-Ausgangsleistung verändern. Vor der
+> Aktivierung sollten Quellwerte, Netzvorzeichen und Stellgröße geprüft werden.
 
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=CHLINDE&repository=home-assistant-noah-optimizer&category=integration)
 
@@ -39,7 +39,7 @@ umgestellt.
 Aktueller Pre-Release:
 
 ```text
-2.1.0-beta.1
+2.1.0-beta.2
 ```
 
 `2.1.0-beta.1` ergänzt ein zunächst passiv arbeitendes **PV-Learning**. Es
@@ -47,6 +47,13 @@ vergleicht den gemessenen PV-Tagesertrag mit Forecast.Solar, bildet aus bis zu
 sieben gültigen Tagen einen robusten Lernfaktor und kann diesen optional auf
 die bestehende Restprognose anwenden. Die Anwendung ist nach dem Update
 standardmäßig ausgeschaltet.
+
+`2.1.0-beta.2` korrigiert zusätzlich die Automatik bei aktivem dynamischem
+SOC-Ladeplan. Liegt der Ist-SOC im oder über dem dynamischen Soll, wird die
+alte Prognosemarge nicht nochmals als Ladepriorität ausgewertet. Der neue
+interne Reglermodus **SOC-Ladeplan halten** nutzt die aktuell verfügbare
+PV-Leistung für den Hausverbrauch, ohne absichtlich Akkuenergie freizugeben.
+Eine bewusste Akkuentladung bleibt Aufgabe der optionalen SOC-Freigabe.
 
 Ab Beta 5 kann die Integration den berechneten Sollwert optional aktiv an
 `NOAH System Output Power` übertragen.
@@ -311,7 +318,9 @@ Automatik den Reglermodus **SOC-Nachladung** verwenden. Ist außerdem die
 SOC-Vorsprung vorhanden, kann der Reglermodus **SOC-Freigabe** verwendet
 werden. Ab Beta 14 kann die Automatik außerdem **PV-Umlenkung** verwenden,
 wenn der Akku mindestens am dynamischen SOC-Soll liegt, gleichzeitig geladen
-wird und dennoch Netzbezug besteht.
+wird und dennoch Netzbezug besteht. Ab `2.1.0-beta.2` wird bei erfülltem
+dynamischem Ladeplan andernfalls **SOC-Ladeplan halten** verwendet, statt die
+alte Prognosemarge nochmals als Ladepriorität auszuwerten.
 
 ### Eigenverbrauch
 
@@ -322,6 +331,25 @@ wird.
 
 Ein Teil der verfügbaren PV-Leistung wird für das Erreichen des Ziel-SOC
 reserviert.
+
+### SOC-Ladeplan halten ab 2.1.0-beta.2
+
+Ist die dynamische SOC-Steuerung in **Automatik** aktiv und der Speicher liegt
+innerhalb der SOC-Toleranz im oder vor dem dynamischen Ladeplan, wird die
+klassische Prognosemarge nicht erneut als Ladepriorität ausgewertet. Der
+Ladeplan enthält die wirksame Restprognose, erwartete Hauslast und
+Sicherheitsreserve bereits.
+
+In diesem Zustand gilt für den sicheren Roh-Sollwert:
+
+```text
+SOC-Halten-Soll = min(aktuelle PV-Leistung, Eigenverbrauchs-Soll)
+```
+
+Der Sollwert wird auf das Stellgrößenraster **abgerundet**, damit durch das
+Rastern keine absichtliche Akkuentladung entsteht. Ist die vorausschauende
+SOC-Freigabe aktiv und sicher möglich, hat diese weiterhin Vorrang und darf
+gezielt freigebare Akkuenergie für den Hausverbrauch nutzen.
 
 ### Manuell
 
@@ -688,7 +716,7 @@ Der Controller enthält unter anderem:
 - Mindestabstand von zwei Minuten zwischen normalen Stellbefehlen
 - schnellere Lastnachführung während SOC-Freigabe und PV-Umlenkung mit 30 Sekunden Mindestabstand für Sollwerterhöhungen
 - Controller-Auswertung alle 15 Sekunden
-- sofortige sicherheitsrelevante Sollwertreduzierung nach SOC-Freigabe oder PV-Umlenkung
+- sofortige sicherheitsrelevante Sollwertreduzierung nach SOC-Freigabe, PV-Umlenkung oder im Modus SOC-Ladeplan halten
 - eigener Enum-Sensor `Controllerstatus` mit zentralen Übersetzungen
 - erneute Sollwertübernahme, wenn ein zuvor geschriebener Sollwert nicht bestätigt wurde
 - Failsafe bei längerem Verlust kritischer Daten
@@ -744,6 +772,19 @@ und stellt die Controllerstatus-Anzeige auf den neuen Enum-Sensor um. Die
 Statusübersetzungen kommen damit aus `translations/de.json` beziehungsweise
 `translations/en.json` statt aus einer separaten Jinja-Tabelle im Dashboard.
 Benutzeranpassungen am übrigen Dashboard werden nicht ersetzt.
+
+### Dashboard-Migration in 2.1.0-beta.1
+
+PV-Learning erhöht die Dashboard-Template-Version von 11 auf 12. Bestehende
+Dashboards werden gezielt um die PV-Learning-Diagnosewerte, den Opt-in-Schalter
+und die Reset-Schaltfläche ergänzt.
+
+### Dashboard-Migration in 2.1.0-beta.2
+
+`2.1.0-beta.2` erhöht die Dashboard-Template-Version von 12 auf 13. Die
+Reglerstatus-Karte wird gezielt um den lokalisierten Modus **SOC-Ladeplan halten**
+erweitert. Übrige Benutzeranpassungen bleiben erhalten, soweit die bekannte
+Standardkarte eindeutig erkannt werden kann.
 
 ### Energiefluss
 
@@ -945,6 +986,14 @@ Erster stabiler Release der 2.x-Reihe:
 - Dashboard-Template-Version von 11 auf 12 erhöht
 - bei ausgeschaltetem Lern-Schalter bleibt das Regelverhalten von 2.0.0 erhalten
 
+### 2.1.0-beta.2
+
+- neuer interner Reglermodus `soc_hold` / **SOC-Ladeplan halten**
+- bei aktivem dynamischem SOC-Ladeplan wird eine negative klassische Prognosemarge nicht mehr doppelt als Ladepriorität ausgewertet, wenn der Ist-SOC im oder vor dem Ladeplan liegt
+- SOC-Halten nutzt höchstens die aktuell verfügbare PV-Leistung bis zum Eigenverbrauchs-Soll und fordert damit keine absichtliche Akkuentladung an
+- SOC-Nachladung, SOC-Freigabe und PV-Umlenkung behalten höhere Priorität
+- Dashboard-Template-Version von 12 auf 13 erhöht; bestehende Reglerstatus-Karten werden migriert
+
 ## Legacy-YAML-Optimizer
 
 Die ältere Package-Variante bleibt im Repository enthalten.
@@ -997,6 +1046,7 @@ home-assistant-noah-optimizer/
 │       │   └── en.json
 │       ├── __init__.py
 │       ├── binary_sensor.py
+│       ├── button.py
 │       ├── config_flow.py
 │       ├── const.py
 │       ├── control.py
@@ -1007,6 +1057,7 @@ home-assistant-noah-optimizer/
 │       ├── entity.py
 │       ├── manifest.json
 │       ├── number.py
+│       ├── pv_learning.py
 │       ├── select.py
 │       ├── sensor.py
 │       └── switch.py

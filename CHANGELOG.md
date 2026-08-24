@@ -1,3 +1,25 @@
+## [2.1.0-beta.2] - 2026-08-24
+
+### Added
+
+- Added the automatic `soc_hold` controller mode (`SOC-Ladeplan halten` / `Hold SOC schedule`) for a satisfied dynamic SOC charging schedule
+
+### Fixed
+
+- Prevented the legacy forecast-margin logic from selecting charge priority a second time when dynamic SOC control is active and the battery is already within tolerance at or ahead of the dynamic SOC target
+- Prevented the schedule-hold mode from intentionally discharging the battery by limiting its raw output target to the smaller of current PV power and the self-consumption target
+- Schedule-hold output is rounded down to the configured command step so rounding cannot request more output than the safe PV-only target
+- Required output reductions in `soc_hold` bypass the normal two-minute command interval so falling PV cannot temporarily cause unintended battery discharge
+
+### Changed
+
+- Predictive SOC release remains the dedicated automatic mechanism for intentionally using safely releasable battery energy
+- SOC catch-up, SOC release and PV diversion keep their existing priorities
+- Dashboard template version increased from 12 to 13 and existing controller-status cards are migrated with the new mode label
+- PV learning itself is unchanged from `2.1.0-beta.1`
+
+---
+
 ## [2.1.0-beta.1] - 2026-08-24
 
 ### Added
