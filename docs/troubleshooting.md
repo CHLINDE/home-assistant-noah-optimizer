@@ -176,28 +176,32 @@ klassifiziert.
 
 Falls weiterhin `Vor Ladeplan` erscheint, prüfen:
 
-- tatsächlich `2.0.0` installiert
+- beim aktuellen Pre-Release tatsächlich `2.1.0-beta.2` installiert
 - Home Assistant nach dem Update vollständig neu gestartet
 - `sun.sun` verfügbar
-- Dashboard-Template-Version 11 wurde übernommen
+- Dashboard-Template-Version 13 wurde übernommen
 - bei stark angepasster Reglerstatus-Karte den Rohzustand des Sensors unter
   **Werkzeuge → Zustände** prüfen
 
 ## 8. Dynamische SOC-Steuerung ist an, aber nichts ändert sich
 
-Das kann korrekt sein. Die Funktion greift nur ein, wenn gleichzeitig:
+Das kann korrekt sein. Für die dynamische SOC-Steuerung müssen zunächst
+gleichzeitig gelten:
 
 - Automatik aktiv ist
 - Forecast verfügbar ist
 - es Tag ist
 - SOC über Mindest-SOC liegt
 - SOC unter Ziel-SOC liegt
-- SOC mehr als 2 Prozentpunkte hinter dem Ladeplan liegt
 
-Steht `SOC-Ladeplan` auf **Im Ladeplan** oder **Vor Ladeplan**, verwendet
-`2.1.0-beta.2` im Automatikbetrieb den Reglermodus **SOC-Ladeplan halten**.
-Dieser begrenzt den Sollwert auf die aktuell verfügbare PV-Leistung und den
-Eigenverbrauchs-Sollwert, ohne absichtliche Akkuentladung anzufordern.
+Danach hängt der Eingriff von der Lage zum Ladeplan ab:
+
+- **Hinter Ladeplan** (mehr als 2 Prozentpunkte Rückstand) → **SOC-Nachladung**
+- **Im Ladeplan** oder **Vor Ladeplan** → **SOC-Ladeplan halten**
+
+Im Modus **SOC-Ladeplan halten** begrenzt `2.1.0-beta.2` den Sollwert auf die
+aktuell verfügbare PV-Leistung und den Eigenverbrauchs-Sollwert, ohne
+absichtliche Akkuentladung anzufordern.
 
 Sinkt die verfügbare PV-Leistung, darf eine erforderliche Sollwertreduzierung
 sofort ausgeführt werden und wartet nicht auf den normalen Mindestabstand von

@@ -648,6 +648,13 @@ are selectively extended with PV-learning diagnostics, the opt-in learning
 switch, and the reset button. Existing user customizations are preserved where
 possible.
 
+### 2.1.0-beta.2 dashboard migration
+
+The dashboard template version increases from 12 to 13. Existing controller
+status cards are selectively extended with the localized `soc_hold` / **Hold
+SOC schedule** mode. Unrelated dashboard customizations are preserved where the
+standard card can be identified reliably.
+
 ## Dashboard requirements
 
 The enhanced dashboard requires:
@@ -967,7 +974,7 @@ First stable 2.x release:
 
 ## Current limitations 
 
-The current `2.1.0-beta.1` pre-release does not yet include:
+The current `2.1.0-beta.2` pre-release does not yet include:
 
 - learned household load
 - multiple independent NOAH systems

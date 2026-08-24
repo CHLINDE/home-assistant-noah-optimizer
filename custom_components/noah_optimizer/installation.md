@@ -355,11 +355,16 @@ Das Dashboard wird **nicht vollständig ersetzt**. Eigene Anpassungen bleiben
 bestehen, soweit die bekannten Standardkarten eindeutig erkannt werden.
 
 Bei einer Neuinstallation wird direkt die vollständige aktuelle
-Dashboard-Vorlage mit Template-Version 11 erzeugt.
+Dashboard-Vorlage mit Template-Version 13 erzeugt.
 
 Für `2.1.0-beta.1` steigt die Dashboard-Template-Version von 11 auf 12. Die
 Migration ergänzt die PV-Learning-Diagnosewerte, den neuen Anwendungsschalter
 und die Reset-Schaltfläche, ohne das übrige Dashboard pauschal zu ersetzen.
+
+Für `2.1.0-beta.2` steigt die Dashboard-Template-Version von 12 auf 13. Die
+gezielte Migration ergänzt in der vorhandenen Reglerstatus-Karte den Modus
+**SOC-Ladeplan halten**. Eigene Anpassungen am übrigen Dashboard werden nicht
+pauschal ersetzt.
 
 ## 9. Erste Prüfung nach dem Update
 
@@ -628,6 +633,7 @@ Seit Beta 12 schützt die SOC-Freigabe zusätzlich durch:
 - Freigabe nur bei positivem Netzbezug
 - Freigabe nur am Tag
 - sofortige Sollwertreduzierung, wenn ein zuvor gesetzter SOC-Freigabe-Sollwert aus Sicherheitsgründen sinken muss
+- sofortige Sollwertreduzierung im Modus **SOC-Ladeplan halten**, wenn die verfügbare PV-Leistung sinkt
 
 ## 18. Legacy-YAML-Optimizer
 
@@ -651,10 +657,3 @@ in die Legacy-YAML-Regelung zurückportiert.
 - [Fehlerbehebung](troubleshooting.md)
 - [HACS Beta / Pre-Release](hacs-beta.md)
 
-
-### Dashboard-Update in 2.1.0-beta.2
-
-Die Dashboard-Template-Version steigt von 12 auf 13. Ein bereits gespeichertes
-NOAH-Dashboard wird beim Start migriert, damit die Reglerstatus-Karte den neuen
-Modus **SOC-Ladeplan halten** lokalisiert anzeigt. Es werden keine zusätzlichen
-Entitäten angelegt.

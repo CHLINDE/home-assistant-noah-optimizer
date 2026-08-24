@@ -716,7 +716,7 @@ Der Controller enthält unter anderem:
 - Mindestabstand von zwei Minuten zwischen normalen Stellbefehlen
 - schnellere Lastnachführung während SOC-Freigabe und PV-Umlenkung mit 30 Sekunden Mindestabstand für Sollwerterhöhungen
 - Controller-Auswertung alle 15 Sekunden
-- sofortige sicherheitsrelevante Sollwertreduzierung nach SOC-Freigabe oder PV-Umlenkung
+- sofortige sicherheitsrelevante Sollwertreduzierung nach SOC-Freigabe, PV-Umlenkung oder im Modus SOC-Ladeplan halten
 - eigener Enum-Sensor `Controllerstatus` mit zentralen Übersetzungen
 - erneute Sollwertübernahme, wenn ein zuvor geschriebener Sollwert nicht bestätigt wurde
 - Failsafe bei längerem Verlust kritischer Daten
@@ -772,6 +772,19 @@ und stellt die Controllerstatus-Anzeige auf den neuen Enum-Sensor um. Die
 Statusübersetzungen kommen damit aus `translations/de.json` beziehungsweise
 `translations/en.json` statt aus einer separaten Jinja-Tabelle im Dashboard.
 Benutzeranpassungen am übrigen Dashboard werden nicht ersetzt.
+
+### Dashboard-Migration in 2.1.0-beta.1
+
+PV-Learning erhöht die Dashboard-Template-Version von 11 auf 12. Bestehende
+Dashboards werden gezielt um die PV-Learning-Diagnosewerte, den Opt-in-Schalter
+und die Reset-Schaltfläche ergänzt.
+
+### Dashboard-Migration in 2.1.0-beta.2
+
+`2.1.0-beta.2` erhöht die Dashboard-Template-Version von 12 auf 13. Die
+Reglerstatus-Karte wird gezielt um den lokalisierten Modus **SOC-Ladeplan halten**
+erweitert. Übrige Benutzeranpassungen bleiben erhalten, soweit die bekannte
+Standardkarte eindeutig erkannt werden kann.
 
 ### Energiefluss
 
@@ -1033,6 +1046,7 @@ home-assistant-noah-optimizer/
 │       │   └── en.json
 │       ├── __init__.py
 │       ├── binary_sensor.py
+│       ├── button.py
 │       ├── config_flow.py
 │       ├── const.py
 │       ├── control.py
@@ -1043,6 +1057,7 @@ home-assistant-noah-optimizer/
 │       ├── entity.py
 │       ├── manifest.json
 │       ├── number.py
+│       ├── pv_learning.py
 │       ├── select.py
 │       ├── sensor.py
 │       └── switch.py
