@@ -74,6 +74,7 @@ views:
                 'no_forecast': 'Konservativ ohne Prognose',
                 'blended_reserve': 'Gleitende Reserve',
                 'soc_catchup': 'SOC-Nachladung',
+                'soc_hold': 'SOC-Ladeplan halten',
                 'soc_release': 'SOC-Freigabe',
                 'pv_redirect': 'PV-Umlenkung'
               } %}

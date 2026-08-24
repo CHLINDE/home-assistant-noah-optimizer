@@ -183,6 +183,7 @@ CONTROLLER_TARGET_SOC_REACHED: Final = "target_soc_reached"
 CONTROLLER_NO_FORECAST: Final = "no_forecast"
 CONTROLLER_BLEND: Final = "blended_reserve"
 CONTROLLER_SOC_CATCHUP: Final = "soc_catchup"
+CONTROLLER_SOC_HOLD: Final = "soc_hold"
 CONTROLLER_SOC_RELEASE: Final = "soc_release"
 CONTROLLER_PV_REDIRECT: Final = "pv_redirect"
 

@@ -761,3 +761,33 @@ Bei dauerhaft unplausiblen Werten prüfen:
 
 Sind die Quellen inzwischen korrigiert worden, **PV-Lerndaten zurücksetzen**
 und eine neue Lernhistorie aufbauen.
+
+
+## 31. Ladepriorität obwohl der Ist-SOC bereits im dynamischen Ladeplan liegt
+
+Typisches Bild vor `2.1.0-beta.2`:
+
+```text
+Dynamische SOC-Steuerung aktiv = Ein
+Ist-SOC >= dynamisches SOC-Soll - Toleranz
+Prognosemarge < 0 kWh
+Reglermodus = Ladepriorität
+```
+
+Die klassische Prognosemarge betrachtet den noch fehlenden Energiebedarf bis
+zum endgültigen Ziel-SOC. Der dynamische SOC-Ladeplan berücksichtigt Forecast,
+Hauslast und Sicherheitsreserve jedoch bereits in seinem zeitabhängigen Soll.
+Dadurch konnte dieselbe knappe Prognose ein zweites Mal bewertet werden und
+Ladepriorität anzeigen, obwohl der Speicher den aktuellen Ladeplan bereits
+erfüllt hatte.
+
+Ab `2.1.0-beta.2` verwendet die Automatik in diesem Zustand den internen Modus
+**SOC-Ladeplan halten**. Er fordert höchstens die kleinere Leistung aus
+aktueller PV-Leistung und Eigenverbrauchs-Soll an und wird auf das
+Stellgrößenraster abgerundet. Damit entsteht durch diesen Modus keine
+absichtliche Akkuentladung.
+
+Soll Akkuenergie oberhalb der sicheren Freigabegrenze gezielt für den
+Hausverbrauch genutzt werden, muss weiterhin **Vorausschauende SOC-Freigabe
+aktiv** eingeschaltet sein. SOC-Nachladung und PV-Umlenkung behalten ihre
+vorhandenen Prioritäten.

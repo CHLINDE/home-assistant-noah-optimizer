@@ -1,7 +1,7 @@
 # Installation
 
 Diese Anleitung beschreibt die Installation und das Update des **Home
-Assistant Growatt NOAH Optimizers** für den Pre-Release `2.1.0-beta.1`.
+Assistant Growatt NOAH Optimizers** für den Pre-Release `2.1.0-beta.2`.
 
 Für neue Installationen wird die HACS-Integration empfohlen.
 
@@ -94,16 +94,16 @@ Typ:
 Integration
 ```
 
-## 5. Version 2.1.0-beta.1 installieren
+## 5. Version 2.1.0-beta.2 installieren
 
 Zu installierende Version:
 
 ```text
-2.1.0-beta.1
+2.1.0-beta.2
 ```
 
 In HACS müssen für dieses Repository Vorabversionen angezeigt beziehungsweise
-berücksichtigt werden. Danach `2.1.0-beta.1` auswählen und installieren.
+berücksichtigt werden. Danach `2.1.0-beta.2` auswählen und installieren.
 
 Nach der Installation Home Assistant vollständig neu starten.
 
@@ -139,7 +139,7 @@ Standard:
 Ein
 ```
 
-## 7. Update auf 2.1.0-beta.1
+## 7. Update auf 2.1.0-beta.2
 
 Vor dem Update:
 
@@ -152,20 +152,28 @@ Vorausschauende SOC-Freigabe aktiv = Aus
 Nach dem Update ist zusätzlich der neue Schalter **Gelernte PV-Korrektur
 verwenden** standardmäßig aus.
 
-Danach Version `2.1.0-beta.1` über HACS installieren und Home Assistant
+`2.1.0-beta.2` übernimmt das PV-Learning aus Beta 1 unverändert und ergänzt
+den internen Modus **SOC-Ladeplan halten**. Dieser verhindert, dass eine
+negative klassische Prognosemarge trotz bereits erfülltem dynamischem
+SOC-Ladeplan erneut Ladepriorität auswählt. Der neue Modus fordert ohne aktive
+SOC-Freigabe keine absichtliche Akkuentladung an.
+
+Danach Version `2.1.0-beta.2` über HACS installieren und Home Assistant
 vollständig neu starten.
 
 ### Update von 2.0.0
 
-`2.1.0-beta.1` übernimmt alle Einstellungen des stabilen Releases `2.0.0`.
-Neu hinzu kommen:
+`2.1.0-beta.2` übernimmt alle Einstellungen des stabilen Releases `2.0.0`.
+Enthalten sind das PV-Learning aus Beta 1 sowie der korrigierte dynamische
+Automatikmodus. Neu gegenüber `2.0.0` sind unter anderem:
 
 - passives, persistentes PV-Learning
 - sechs PV-Learning-Diagnosesensoren
 - Binary Sensor **PV-Learning bereit**
 - Schalter **Gelernte PV-Korrektur verwenden**
 - Schaltfläche **PV-Lerndaten zurücksetzen**
-- Dashboard-Template-Version 12
+- interner Reglermodus **SOC-Ladeplan halten** für einen bereits erfüllten dynamischen Ladeplan
+- Dashboard-Template-Version 13
 
 Das Learning startet nach dem Neustart automatisch mit der Datensammlung. Die
 gelernte Korrektur ist jedoch standardmäßig ausgeschaltet und kann frühestens
@@ -179,12 +187,12 @@ Werten sollte die gelernte Korrektur eingeschaltet werden.
 ### Update von 2.0.0-beta.14
 
 Der stabile Zwischenstand `2.0.0` entspricht funktional `2.0.0-beta.14`.
-`2.1.0-beta.1` baut auf genau diesem Regelstand auf und ergänzt anschließend
+`2.1.0-beta.2` baut auf genau diesem Regelstand auf, enthält das PV-Learning aus Beta 1 und ergänzt außerdem
 das oben beschriebene PV-Learning.
 
 Damit gelten gegenüber Beta 14 zusätzlich die Änderungen aus
 **Update von 2.0.0**: neue PV-Learning-Entitäten, der Opt-in-Schalter, die
-Reset-Schaltfläche und Dashboard-Template-Version 12. Die vorhandenen
+Reset-Schaltfläche, den SOC-Halten-Modus und Dashboard-Template-Version 13. Die vorhandenen
 Regelalgorithmen bleiben unverändert, solange die gelernte PV-Korrektur
 ausgeschaltet ist.
 
@@ -639,3 +647,11 @@ in die Legacy-YAML-Regelung zurückportiert.
 - [Konfiguration](configuration.md)
 - [Fehlerbehebung](troubleshooting.md)
 - [HACS Beta / Pre-Release](hacs-beta.md)
+
+
+### Dashboard-Update in 2.1.0-beta.2
+
+Die Dashboard-Template-Version steigt von 12 auf 13. Ein bereits gespeichertes
+NOAH-Dashboard wird beim Start migriert, damit die Reglerstatus-Karte den neuen
+Modus **SOC-Ladeplan halten** lokalisiert anzeigt. Es werden keine zusätzlichen
+Entitäten angelegt.

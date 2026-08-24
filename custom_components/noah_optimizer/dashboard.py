@@ -32,7 +32,7 @@ DASHBOARD_ICON = "mdi:home-battery"
 
 DASHBOARD_STORAGE_VERSION = 1
 DASHBOARD_STORAGE_KEY = f"{DOMAIN}.dashboard"
-DASHBOARD_TEMPLATE_VERSION = 12
+DASHBOARD_TEMPLATE_VERSION = 13
 
 DASHBOARD_TEMPLATE_DE = Path(__file__).with_name("dashboard_de.yaml")
 DASHBOARD_TEMPLATE_EN = Path(__file__).with_name("dashboard_en.yaml")
@@ -655,6 +655,22 @@ def _patch_status_markdown(
             )
             changed = True
 
+    if "'soc_hold'" not in content:
+        if german and "'soc_catchup': 'SOC-Nachladung'" in content:
+            content = content.replace(
+                "'soc_catchup': 'SOC-Nachladung'",
+                "'soc_catchup': 'SOC-Nachladung',\n"
+                "                'soc_hold': 'SOC-Ladeplan halten'",
+            )
+            changed = True
+        elif not german and "'soc_catchup': 'SOC catch-up'" in content:
+            content = content.replace(
+                "'soc_catchup': 'SOC catch-up'",
+                "'soc_catchup': 'SOC catch-up',\n"
+                "                'soc_hold': 'Hold SOC schedule'",
+            )
+            changed = True
+
     if "'soc_release'" not in content:
         if german and "'soc_catchup': 'SOC-Nachladung'" in content:
             content = content.replace(
@@ -825,7 +841,7 @@ def _migrate_dashboard_to_beta11(
     config: dict[str, Any],
     replacements: dict[str, str],
 ) -> tuple[dict[str, Any], bool]:
-    """Apply legacy dashboard fixes and migrations through 2.1.0-beta.1."""
+    """Apply legacy dashboard fixes and migrations through 2.1.0-beta.2."""
     migrated = deepcopy(config)
     changed = False
     labels = _localized_dynamic_labels(hass)
