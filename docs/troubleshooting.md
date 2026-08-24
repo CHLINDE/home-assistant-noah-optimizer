@@ -702,8 +702,11 @@ Prüfen:
 - **PV-Energie heute** steigt während der PV-Erzeugung an.
 - Home Assistant beziehungsweise die Integration lief bereits früh genug am
   Lerntag. Ein erster deutlich zu spät gestarteter Teil-Tag wird verworfen.
-- Es gab keine langen Ausfälle. Messlücken über zehn Minuten werden nicht in
-  die PV-Energie integriert.
+- Die Beobachtung erreichte mindestens 85 % des Tageslichtfensters. Ein Ausfall
+  bis weit vor den Abend kann deshalb keinen unvollständigen Tagesertrag lernen.
+- Es gab während der Tagesbeobachtung keine Messlücke über zehn Minuten. Eine
+  solche Lücke verwirft den gesamten Lerntag; die fehlende PV-Produktion wird
+  nicht als Nullertrag angelernt.
 - Mindestens zwei Stunden gültige Tagesbeobachtung lagen vor.
 
 **PV-Lerntage** wird erst beim Abschluss eines gültigen Tages erhöht, also

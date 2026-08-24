@@ -19,6 +19,7 @@ LEARNING_WINDOW_DAYS = 7
 MIN_LEARNING_DAYS = 3
 MIN_FORECAST_KWH = 0.25
 MIN_OBSERVATION_SECONDS = 2 * 60 * 60
+MIN_COMPLETION_DAYLIGHT_PROGRESS = 0.85
 MIN_LEARNING_FACTOR = 0.50
 MAX_LEARNING_FACTOR = 1.50
 MAX_SAMPLE_GAP_SECONDS = 10 * 60
@@ -43,9 +44,12 @@ class PvLearning:
         self._forecast_reference_kwh: float | None = None
         self._observed_seconds = 0.0
         self._day_eligible = False
+        self._max_daylight_progress = 0.0
+        self._day_had_long_gap = False
 
         self._last_sample_ts: float | None = None
         self._last_solar_power_w: float | None = None
+        self._last_sample_was_day = False
         self._last_save_ts = 0.0
 
         self._ratios: deque[float] = deque(maxlen=LEARNING_WINDOW_DAYS)
@@ -69,6 +73,10 @@ class PvLearning:
 
         self._observed_seconds = float(data.get("observed_seconds", 0.0))
         self._day_eligible = bool(data.get("day_eligible", False))
+        self._max_daylight_progress = float(
+            data.get("max_daylight_progress", 0.0)
+        )
+        self._day_had_long_gap = bool(data.get("day_had_long_gap", False))
 
         last_sample_ts = data.get("last_sample_ts")
         self._last_sample_ts = (
@@ -82,6 +90,9 @@ class PvLearning:
             float(last_solar_power)
             if isinstance(last_solar_power, (int, float))
             else None
+        )
+        self._last_sample_was_day = bool(
+            data.get("last_sample_was_day", False)
         )
 
         ratios = data.get("ratios", [])
@@ -126,13 +137,33 @@ class PvLearning:
                 )
 
             solar_power_w = max(solar_power_w, 0.0)
+            is_day = not night
+
+            if is_day:
+                self._max_daylight_progress = max(
+                    self._max_daylight_progress,
+                    daylight_progress,
+                )
+
+            # A forecast reference may be captured before sunrise or during
+            # the first 20 percent of the daylight window. Once daytime
+            # observation has begun, a night-time value must not become a new
+            # reference after sunset.
+            early_reference_window = (
+                (
+                    night
+                    and self._observed_seconds <= 0.0
+                    and self._actual_pv_kwh <= 0.001
+                )
+                or (is_day and daylight_progress <= 0.20)
+            )
 
             if (
                 self._day_eligible
                 and self._forecast_reference_kwh is None
                 and forecast_remaining_kwh is not None
                 and forecast_remaining_kwh >= MIN_FORECAST_KWH
-                and (night or daylight_progress <= 0.20)
+                and early_reference_window
             ):
                 # Forecast.Solar provides the remaining forecast. When the
                 # first usable value arrives shortly after sunrise, add the
@@ -156,11 +187,20 @@ class PvLearning:
                         average_power_w * delta_seconds / 3_600_000
                     )
 
-                    if not night:
+                    if is_day:
                         self._observed_seconds += delta_seconds
+                elif delta_seconds > MAX_SAMPLE_GAP_SECONDS and (
+                    self._last_sample_was_day or is_day
+                ):
+                    # A gap that overlaps the daytime observation can hide a
+                    # relevant part of the PV production. Reject the complete
+                    # learning day instead of treating the missing production
+                    # as zero.
+                    self._day_had_long_gap = True
 
             self._last_sample_ts = now_ts
             self._last_solar_power_w = solar_power_w
+            self._last_sample_was_day = is_day
 
             if now_ts - self._last_save_ts >= SAVE_INTERVAL_SECONDS:
                 await self._async_save()
@@ -178,6 +218,10 @@ class PvLearning:
         self._actual_pv_kwh = 0.0
         self._forecast_reference_kwh = None
         self._observed_seconds = 0.0
+        self._max_daylight_progress = (
+            daylight_progress if not night else 0.0
+        )
+        self._day_had_long_gap = False
 
         # Do not learn from a partial day if the integration is first started
         # well after sunrise. A stored day that survived a restart keeps its
@@ -186,6 +230,7 @@ class PvLearning:
 
         self._last_sample_ts = None
         self._last_solar_power_w = None
+        self._last_sample_was_day = False
         # Force persistence on the first update of a new day so a freshly
         # finalized learning sample cannot be lost before the next interval.
         self._last_save_ts = 0.0
@@ -200,6 +245,10 @@ class PvLearning:
         ):
             return
         if self._observed_seconds < MIN_OBSERVATION_SECONDS:
+            return
+        if self._max_daylight_progress < MIN_COMPLETION_DAYLIGHT_PROGRESS:
+            return
+        if self._day_had_long_gap:
             return
 
         raw_ratio = self._actual_pv_kwh / self._forecast_reference_kwh
@@ -220,8 +269,11 @@ class PvLearning:
                 "forecast_reference_kwh": self._forecast_reference_kwh,
                 "observed_seconds": self._observed_seconds,
                 "day_eligible": self._day_eligible,
+                "max_daylight_progress": self._max_daylight_progress,
+                "day_had_long_gap": self._day_had_long_gap,
                 "last_sample_ts": self._last_sample_ts,
                 "last_solar_power_w": self._last_solar_power_w,
+                "last_sample_was_day": self._last_sample_was_day,
                 "ratios": list(self._ratios),
                 "last_ratio": self._last_ratio,
             }
@@ -235,8 +287,11 @@ class PvLearning:
             self._forecast_reference_kwh = None
             self._observed_seconds = 0.0
             self._day_eligible = False
+            self._max_daylight_progress = 0.0
+            self._day_had_long_gap = False
             self._last_sample_ts = None
             self._last_solar_power_w = None
+            self._last_sample_was_day = False
             self._last_save_ts = 0.0
             self._ratios.clear()
             self._last_ratio = None

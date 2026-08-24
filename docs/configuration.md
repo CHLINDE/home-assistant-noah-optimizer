@@ -730,18 +730,27 @@ Die letzten maximal sieben gültigen Tagesverhältnisse werden persistent
 gespeichert. Ihr Median ergibt den PV-Lernfaktor.
 
 ```text
-Lernfenster:                  7 gültige Tage
-Mindestens erforderlich:      3 gültige Tage
-Lernfaktor pro Tag:           0,50 ... 1,50
-Maximale integrierte Messlücke: 10 Minuten
-Mindestbeobachtungszeit:      2 Stunden Tagesbetrieb
+Lernfenster:                    7 gültige Tage
+Mindestens erforderlich:        3 gültige Tage
+Lernfaktor pro Tag:             0,50 ... 1,50
+Maximale Tages-Messlücke:       10 Minuten
+Mindestbeobachtungszeit:        2 Stunden Tagesbetrieb
+Mindest-Tageslichtfortschritt:  85 %
 ```
 
 Die Prognosereferenz wird möglichst früh am Tag aus der Forecast.Solar-
 Restprognose gebildet. Startet die Beobachtung kurz nach Sonnenaufgang, wird
 der bereits gemessene PV-Ertrag zur Restprognose addiert, um eine angenäherte
-Tagesreferenz zu erhalten. Ein erster deutlich zu spät begonnener Teil-Tag
-wird nicht gelernt.
+Tagesreferenz zu erhalten. Vor Sonnenaufgang kann eine verfügbare Restprognose
+als Referenz übernommen werden. Sobald die Tagesbeobachtung begonnen hat, wird
+nachts keine neue Referenz mehr angelegt; ein Restwert nach Sonnenuntergang
+kann damit nicht versehentlich zur Tagesreferenz werden.
+
+Ein erster deutlich zu spät begonnener Teil-Tag wird nicht gelernt. Zusätzlich
+muss ein gültiger Lerntag mindestens 85 % des Tageslichtfensters erreicht haben.
+Eine Messlücke von mehr als zehn Minuten, die die Tagesbeobachtung berührt,
+verwirft den gesamten Lerntag statt die fehlende PV-Produktion als Nullertrag
+zu behandeln.
 
 Das Learning läuft passiv. Der gelernte Faktor beeinflusst die Regelung erst,
 wenn **Gelernte PV-Korrektur verwenden** eingeschaltet ist und mindestens drei

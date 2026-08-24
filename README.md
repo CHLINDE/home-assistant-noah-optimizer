@@ -280,9 +280,13 @@ Version `2.0.0` nicht ändert. Mit **PV-Lerndaten zurücksetzen** kann die
 gespeicherte Lernhistorie gelöscht werden.
 
 Ein Tag wird unter anderem verworfen, wenn die Integration erst deutlich nach
-Tagesbeginn gestartet wurde, keine ausreichende Prognosereferenz vorliegt oder
-weniger als zwei Stunden gültige Tagesdaten beobachtet wurden. Messlücken über
-zehn Minuten werden nicht in die PV-Energie integriert.
+Tagesbeginn gestartet wurde, keine ausreichende Prognosereferenz vorliegt,
+weniger als zwei Stunden gültige Tagesdaten beobachtet wurden oder der Tag nicht
+bis mindestens 85 % des Tageslichtfensters verfolgt werden konnte. Eine
+Messlücke von mehr als zehn Minuten, die die Tagesbeobachtung berührt, macht den
+gesamten Lerntag ungültig, damit fehlende PV-Produktion nicht als zu geringer
+Tagesertrag angelernt wird. Nach begonnener Tagesbeobachtung wird nachts keine
+neue Prognosereferenz mehr übernommen.
 
 ## Betriebsarten
 

@@ -24,7 +24,9 @@
 - Applying learned PV correction is opt-in and disabled by default
 - Individual daily learning factors are limited to `0.50 ... 1.50`
 - At least 3 valid learning days are required before the learned factor can affect the forecast
-- Measurement gaps longer than 10 minutes are excluded from PV-energy integration
+- A learning day must reach at least 85% of the daylight window before it can be accepted
+- Daytime measurement gaps longer than 10 minutes invalidate the complete learning day instead of treating missing production as zero
+- A forecast reference is no longer captured at night after daytime observation has already started
 - Existing active-control safeguards remain unchanged
 
 ---
