@@ -279,6 +279,12 @@ class PvLearning:
             }
         )
 
+    async def async_save(self) -> None:
+        """Persist the current PV-learning state immediately."""
+        async with self._lock:
+            await self._async_save()
+            self._last_save_ts = time.time()
+
     async def async_reset(self) -> None:
         """Delete all learned PV data."""
         async with self._lock:

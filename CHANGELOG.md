@@ -27,6 +27,7 @@
 - A learning day must reach at least 85% of the daylight window before it can be accepted
 - Daytime measurement gaps longer than 10 minutes invalidate the complete learning day instead of treating missing production as zero
 - A forecast reference is no longer captured at night after daytime observation has already started
+- The current PV-learning state is saved immediately during controlled integration unloads/reloads so a short Home Assistant restart does not appear as a long measurement gap
 - Existing active-control safeguards remain unchanged
 
 ---

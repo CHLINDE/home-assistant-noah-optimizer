@@ -131,6 +131,16 @@ async def async_unload_entry(
 ) -> bool:
     """Unload the Growatt NOAH Optimizer."""
 
+    # Persist the latest PV-learning sample before a controlled reload or
+    # Home Assistant shutdown. This prevents the 15-minute periodic save
+    # interval from making a short restart look like a >10-minute data gap.
+    try:
+        await entry.runtime_data.async_shutdown()
+    except Exception:  # noqa: BLE001
+        _LOGGER.exception(
+            "Could not persist PV-learning state while unloading"
+        )
+
     unload_ok = (
         await hass.config_entries.async_unload_platforms(
             entry,

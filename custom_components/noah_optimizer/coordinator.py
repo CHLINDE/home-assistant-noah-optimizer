@@ -152,6 +152,10 @@ class NoahOptimizerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         await self.pv_learning.async_reset()
         await self.async_update_from_states()
 
+    async def async_shutdown(self) -> None:
+        """Persist PV-learning data before unloading."""
+        await self.pv_learning.async_save()
+
     def get_option(self, key: str) -> Any:
         """Return an option or its default value."""
         return self.entry.options.get(key, DEFAULT_OPTIONS[key])
