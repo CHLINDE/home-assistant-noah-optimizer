@@ -1,12 +1,15 @@
 # Konfiguration
 
 Dieses Dokument beschreibt die HACS-Integration **Growatt NOAH Optimizer**
-für den Pre-Release `2.1.0-beta.2`.
+für den Pre-Release `2.1.0-beta.3`.
 
 `2.1.0-beta.1` ergänzt auf Basis des stabilen Stands `2.0.0` passives,
 persistentes PV-Learning. `2.1.0-beta.2` korrigiert zusätzlich die Automatik
 bei aktivem dynamischem SOC-Ladeplan: Ein bereits erfüllter Ladeplan wird nicht
 mehr durch die klassische Prognosemarge erneut in Ladepriorität versetzt.
+`2.1.0-beta.3` verwendet bei einer nativen Forecast.Solar-Quelle zusätzlich
+die vollständige zeitaufgelöste PV-Leistungskurve für den dynamischen SOC-
+Ladeplan und zeigt diese Kurve im Dashboard an.
 
 Die tatsächlichen Entity-IDs können durch Bereichsnamen oder manuelle
 Umbenennungen abweichen. Die Integration und das automatische Dashboard lösen
@@ -104,8 +107,9 @@ Standard:
 Aus
 ```
 
-Dadurch bleibt das Regelverhalten nach dem Update zunächst identisch zu
-Version `2.0.0`.
+Dadurch verändert das PV-Learning allein das Regelverhalten nach dem Update
+zunächst nicht. Die späteren Beta-Versionen können unabhängig davon weitere
+Regelungsänderungen enthalten.
 
 ### PV-Lerndaten zurücksetzen
 
@@ -191,11 +195,46 @@ Der Parameter **Manuelle Ausgangsleistung** wird als Sollwert verwendet.
 
 ## 3. Dynamischer SOC-Ladeplan
 
-Beta 10 verwendet einen zeitbasierten und prognoseabhängigen SOC-Ladeplan.
+Ab `2.1.0-beta.3` besitzt der Ladeplan zwei Berechnungswege. Ist die konfigurierte
+**Forecast.Solar Restprognose heute** eine native Entität der Home-Assistant-
+Integration Forecast.Solar, liest der NOAH Optimizer die bereits von Home
+Assistant geladene vollständige Leistungskurve aus deren Config-Entry. Es
+werden dabei keine zusätzlichen API-Abfragen ausgeführt.
 
-Das dynamische SOC-Soll startet bei Sonnenaufgang am Mindest-SOC und erreicht
-bei Sonnenuntergang den Ziel-SOC. Eine knappe Restprognose kann die Sollkurve
-progressiv anheben.
+Die wirksame Kurve wird aus Forecast.Solar-Leistung × Prognose-Sicherheitsfaktor
+× optionalem PV-Lernfaktor gebildet. Für den SOC-Ladeplan wird die vollständige
+wirksame PV-Kurve integriert; die erwartete Hauslast wird **nicht vorab von der
+Forecast-Leistung abgezogen**. Dadurch bleibt PV auch dann als mögliche
+Ladeenergie berücksichtigt, wenn die Regelung zeitweise den Hausverbrauch aus
+dem Netz decken muss, um den Akku-Ladeplan einzuhalten. Ladewirkungsgrad und
+Forecast-Energiereserve werden weiterhin berücksichtigt. Die erwartete Hauslast
+bleibt Bestandteil von Prognosemarge, Prognosedeckung und Ausgangsregelung.
+
+Der Ist-SOC und die tatsächlich gemessene PV-Leistung werden nicht verwendet,
+um den Ladeplan nachträglich passend zu rechnen. Neue Ladepläne entstehen nur
+durch neue Forecast.Solar-Daten oder geänderte Planungsparameter.
+
+Kann keine native Forecast.Solar-Kurve ermittelt werden, bleibt der bisherige
+zeitbasierte Algorithmus als **Tageslicht-Fallback** aktiv. Der Sensor
+**Ladeplanbasis** zeigt `Forecast.Solar-Kurve` oder `Tageslicht-Fallback`.
+
+### Zeitaufgelöster Ladeplan ab 2.1.0-beta.3
+
+Die Forecast.Solar-Leistungspunkte bestimmen die zeitliche Form des Ladeplans.
+Der Ladeplan steigt dort, wo Forecast.Solar PV-Energie erwartet. Bei einer
+Süd-Anlage bleibt das dynamische Soll
+daher am frühen Morgen niedrig und steigt erst mit der prognostizierten
+Einstrahlung. Reicht die prognostizierte Tagesenergie nicht bis zum Ziel-SOC,
+zeigt **Prognostizierter End-SOC** einen entsprechend niedrigeren Wert. Das
+konfigurierte Ziel-SOC bleibt unverändert das Wunschziel.
+
+Für die SOC-Nachladung wird auch der Sollpunkt am Ende der Nachholzeit aus
+dieser Forecast-Kurve entnommen.
+
+### Tageslicht-Fallback (Beta-10-Algorithmus)
+
+Die folgenden Abschnitte 3.1 bis 3.5 beschreiben den weiterhin vorhandenen
+Fallback, falls keine vollständige Forecast.Solar-Kurve verfügbar ist.
 
 ### 3.1 Tagesfortschritt
 
@@ -914,6 +953,38 @@ Prognosefaktor**. Ohne aktive gelernte Korrektur entspricht dieser dem
 Prognose-Sicherheitsfaktor. Mit bereitem und aktiviertem PV-Learning ist er
 das Produkt aus Prognose-Sicherheitsfaktor und PV-Lernfaktor.
 
+### PV-Prognosekurve
+
+Tagesenergie der nativen Forecast.Solar-Kurve. Die Entität enthält zusätzlich
+die Attribute `raw_power`, `effective_power` und `soc_plan`, die vom
+automatischen Dashboard für die Zeitreihendarstellung verwendet werden.
+
+### Wirksame Tagesprognose
+
+Tagesenergie der Forecast.Solar-Kurve nach Prognose-Sicherheitsfaktor und
+optionalem PV-Lernfaktor.
+
+### PV-Prognose aktualisiert
+
+Zeitstempel des Zustandsupdates der als Restprognose ausgewählten
+Forecast.Solar-Entität. Er zeigt im Dashboard, auf welchem Forecast-Stand die
+aktuelle Kurve basiert.
+
+### Prognostizierter End-SOC
+
+Endpunkt des aus der aktuellen Forecast.Solar-Kurve abgeleiteten SOC-Ladeplans.
+Liegt er unter dem Ziel-SOC, reicht die aktuelle Prognose unter den
+konfigurierten Annahmen nicht für das Wunschziel.
+
+### Ladeplanbasis
+
+Enum-Sensor mit:
+
+```text
+forecast_curve      = Forecast.Solar-Kurve
+daylight_fallback   = Tageslicht-Fallback
+```
+
 ### PV-Lernfaktor
 
 Median der letzten maximal sieben gültigen Tagesverhältnisse. Vor dem ersten
@@ -1076,6 +1147,13 @@ Legacy-YAML-Optimizer und HACS-Controller dürfen nicht gleichzeitig aktiv
 denselben NOAH steuern.
 
 ## 9. Dashboard
+
+Ab `2.1.0-beta.3` zeigt das Dashboard zusätzlich eine Karte **PV-Prognose**
+mit Forecast.Solar-Leistung, wirksamer korrigierter Prognose und realer
+PV-Leistung. Der Aktualisierungszeitpunkt, der prognostizierte End-SOC und die
+Ladeplanbasis werden in den Planungsdetails angezeigt. Die Dashboard-
+Template-Version beträgt 14.
+
 
 Das automatische Dashboard verwendet für Power Flow Card Plus:
 

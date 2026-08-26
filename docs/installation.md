@@ -1,7 +1,7 @@
 # Installation
 
 Diese Anleitung beschreibt die Installation und das Update des **Home
-Assistant Growatt NOAH Optimizers** für den Pre-Release `2.1.0-beta.2`.
+Assistant Growatt NOAH Optimizers** für den Pre-Release `2.1.0-beta.3`.
 
 Für neue Installationen wird die HACS-Integration empfohlen.
 
@@ -38,6 +38,11 @@ Vor dem Einrichten müssen vorhanden sein:
 | NOAH Charging Power | `sensor` | W oder kW |
 | NOAH Discharge Power | `sensor` | W oder kW |
 | Forecast.Solar Restprognose heute | `sensor` | Wh oder kWh |
+
+> **Beta 3:** Für den zeitaufgelösten Ladeplan muss diese Entität direkt von der
+> Home-Assistant-Integration **Forecast.Solar** stammen. Bei Template- oder
+> Fremdsensoren bleibt die bisherige Tageslichtberechnung automatisch als
+> Fallback aktiv.
 | NOAH System Output Power | `number` | W oder kW |
 
 Die Entity-IDs können unter **Werkzeuge → Zustände** geprüft werden.
@@ -94,16 +99,16 @@ Typ:
 Integration
 ```
 
-## 5. Version 2.1.0-beta.2 installieren
+## 5. Version 2.1.0-beta.3 installieren
 
 Zu installierende Version:
 
 ```text
-2.1.0-beta.2
+2.1.0-beta.3
 ```
 
 In HACS müssen für dieses Repository Vorabversionen angezeigt beziehungsweise
-berücksichtigt werden. Danach `2.1.0-beta.2` auswählen und installieren.
+berücksichtigt werden. Danach `2.1.0-beta.3` auswählen und installieren.
 
 Nach der Installation Home Assistant vollständig neu starten.
 
@@ -139,7 +144,7 @@ Standard:
 Ein
 ```
 
-## 7. Update auf 2.1.0-beta.2
+## 7. Update auf 2.1.0-beta.3
 
 Vor dem Update:
 
@@ -152,18 +157,23 @@ Vorausschauende SOC-Freigabe aktiv = Aus
 Nach dem Update ist zusätzlich der neue Schalter **Gelernte PV-Korrektur
 verwenden** standardmäßig aus.
 
-`2.1.0-beta.2` übernimmt das PV-Learning aus Beta 1 unverändert und ergänzt
-den internen Modus **SOC-Ladeplan halten**. Dieser verhindert, dass eine
-negative klassische Prognosemarge trotz bereits erfülltem dynamischem
-SOC-Ladeplan erneut Ladepriorität auswählt. Der neue Modus fordert ohne aktive
-SOC-Freigabe keine absichtliche Akkuentladung an.
+`2.1.0-beta.3` übernimmt PV-Learning und **SOC-Ladeplan halten** aus Beta 1/2
+und ergänzt den zeitaufgelösten Forecast.Solar-Ladeplan. Wenn die ausgewählte
+Restprognose direkt aus der Home-Assistant-Integration Forecast.Solar stammt,
+verwendet der Optimizer deren bereits geladene vollständige Leistungskurve.
+Zusätzliche Forecast.Solar-API-Aufrufe werden nicht ausgeführt.
 
-Danach Version `2.1.0-beta.2` über HACS installieren und Home Assistant
+Der dynamische SOC-Ladeplan folgt damit der erwarteten PV-Erzeugung statt dem
+reinen Tageslichtfortschritt. Als Diagnose kommen **PV-Prognose aktualisiert**,
+**Wirksame Tagesprognose**, **Prognostizierter End-SOC** und **Ladeplanbasis**
+hinzu. Das Dashboard erhält eine eigene PV-Prognosekurve.
+
+Danach Version `2.1.0-beta.3` über HACS installieren und Home Assistant
 vollständig neu starten.
 
 ### Update von 2.0.0
 
-`2.1.0-beta.2` übernimmt alle Einstellungen des stabilen Releases `2.0.0`.
+`2.1.0-beta.3` übernimmt alle Einstellungen des stabilen Releases `2.0.0`.
 Enthalten sind das PV-Learning aus Beta 1 sowie der korrigierte dynamische
 Automatikmodus. Neu gegenüber `2.0.0` sind unter anderem:
 
@@ -173,7 +183,10 @@ Automatikmodus. Neu gegenüber `2.0.0` sind unter anderem:
 - Schalter **Gelernte PV-Korrektur verwenden**
 - Schaltfläche **PV-Lerndaten zurücksetzen**
 - interner Reglermodus **SOC-Ladeplan halten** für einen bereits erfüllten dynamischen Ladeplan
-- Dashboard-Template-Version 13
+- zeitaufgelöste Forecast.Solar-Leistungskurve ohne zusätzliche API-Aufrufe
+- Forecast-geformter dynamischer SOC-Ladeplan mit Tageslicht-Fallback
+- neue Forecast-Diagnosewerte und PV-Prognosekarte
+- Dashboard-Template-Version 14
 
 Das Learning startet nach dem Neustart automatisch mit der Datensammlung. Die
 gelernte PV-Korrektur ist jedoch standardmäßig ausgeschaltet und kann
@@ -188,13 +201,13 @@ Werten sollte die gelernte Korrektur eingeschaltet werden.
 ### Update von 2.0.0-beta.14
 
 Der stabile Zwischenstand `2.0.0` entspricht funktional `2.0.0-beta.14`.
-`2.1.0-beta.2` baut auf genau diesem Regelstand auf, enthält das PV-Learning
+`2.1.0-beta.3` baut auf genau diesem Regelstand auf, enthält das PV-Learning
 aus Beta 1 und ergänzt außerdem den oben beschriebenen Modus
 **SOC-Ladeplan halten**.
 
 Damit gelten gegenüber Beta 14 zusätzlich die Änderungen aus
 **Update von 2.0.0**: neue PV-Learning-Entitäten, der Opt-in-Schalter, die
-Reset-Schaltfläche, den SOC-Halten-Modus und Dashboard-Template-Version 13.
+Reset-Schaltfläche, den SOC-Halten-Modus, die zeitaufgelöste Forecast-Kurve und Dashboard-Template-Version 14.
 Die gelernte PV-Korrektur verändert die Forecast-Berechnung weiterhin erst
 nach ausdrücklicher Aktivierung; der SOC-Halten-Modus ist davon unabhängig und
 gehört zur dynamischen SOC-Steuerung.
@@ -303,6 +316,10 @@ Falls die Beta-11-Elemente noch fehlen, werden weiterhin ergänzt:
 ```text
 Vorausschauende SOC-Freigabe aktiv
 Prognosebasierter Mindest-SOC
+PV-Prognose aktualisiert
+Wirksame Tagesprognose
+Prognostizierter End-SOC
+Ladeplanbasis
 SOC-Freigabegrenze
 Freigebare Akkuenergie
 SOC-Freigabe-Soll
@@ -355,7 +372,7 @@ Das Dashboard wird **nicht vollständig ersetzt**. Eigene Anpassungen bleiben
 bestehen, soweit die bekannten Standardkarten eindeutig erkannt werden.
 
 Bei einer Neuinstallation wird direkt die vollständige aktuelle
-Dashboard-Vorlage mit Template-Version 13 erzeugt.
+Dashboard-Vorlage mit Template-Version 14 erzeugt.
 
 Für `2.1.0-beta.1` steigt die Dashboard-Template-Version von 11 auf 12. Die
 Migration ergänzt die PV-Learning-Diagnosewerte, den neuen Anwendungsschalter
@@ -365,6 +382,11 @@ Für `2.1.0-beta.2` steigt die Dashboard-Template-Version von 12 auf 13. Die
 gezielte Migration ergänzt in der vorhandenen Reglerstatus-Karte den Modus
 **SOC-Ladeplan halten**. Eigene Anpassungen am übrigen Dashboard werden nicht
 pauschal ersetzt.
+
+Für `2.1.0-beta.3` steigt die Dashboard-Template-Version von 13 auf 14. Die
+Migration ergänzt die Karte **PV-Prognose** sowie Forecast-Aktualisierungszeit,
+wirksame Tagesprognose, prognostizierten End-SOC und Ladeplanbasis in den
+Planungsdetails.
 
 ## 9. Erste Prüfung nach dem Update
 

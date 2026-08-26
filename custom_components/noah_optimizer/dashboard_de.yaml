@@ -311,6 +311,46 @@ views:
             section_mode: true
             header:
               show: true
+              title: PV-Prognose
+              show_states: false
+            graph_span: 24h
+            span:
+              start: day
+            now:
+              show: true
+              label: Jetzt
+            yaxis:
+              - id: power
+                min: 0
+                decimals: 0
+            series:
+              - entity: __FORECAST_CURVE__
+                name: Forecast.Solar
+                yaxis_id: power
+                type: line
+                stroke_width: 2
+                data_generator: |
+                  return (entity.attributes.raw_power || []).map((point) => [new Date(point[0]).getTime(), point[1]]);
+              - entity: __FORECAST_CURVE__
+                name: Wirksame Prognose
+                yaxis_id: power
+                type: line
+                stroke_width: 2
+                data_generator: |
+                  return (entity.attributes.effective_power || []).map((point) => [new Date(point[0]).getTime(), point[1]]);
+              - entity: __SOLAR_POWER__
+                name: Ist-PV
+                yaxis_id: power
+                type: line
+                stroke_width: 2
+                group_by:
+                  duration: 5min
+                  func: avg
+
+          - type: custom:apexcharts-card
+            section_mode: true
+            header:
+              show: true
               title: Leistung heute
               show_states: true
               colorize_states: true
@@ -386,6 +426,16 @@ views:
                 name: Restprognose heute
               - entity: __EFFECTIVE_FORECAST__
                 name: Wirksame Restprognose
+              - entity: __FORECAST_CURVE__
+                name: Forecast.Solar Tagesprognose
+              - entity: __EFFECTIVE_FORECAST_DAY__
+                name: Wirksame Tagesprognose
+              - entity: __FORECAST_CURVE_UPDATED_AT__
+                name: PV-Prognose aktualisiert
+              - entity: __FORECAST_PLAN_END_SOC__
+                name: Prognostizierter End-SOC
+              - entity: __SOC_PLAN_SOURCE__
+                name: Ladeplanbasis
               - entity: __PV_FORECAST_REFERENCE__
                 name: PV-Prognosereferenz heute
               - entity: __PV_ENERGY_TODAY__

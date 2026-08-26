@@ -1,6 +1,9 @@
 {
   "domain": "noah_optimizer",
   "name": "Growatt NOAH Optimizer",
+  "after_dependencies": [
+    "forecast_solar"
+  ],
   "codeowners": [
     "@CHLINDE"
   ],
@@ -14,5 +17,5 @@
   "issue_tracker": "https://github.com/CHLINDE/home-assistant-noah-optimizer/issues",
   "requirements": [],
   "single_config_entry": true,
-  "version": "2.1.0-beta.2"
+  "version": "2.1.0-beta.3"
 }

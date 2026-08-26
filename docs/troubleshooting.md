@@ -117,11 +117,13 @@ Das bedeutet:
 Ist-SOC < dynamisches SOC-Soll - 2 Prozentpunkte
 ```
 
-Ab Beta 10 wird das dynamische SOC-Soll aus einer zeitbasierten Tageskurve und
-einem zusätzlichen Prognosedruck berechnet.
+Ab `2.1.0-beta.3` wird das dynamische SOC-Soll bei einer nativen
+Forecast.Solar-Quelle aus deren vollständiger zeitaufgelöster Leistungskurve
+abgeleitet. Nur wenn diese Kurve nicht verfügbar ist, wird noch der zeitbasierte
+Beta-10-Tageslichtalgorithmus verwendet.
 
-Der Status ist daher jetzt tatsächlich eine Aussage darüber, ob der Akku vor,
-im oder hinter dem aktuellen Tages-Ladeplan liegt.
+Der Status ist eine Aussage darüber, ob der Akku vor, im oder hinter dem aktuell
+aus der Prognose berechneten Tages-Ladeplan liegt.
 
 Nur wenn zusätzlich:
 
@@ -132,19 +134,23 @@ Betriebsart = Automatik
 
 gilt, kann der Zustand den Ausgangssollwert beeinflussen.
 
-### Dynamisches Soll bleibt tagsüber ständig bei 100 %
+### Dynamisches Soll wirkt zeitlich unplausibel
 
-Das sollte in Beta 10 nicht mehr allein durch eine schlechte Restprognose
-verursacht werden.
+Ab Beta 3 sollte das Soll bei nativer Forecast.Solar-Quelle dem zeitlichen
+PV-Profil folgen. Eine Süd-Anlage darf deshalb morgens lange nahe am Mindest-SOC
+bleiben, wenn Forecast.Solar zu dieser Zeit kaum Leistung prognostiziert.
 
 Prüfen:
 
-- tatsächlich `2.0.0` installiert
+- tatsächlich `2.1.0-beta.3` installiert
 - Home Assistant nach dem Update vollständig neu gestartet
 - `sun.sun` ist verfügbar
 - `sun.sun` steht tagsüber auf `above_horizon`
 - Mindest-SOC ist kleiner als Ziel-SOC
 - Forecast.Solar liefert eine gültige Restprognose
+- **Ladeplanbasis** zeigt `Forecast.Solar-Kurve` und nicht `Tageslicht-Fallback`
+- **PV-Prognose aktualisiert** enthält einen plausiblen Zeitstempel
+- die Karte **PV-Prognose** enthält Forecast.Solar-Leistungspunkte
 
 Nahe Sonnenuntergang ist ein dynamisches Soll am Ziel-SOC dagegen normal.
 
@@ -176,10 +182,10 @@ klassifiziert.
 
 Falls weiterhin `Vor Ladeplan` erscheint, prüfen:
 
-- beim aktuellen Pre-Release tatsächlich `2.1.0-beta.2` installiert
+- beim aktuellen Pre-Release tatsächlich `2.1.0-beta.3` installiert
 - Home Assistant nach dem Update vollständig neu gestartet
 - `sun.sun` verfügbar
-- Dashboard-Template-Version 13 wurde übernommen
+- Dashboard-Template-Version 14 wurde übernommen
 - bei stark angepasster Reglerstatus-Karte den Rohzustand des Sensors unter
   **Werkzeuge → Zustände** prüfen
 
@@ -199,7 +205,7 @@ Danach hängt der Eingriff von der Lage zum Ladeplan ab:
 - **Hinter Ladeplan** (mehr als 2 Prozentpunkte Rückstand) → **SOC-Nachladung**
 - **Im Ladeplan** oder **Vor Ladeplan** → **SOC-Ladeplan halten**
 
-Im Modus **SOC-Ladeplan halten** begrenzt `2.1.0-beta.2` den Sollwert auf die
+Im Modus **SOC-Ladeplan halten** begrenzt `2.1.0-beta.3` den Sollwert auf die
 aktuell verfügbare PV-Leistung und den Eigenverbrauchs-Sollwert, ohne
 absichtliche Akkuentladung anzufordern.
 
@@ -774,7 +780,41 @@ Sind die Quellen inzwischen korrigiert worden, **PV-Lerndaten zurücksetzen**
 und eine neue Lernhistorie aufbauen.
 
 
-## 31. Ladepriorität obwohl der Ist-SOC bereits im dynamischen Ladeplan liegt
+## 31. Ladeplanbasis zeigt „Tageslicht-Fallback“
+
+`2.1.0-beta.3` kann die vollständige Prognosekurve nur automatisch übernehmen,
+wenn die beim NOAH Optimizer konfigurierte **Forecast.Solar Restprognose heute**
+direkt zu einer Home-Assistant-Config-Entry der Integration `forecast_solar`
+gehört.
+
+Prüfen:
+
+- die ausgewählte Restprognose ist ein originaler Forecast.Solar-Sensor und kein Template-Sensor
+- Forecast.Solar ist vollständig geladen und liefert im Energiedashboard eine Prognose
+- Home Assistant wurde nach dem Update vollständig neu gestartet
+- **PV-Prognose aktualisiert** ist verfügbar
+- **PV-Prognosekurve** ist verfügbar und enthält im Attribut `raw_power` Punkte
+
+Der Fallback ist kein Fehlerzustand. Er hält die ältere Beta-10-Berechnung für
+kompatible Fremdprognosen weiterhin funktionsfähig.
+
+## 32. PV-Prognosekurve weicht stark von der realen PV-Leistung ab
+
+Die Karte zeigt bewusst sowohl die Vorhersage als auch die reale PV-Leistung.
+Der Ladeplan wird **nicht** nachträglich anhand des Ist-SOC oder der realen
+PV-Leistung passend gerechnet. Dadurch bleibt ein Prognosefehler sichtbar.
+
+Prüfen:
+
+- Ausrichtung, Neigung und Anlagenleistung in Forecast.Solar
+- Zeitpunkt **PV-Prognose aktualisiert**
+- Prognose-Sicherheitsfaktor
+- PV-Lernfaktor und ob **Gelernte PV-Korrektur verwenden** aktiv ist
+
+Ändert Forecast.Solar seine Prognose bei der nächsten Aktualisierung, wird der
+Ladeplan aus der neuen Forecast-Kurve neu berechnet.
+
+## 33. Ladepriorität obwohl der Ist-SOC bereits im dynamischen Ladeplan liegt
 
 Typisches Bild vor `2.1.0-beta.2`:
 

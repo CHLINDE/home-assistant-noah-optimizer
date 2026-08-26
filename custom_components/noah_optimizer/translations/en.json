@@ -201,6 +201,25 @@
           "command_failed": "Command failed",
           "failsafe": "Failsafe active"
         }
+      },
+      "forecast_curve": {
+        "name": "PV forecast curve"
+      },
+      "effective_forecast_day": {
+        "name": "Effective daily forecast"
+      },
+      "forecast_curve_updated_at": {
+        "name": "PV forecast updated"
+      },
+      "forecast_plan_end_soc": {
+        "name": "Forecast end SOC"
+      },
+      "soc_plan_source": {
+        "name": "SOC schedule basis",
+        "state": {
+          "forecast_curve": "Forecast.Solar curve",
+          "daylight_fallback": "Daylight fallback"
+        }
       }
     },
     "number": {

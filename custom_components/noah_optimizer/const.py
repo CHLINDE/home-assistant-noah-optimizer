@@ -122,6 +122,11 @@ DATA_HOURS_TO_SUNSET: Final = "hours_to_sunset"
 DATA_AVAILABLE_BATTERY_ENERGY: Final = "available_battery_energy"
 DATA_CHARGE_NEED: Final = "charge_need"
 DATA_EFFECTIVE_FORECAST: Final = "effective_forecast"
+DATA_FORECAST_CURVE: Final = "forecast_curve"
+DATA_FORECAST_CURVE_UPDATED_AT: Final = "forecast_curve_updated_at"
+DATA_EFFECTIVE_FORECAST_DAY: Final = "effective_forecast_day"
+DATA_FORECAST_PLAN_END_SOC: Final = "forecast_plan_end_soc"
+DATA_SOC_PLAN_SOURCE: Final = "soc_plan_source"
 DATA_PV_LEARNING_FACTOR: Final = "pv_learning_factor"
 DATA_EFFECTIVE_FORECAST_FACTOR: Final = "effective_forecast_factor"
 DATA_PV_LEARNING_SAMPLE_COUNT: Final = "pv_learning_sample_count"
@@ -168,6 +173,9 @@ DYNAMIC_SOC_AHEAD: Final = "ahead"
 DYNAMIC_SOC_ON_TRACK: Final = "on_track"
 DYNAMIC_SOC_BEHIND: Final = "behind"
 DYNAMIC_SOC_NIGHT: Final = "night"
+
+SOC_PLAN_SOURCE_FORECAST_CURVE: Final = "forecast_curve"
+SOC_PLAN_SOURCE_DAYLIGHT_FALLBACK: Final = "daylight_fallback"
 
 # ---------------------------------------------------------------------------
 # Controller modes
