@@ -342,7 +342,6 @@ class NoahOptimizerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self,
         *,
         effective_factor: float,
-        expected_load_w: float,
         forecast_safety_kwh: float,
         battery_capacity_kwh: float,
         efficiency: float,
@@ -360,7 +359,6 @@ class NoahOptimizerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             wh_period=wh_period,
             updated_at=updated_at,
             effective_factor=effective_factor,
-            expected_load_w=expected_load_w,
             forecast_safety_kwh=forecast_safety_kwh,
             battery_capacity_kwh=battery_capacity_kwh,
             efficiency=efficiency,
@@ -703,7 +701,6 @@ class NoahOptimizerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         forecast_curve = self._build_forecast_curve(
             effective_factor=effective_forecast_factor,
-            expected_load_w=expected_day_load,
             forecast_safety_kwh=forecast_safety,
             battery_capacity_kwh=capacity,
             efficiency=efficiency,
@@ -1013,9 +1010,11 @@ class NoahOptimizerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         # Once the dynamic charging schedule is satisfied, do not apply the
         # legacy forecast-margin charge-priority decision a second time. The
-        # dynamic SOC target already includes the effective forecast, expected
-        # household load and forecast safety reserve. While predictive SOC
-        # release is not active, hold the schedule by serving the household
+        # dynamic SOC target already reserves the forecast PV share required
+        # for the battery target and protects the forecast safety reserve.
+        # Expected household load remains part of the separate forecast-margin
+        # calculation. While predictive SOC release is not active, hold the
+        # schedule by serving the household
         # only from currently available PV and avoid intentional battery
         # discharge.
         soc_hold_active = (

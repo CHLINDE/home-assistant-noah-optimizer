@@ -123,7 +123,6 @@ def build_forecast_curve(
     wh_period: Mapping[datetime, int | float],
     updated_at: datetime | None,
     effective_factor: float,
-    expected_load_w: float,
     forecast_safety_kwh: float,
     battery_capacity_kwh: float,
     efficiency: float,
@@ -147,17 +146,15 @@ def build_forecast_curve(
         for timestamp, power in raw_power
     ]
 
-    # Battery-usable power is the forecast PV power left after the configured
-    # expected household load. This gives the charging schedule its real
-    # time-of-day shape instead of using astronomical daylight progress.
-    net_battery_power = [
-        (
-            timestamp,
-            max(power - max(expected_load_w, 0.0), 0.0),
-        )
-        for timestamp, power in effective_power
-    ]
-    cumulative = _integrate_trapezoids(net_battery_power)
+    # The charging schedule is shaped from the complete effective PV curve.
+    # Expected household load is deliberately not deducted here: the active
+    # controller can reserve forecast PV for the battery and let the grid cover
+    # household demand when that is necessary to maintain the SOC target.
+    # Deducting a fixed household load would incorrectly classify PV below that
+    # load as unavailable for charging and could make an achievable target look
+    # impossible. Household demand remains part of the normal forecast-margin
+    # and output-control calculations.
+    cumulative = _integrate_trapezoids(effective_power)
     if not cumulative:
         return None
 

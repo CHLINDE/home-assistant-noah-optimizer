@@ -36,10 +36,13 @@ Forecast.Solar power curve already held by that config entry. No additional
 Forecast.Solar API request is made.
 
 The effective curve applies the configured forecast safety factor and, when
-enabled and ready, the learned PV factor. Expected household load is subtracted
-from the forecast power profile; positive surplus is integrated, adjusted by
-charging efficiency and forecast energy reserve, and converted into the
-dynamic SOC schedule.
+enabled and ready, the learned PV factor. The complete effective PV profile is
+integrated for the SOC schedule; expected household load is not subtracted from
+each forecast interval. This allows the controller to reserve forecast PV for
+battery charging when necessary and let the grid cover household demand.
+Charging efficiency and the forecast energy reserve remain part of the plan,
+while expected household load stays in the separate forecast-margin and output
+control calculations.
 
 Actual PV production and actual SOC are not used to reshape the forecast plan
 after the fact. If Forecast.Solar updates its prediction, the plan is
@@ -987,7 +990,7 @@ First stable 2.x release:
 - Reuses the complete Forecast.Solar power curve already loaded by Home Assistant
 - Makes no additional Forecast.Solar API requests
 - Shapes the dynamic SOC schedule from the time-resolved forecast instead of daylight progress when a native curve is available
-- Includes expected household load, forecast/learning factor, charge efficiency and forecast reserve in the planned battery surplus
+- Uses the complete effective PV curve for the battery schedule and keeps expected household load separate in forecast-margin/output control; forecast/learning factor, charge efficiency and forecast reserve remain part of planning
 - Adds forecast update timestamp, effective daily forecast, forecast end SOC and schedule-basis diagnostics
 - Adds a dashboard PV forecast chart
 - Keeps the previous daylight schedule as a fallback

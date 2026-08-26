@@ -202,10 +202,13 @@ Assistant geladene vollständige Leistungskurve aus deren Config-Entry. Es
 werden dabei keine zusätzlichen API-Abfragen ausgeführt.
 
 Die wirksame Kurve wird aus Forecast.Solar-Leistung × Prognose-Sicherheitsfaktor
-× optionalem PV-Lernfaktor gebildet. Von dieser Leistung wird die konfigurierte
-erwartete Hauslast abgezogen. Der positive Überschuss wird über den Tag
-integriert, mit dem Ladewirkungsgrad bewertet und um die Forecast-Energiereserve
-reduziert. Daraus entsteht die Forecast-geformte SOC-Sollkurve.
+× optionalem PV-Lernfaktor gebildet. Für den SOC-Ladeplan wird die vollständige
+wirksame PV-Kurve integriert; die erwartete Hauslast wird **nicht vorab von der
+Forecast-Leistung abgezogen**. Dadurch bleibt PV auch dann als mögliche
+Ladeenergie berücksichtigt, wenn die Regelung zeitweise den Hausverbrauch aus
+dem Netz decken muss, um den Akku-Ladeplan einzuhalten. Ladewirkungsgrad und
+Forecast-Energiereserve werden weiterhin berücksichtigt. Die erwartete Hauslast
+bleibt Bestandteil von Prognosemarge, Prognosedeckung und Ausgangsregelung.
 
 Der Ist-SOC und die tatsächlich gemessene PV-Leistung werden nicht verwendet,
 um den Ladeplan nachträglich passend zu rechnen. Neue Ladepläne entstehen nur
@@ -217,8 +220,9 @@ zeitbasierte Algorithmus als **Tageslicht-Fallback** aktiv. Der Sensor
 
 ### Zeitaufgelöster Ladeplan ab 2.1.0-beta.3
 
-Die Forecast.Solar-Leistungspunkte bestimmen, wann im Tagesverlauf nutzbarer
-PV-Überschuss erwartet wird. Bei einer Süd-Anlage bleibt das dynamische Soll
+Die Forecast.Solar-Leistungspunkte bestimmen die zeitliche Form des Ladeplans.
+Der Ladeplan steigt dort, wo Forecast.Solar PV-Energie erwartet. Bei einer
+Süd-Anlage bleibt das dynamische Soll
 daher am frühen Morgen niedrig und steigt erst mit der prognostizierten
 Einstrahlung. Reicht die prognostizierte Tagesenergie nicht bis zum Ziel-SOC,
 zeigt **Prognostizierter End-SOC** einen entsprechend niedrigeren Wert. Das

@@ -451,26 +451,28 @@ wirksame PV-Leistung
   × optionaler PV-Lernfaktor
 ```
 
-### 2. Erwartbar für den Akku verfügbare PV-Leistung
+### 2. Für den Ladeplan verfügbare PV-Energie
 
-Vom prognostizierten PV-Verlauf wird die konfigurierte durchschnittliche
-Tageslast abgezogen. Nur der positive Überschuss kann den Akku im Ladeplan
-füllen:
+Der Ladeplan wird aus der vollständigen wirksamen PV-Kurve aufgebaut. Die
+konfigurierte erwartete Hauslast wird dabei **nicht vorab von jedem
+Forecast-Intervall abgezogen**. Der Optimizer kann bei Bedarf prognostizierte
+PV-Leistung für das Laden des Akkus reservieren und den Hausverbrauch in diesem
+Zeitraum teilweise aus dem Netz decken.
 
-```text
-prognostizierter Akkuüberschuss
-= max(wirksame PV-Leistung - erwartete Hauslast, 0)
-```
+Das ist wichtig, wenn die PV-Leistung beispielsweise unter der erwarteten
+Hauslast liegt: Diese PV-Leistung ist trotzdem zum Akkuladen verfügbar, wenn die
+Regelung dafür die NOAH-Ausgangsleistung reduziert.
 
-Dieser Verlauf wird über den Tag integriert, mit der Ladeeffizienz bewertet und
-um die konfigurierte Forecast-Energiereserve reduziert. Daraus entsteht die
-prognostizierte für den Akku nutzbare Tagesenergie.
+Die wirksame PV-Kurve wird über den Tag integriert, mit der Ladeeffizienz
+bewertet und um die konfigurierte Forecast-Energiereserve reduziert. Die
+erwartete Hauslast bleibt weiterhin Bestandteil von Prognosemarge,
+Prognosedeckung und der Entscheidung über die Ausgangsleistung.
 
 ### 3. Forecast-geformter SOC-Ladeplan
 
 Der SOC-Ladeplan startet weiterhin beim Mindest-SOC. Er steigt aber nicht mehr
-linear mit der Uhrzeit, sondern genau dort, wo laut Forecast.Solar nutzbarer
-PV-Überschuss erwartet wird.
+linear mit der Uhrzeit, sondern entsprechend der zeitlichen Verteilung der laut
+Forecast.Solar verfügbaren PV-Energie.
 
 Damit bleibt das Soll bei einer Süd-Anlage am frühen Morgen niedrig und steigt
 erst mit der erwarteten Einstrahlung. Bei bedecktem Himmel kann der
@@ -960,7 +962,7 @@ Erster stabiler Release der 2.x-Reihe:
 - vollständige Forecast.Solar-Leistungskurve aus Home Assistants bereits geladenen Forecast-Daten übernommen
 - keine zusätzlichen Forecast.Solar-API-Aufrufe
 - dynamischen SOC-Ladeplan bei nativer Forecast.Solar-Quelle von Tageslichtfortschritt auf zeitaufgelöste Prognosekurve umgestellt
-- erwartete Hauslast, Prognose-/Lernfaktor, Ladeeffizienz und Energiereserve in die prognostizierte Akku-Ladekurve einbezogen
+- Prognose-/Lernfaktor, Ladeeffizienz und Energiereserve in die prognostizierte Akku-Ladekurve einbezogen; Hauslast bleibt separat in Prognosemarge und Ausgangsregelung
 - prognostizierten End-SOC und Ladeplanbasis als neue Diagnosewerte ergänzt
 - neue Dashboard-Karte für rohe Prognose, wirksame Prognose und reale PV-Leistung
 - Forecast-Aktualisierungszeitpunkt im Dashboard ergänzt

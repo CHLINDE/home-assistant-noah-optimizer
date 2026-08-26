@@ -10,6 +10,7 @@
 
 ### Fixed
 
+- Fixed Forecast-curve planning so PV power below the configured expected household load is not incorrectly treated as unavailable for battery charging; the controller can reserve that PV for the battery and let the grid supply the household when required to maintain the SOC plan
 - Fixed the Beta 3 dashboard migration so an existing diagnostics row for the forecast-curve sensor is not mistaken for an already existing ApexCharts forecast chart
 - Fall back to the legacy daylight schedule when the Forecast.Solar config entry exists but has no loaded `runtime_data`, instead of allowing an `AttributeError` to fail the optimizer update
 
@@ -17,7 +18,7 @@
 
 - Dynamic SOC planning now follows the time distribution of the native Forecast.Solar power curve instead of astronomical daylight progress when a native Forecast.Solar source can be resolved
 - The effective forecast curve applies the configured forecast safety factor and, when enabled and ready, the learned PV correction factor
-- Expected household load is subtracted from the forecast power profile before predicted battery-usable surplus is integrated into the SOC plan
+- The SOC plan now integrates the complete effective PV profile instead of subtracting expected household load from every forecast interval; household demand remains part of forecast-margin and output-control calculations
 - Charging efficiency and the configured forecast energy reserve remain part of the SOC planning calculation
 - SOC catch-up targets the future point of the same forecast-shaped SOC plan
 - The legacy daylight-progress calculation remains available automatically when no native Forecast.Solar curve can be resolved
