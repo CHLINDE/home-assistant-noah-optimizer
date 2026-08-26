@@ -2,12 +2,15 @@
 
 Stable release: `2.0.0`
 
-Current pre-release: `2.1.0-beta.2`
+Current pre-release: `2.1.0-beta.3`
 
 The `2.1.0-beta.1` pre-release adds passive, persistent PV learning. Applying
 the learned correction is opt-in and disabled by default. `2.1.0-beta.2` keeps
 that learning model unchanged and fixes automatic control when the dynamic SOC
-schedule is already satisfied.
+schedule is already satisfied. `2.1.0-beta.3` additionally reads Home
+Assistant's already loaded native Forecast.Solar power curve and shapes the
+dynamic SOC schedule from the time-resolved forecast without making extra
+Forecast.Solar API calls.
 
 ## Direct HACS repository button
 
@@ -24,6 +27,30 @@ HACS.
 > Assistant still opens an instance URL containing `:8123`, update the instance
 > URL stored by My Home Assistant in the browser.
 
+
+## Time-resolved Forecast.Solar schedule in 2.1.0-beta.3
+
+When the configured remaining-forecast entity belongs directly to Home
+Assistant's Forecast.Solar integration, the optimizer reuses the complete
+Forecast.Solar power curve already held by that config entry. No additional
+Forecast.Solar API request is made.
+
+The effective curve applies the configured forecast safety factor and, when
+enabled and ready, the learned PV factor. Expected household load is subtracted
+from the forecast power profile; positive surplus is integrated, adjusted by
+charging efficiency and forecast energy reserve, and converted into the
+dynamic SOC schedule.
+
+Actual PV production and actual SOC are not used to reshape the forecast plan
+after the fact. If Forecast.Solar updates its prediction, the plan is
+recalculated from the new forecast. If a native curve is unavailable, the
+legacy daylight-progress schedule remains available as a compatibility
+fallback.
+
+The dashboard adds a PV forecast chart with raw Forecast.Solar power, effective
+forecast power and actual PV production, plus the forecast update timestamp,
+forecast end SOC and schedule basis. Dashboard template version increases from
+13 to 14.
 
 ## Dynamic SOC schedule hold in 2.1.0-beta.2
 
@@ -953,6 +980,17 @@ First stable 2.x release:
 - keeps dashboard template version 11
 - updates release and installation documentation for the stable channel
 
+### 2.1.0-beta.3
+
+- Reuses the complete Forecast.Solar power curve already loaded by Home Assistant
+- Makes no additional Forecast.Solar API requests
+- Shapes the dynamic SOC schedule from the time-resolved forecast instead of daylight progress when a native curve is available
+- Includes expected household load, forecast/learning factor, charge efficiency and forecast reserve in the planned battery surplus
+- Adds forecast update timestamp, effective daily forecast, forecast end SOC and schedule-basis diagnostics
+- Adds a dashboard PV forecast chart
+- Keeps the previous daylight schedule as a fallback
+- Increases dashboard template version from 13 to 14
+
 ### 2.1.0-beta.2
 
 - Adds `soc_hold` / `Hold SOC schedule` when the dynamic charging schedule is already satisfied
@@ -974,11 +1012,12 @@ First stable 2.x release:
 
 ## Current limitations 
 
-The current `2.1.0-beta.2` pre-release does not yet include:
+The current `2.1.0-beta.3` pre-release does not yet include:
 
 - learned household load
 - multiple independent NOAH systems
-- an hourly Forecast.Solar production profile for shaping the SOC curve
+- date-selectable historical SOC-plan browsing in the dashboard
+- persistent forecast snapshots for reviewing how an older forecast looked at a specific update time
 
 Active control directly changes the NOAH output setpoint and should be
 monitored during commissioning and after configuration changes.

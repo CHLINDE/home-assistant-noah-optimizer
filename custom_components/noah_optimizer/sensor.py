@@ -53,6 +53,10 @@ from .const import (
     DATA_DYNAMIC_SOC_STATUS,
     DATA_DYNAMIC_SOC_TARGET,
     DATA_EFFECTIVE_FORECAST,
+    DATA_EFFECTIVE_FORECAST_DAY,
+    DATA_FORECAST_CURVE,
+    DATA_FORECAST_CURVE_UPDATED_AT,
+    DATA_FORECAST_PLAN_END_SOC,
     DATA_EFFECTIVE_FORECAST_FACTOR,
     DATA_EXPECTED_LOAD_ENERGY,
     DATA_FORECAST_COVERAGE,
@@ -80,6 +84,7 @@ from .const import (
     DATA_SOC_DEVIATION,
     DATA_SOC_RELEASE_FLOOR,
     DATA_SOC_RELEASE_TARGET,
+    DATA_SOC_PLAN_SOURCE,
     DATA_SOLAR_POWER,
     DATA_STATUS,
     DYNAMIC_SOC_AHEAD,
@@ -90,6 +95,8 @@ from .const import (
     STATUS_BATTERY_DATA_MISSING,
     STATUS_CRITICAL_DATA_MISSING,
     STATUS_FORECAST_UNAVAILABLE,
+    SOC_PLAN_SOURCE_DAYLIGHT_FALLBACK,
+    SOC_PLAN_SOURCE_FORECAST_CURVE,
     STATUS_OK,
 )
 from .entity import NoahOptimizerEntity
@@ -226,6 +233,36 @@ SENSORS: tuple[NoahSensorDescription, ...] = (
         data_key=DATA_EFFECTIVE_FORECAST,
         native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
         device_class=SensorDeviceClass.ENERGY,
+    ),
+    NoahSensorDescription(
+        key="effective_forecast_day",
+        translation_key="effective_forecast_day",
+        data_key=DATA_EFFECTIVE_FORECAST_DAY,
+        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        device_class=SensorDeviceClass.ENERGY,
+    ),
+    NoahSensorDescription(
+        key="forecast_curve_updated_at",
+        translation_key="forecast_curve_updated_at",
+        data_key=DATA_FORECAST_CURVE_UPDATED_AT,
+        device_class=SensorDeviceClass.TIMESTAMP,
+    ),
+    NoahSensorDescription(
+        key="forecast_plan_end_soc",
+        translation_key="forecast_plan_end_soc",
+        data_key=DATA_FORECAST_PLAN_END_SOC,
+        native_unit_of_measurement=PERCENTAGE,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    NoahSensorDescription(
+        key="soc_plan_source",
+        translation_key="soc_plan_source",
+        data_key=DATA_SOC_PLAN_SOURCE,
+        device_class=SensorDeviceClass.ENUM,
+        options=[
+            SOC_PLAN_SOURCE_FORECAST_CURVE,
+            SOC_PLAN_SOURCE_DAYLIGHT_FALLBACK,
+        ],
     ),
     NoahSensorDescription(
         key="pv_learning_factor",
@@ -456,6 +493,12 @@ async def async_setup_entry(
         for description in SENSORS
     ]
     sensors.append(
+        NoahOptimizerForecastCurveSensor(
+            entry.runtime_data,
+            entry,
+        )
+    )
+    sensors.append(
         NoahOptimizerControllerStatusSensor(
             entry.runtime_data,
             entry,
@@ -490,6 +533,42 @@ class NoahOptimizerSensor(NoahOptimizerEntity, SensorEntity):
             super().available
             and self.coordinator.data.get(self.entity_description.data_key)
             is not None
+        )
+
+
+class NoahOptimizerForecastCurveSensor(NoahOptimizerEntity, SensorEntity):
+    """Expose Forecast.Solar curve points for dashboard visualization."""
+
+    _attr_translation_key = "forecast_curve"
+    _attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
+    _attr_device_class = SensorDeviceClass.ENERGY
+
+    def __init__(self, coordinator, entry) -> None:
+        """Initialize the forecast-curve sensor."""
+        super().__init__(coordinator, entry)
+        self._attr_unique_id = f"{entry.entry_id}_forecast_curve"
+
+    @property
+    def native_value(self) -> float | None:
+        """Return today's raw Forecast.Solar energy."""
+        data = self.coordinator.data.get(DATA_FORECAST_CURVE)
+        if not isinstance(data, dict):
+            return None
+        value = data.get("raw_day_energy_kwh")
+        return float(value) if isinstance(value, (int, float)) else None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+        """Return power and SOC-plan points used by ApexCharts."""
+        data = self.coordinator.data.get(DATA_FORECAST_CURVE)
+        return data if isinstance(data, dict) else None
+
+    @property
+    def available(self) -> bool:
+        """Return whether a native Forecast.Solar curve is available."""
+        return (
+            super().available
+            and isinstance(self.coordinator.data.get(DATA_FORECAST_CURVE), dict)
         )
 
 

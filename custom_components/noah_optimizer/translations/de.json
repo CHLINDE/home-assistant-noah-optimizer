@@ -201,6 +201,25 @@
           "command_failed": "Stellbefehl fehlgeschlagen",
           "failsafe": "Failsafe aktiv"
         }
+      },
+      "forecast_curve": {
+        "name": "PV-Prognosekurve"
+      },
+      "effective_forecast_day": {
+        "name": "Wirksame Tagesprognose"
+      },
+      "forecast_curve_updated_at": {
+        "name": "PV-Prognose aktualisiert"
+      },
+      "forecast_plan_end_soc": {
+        "name": "Prognostizierter End-SOC"
+      },
+      "soc_plan_source": {
+        "name": "Ladeplanbasis",
+        "state": {
+          "forecast_curve": "Forecast.Solar-Kurve",
+          "daylight_fallback": "Tageslicht-Fallback"
+        }
       }
     },
     "number": {

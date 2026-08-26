@@ -1,3 +1,32 @@
+## [2.1.0-beta.3] - 2026-08-26
+
+### Added
+
+- Added reuse of the complete time-resolved Forecast.Solar power curve already loaded by Home Assistant; no additional Forecast.Solar API requests are made
+- Added the `PV forecast curve` diagnostic sensor with raw Forecast.Solar power, effective forecast power, and the derived SOC plan as attributes
+- Added sensors for effective daily forecast, Forecast.Solar update timestamp, forecast plan end SOC, and SOC schedule basis
+- Added a dashboard PV forecast chart comparing raw Forecast.Solar power, effective forecast power, and actual PV production
+- Added `forecast_curve` / `daylight_fallback` schedule-source diagnostics in German and English
+
+### Changed
+
+- Dynamic SOC planning now follows the time distribution of the native Forecast.Solar power curve instead of astronomical daylight progress when a native Forecast.Solar source can be resolved
+- The effective forecast curve applies the configured forecast safety factor and, when enabled and ready, the learned PV correction factor
+- Expected household load is subtracted from the forecast power profile before predicted battery-usable surplus is integrated into the SOC plan
+- Charging efficiency and the configured forecast energy reserve remain part of the SOC planning calculation
+- SOC catch-up targets the future point of the same forecast-shaped SOC plan
+- The legacy daylight-progress calculation remains available automatically when no native Forecast.Solar curve can be resolved
+- Dashboard template version increased from 13 to 14; existing generated dashboards are migrated with the new forecast chart and diagnostics
+
+### Safety / transparency
+
+- Actual PV production and actual battery SOC do not retroactively reshape the forecast-derived SOC plan; forecast errors therefore remain visible instead of being hidden by adapting the plan to actual results
+- A new SOC plan is produced when Forecast.Solar updates its forecast or when relevant planning parameters change
+- Forecast.Solar runtime data is reused only when the configured remaining-forecast entity belongs directly to the Forecast.Solar integration; template or other forecast entities use the existing daylight fallback
+- Historical date browsing and persistent forecast snapshots are intentionally deferred to a later release
+
+---
+
 ## [2.1.0-beta.2] - 2026-08-24
 
 ### Added

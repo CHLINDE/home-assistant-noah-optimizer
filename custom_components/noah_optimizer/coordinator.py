@@ -10,6 +10,7 @@ from typing import Any
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import STATE_UNAVAILABLE, STATE_UNKNOWN
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.sun import get_astral_event_date
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import dt as dt_util
@@ -50,6 +51,10 @@ from .const import (
     DATA_DYNAMIC_SOC_STATUS,
     DATA_DYNAMIC_SOC_TARGET,
     DATA_EFFECTIVE_FORECAST,
+    DATA_EFFECTIVE_FORECAST_DAY,
+    DATA_FORECAST_CURVE,
+    DATA_FORECAST_CURVE_UPDATED_AT,
+    DATA_FORECAST_PLAN_END_SOC,
     DATA_EFFECTIVE_FORECAST_FACTOR,
     DATA_EXPECTED_LOAD_ENERGY,
     DATA_FORECAST_AVAILABLE,
@@ -79,6 +84,7 @@ from .const import (
     DATA_SOC_DEVIATION,
     DATA_SOC_RELEASE_FLOOR,
     DATA_SOC_RELEASE_TARGET,
+    DATA_SOC_PLAN_SOURCE,
     DATA_SOLAR_POWER,
     DATA_STATUS,
     DEFAULT_OPTIONS,
@@ -115,9 +121,12 @@ from .const import (
     STATUS_BATTERY_DATA_MISSING,
     STATUS_CRITICAL_DATA_MISSING,
     STATUS_FORECAST_UNAVAILABLE,
+    SOC_PLAN_SOURCE_DAYLIGHT_FALLBACK,
+    SOC_PLAN_SOURCE_FORECAST_CURVE,
     STATUS_OK,
     UPDATE_INTERVAL,
 )
+from .forecast_curve import ForecastCurveData, build_forecast_curve, target_after_hours
 from .pv_learning import PvLearning
 
 _LOGGER = logging.getLogger(__name__)
@@ -290,6 +299,74 @@ class NoahOptimizerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         return weighted_sum / GRID_AVERAGE_SECONDS
 
+    def _forecast_solar_source(
+        self,
+    ) -> tuple[dict[Any, Any], dict[Any, Any], Any] | None:
+        """Return Forecast.Solar curve data behind the selected forecast entity.
+
+        Home Assistant already keeps the complete Forecast.Solar Estimate in
+        the Forecast.Solar config-entry runtime data for the Energy dashboard.
+        Reusing it avoids additional API requests and Forecast.Solar rate-limit
+        consumption.
+        """
+        entity_id = self.entry.data[CONF_FORECAST_REMAINING]
+        registry_entry = er.async_get(self.hass).async_get(entity_id)
+        if registry_entry is None or registry_entry.config_entry_id is None:
+            return None
+
+        forecast_entry = self.hass.config_entries.async_get_entry(
+            registry_entry.config_entry_id
+        )
+        if forecast_entry is None or forecast_entry.domain != "forecast_solar":
+            return None
+
+        try:
+            runtime_data = forecast_entry.runtime_data
+        except RuntimeError:
+            # The Forecast.Solar config entry exists but is not loaded. Keep
+            # the legacy daylight schedule as a compatibility fallback.
+            return None
+
+        estimate = getattr(runtime_data, "data", None)
+        watts = getattr(estimate, "watts", None)
+        wh_period = getattr(estimate, "wh_period", None)
+        if not isinstance(watts, dict) or not isinstance(wh_period, dict):
+            return None
+
+        source_state = self.hass.states.get(entity_id)
+        updated_at = source_state.last_updated if source_state is not None else None
+        return watts, wh_period, updated_at
+
+    def _build_forecast_curve(
+        self,
+        *,
+        effective_factor: float,
+        expected_load_w: float,
+        forecast_safety_kwh: float,
+        battery_capacity_kwh: float,
+        efficiency: float,
+        min_soc: float,
+        target_soc: float,
+    ) -> ForecastCurveData | None:
+        """Build today's Forecast.Solar power curve and SOC schedule."""
+        source = self._forecast_solar_source()
+        if source is None:
+            return None
+
+        watts, wh_period, updated_at = source
+        return build_forecast_curve(
+            watts=watts,
+            wh_period=wh_period,
+            updated_at=updated_at,
+            effective_factor=effective_factor,
+            expected_load_w=expected_load_w,
+            forecast_safety_kwh=forecast_safety_kwh,
+            battery_capacity_kwh=battery_capacity_kwh,
+            efficiency=efficiency,
+            min_soc=min_soc,
+            target_soc=target_soc,
+        )
+
     def _hours_to_sunset(self) -> float:
         """Return hours until the next sunset while the sun is up."""
         sun = self.hass.states.get("sun.sun")
@@ -373,17 +450,18 @@ class NoahOptimizerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         hours_to_sunset: float,
         daylight_progress: float,
         catchup_hours: float,
+        forecast_plan_target: float | None = None,
+        forecast_plan_catchup_target: float | None = None,
     ) -> tuple[float, float, str, float, float, float, float]:
         """Calculate the SOC plan, catch-up demand, and safe release reserve.
 
-        The plan starts at the configured minimum SOC at sunrise and reaches
-        the configured target SOC at sunset. A weak remaining PV forecast
-        raises the curve progressively, but never turns the forecast-based
-        requirement into an immediate hard 100 percent target. Predictive
-        release uses a separate refill reserve that may dedicate later PV to
-        restoring battery SOC while future household demand is supplied from
-        the grid if necessary. The release floor keeps a small SOC buffer
-        before battery energy may be released.
+        With a native Forecast.Solar curve, the active SOC target follows the
+        time-resolved forecast plan. Otherwise the legacy daylight-progress
+        calculation remains as a compatibility fallback. Predictive release
+        uses a separate refill reserve that may dedicate later PV to restoring
+        battery SOC while future household demand is supplied from the grid if
+        necessary. The release floor keeps a small SOC buffer before battery
+        energy may be released.
         """
         safe_efficiency = max(efficiency, 0.1)
         safe_capacity = max(capacity, 0.001)
@@ -412,17 +490,28 @@ class NoahOptimizerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             target_soc,
         )
 
-        forecast_pressure = max(
-            schedule_forecast_required_soc - time_based_target,
-            0.0,
-        )
-        dynamic_soc_target = (
-            time_based_target + progress * forecast_pressure
-        )
-        dynamic_soc_target = min(
-            max(dynamic_soc_target, min_soc),
-            target_soc,
-        )
+        if forecast_plan_target is not None:
+            # Beta 3: when the complete Forecast.Solar curve is available, the
+            # charging schedule follows the predicted PV production profile.
+            # Actual SOC and actual PV are deliberately not used to reshape
+            # this plan, so forecast quality remains visible.
+            dynamic_soc_target = min(
+                max(forecast_plan_target, min_soc),
+                target_soc,
+            )
+        else:
+            # Compatibility fallback for non-Forecast.Solar forecast entities.
+            forecast_pressure = max(
+                schedule_forecast_required_soc - time_based_target,
+                0.0,
+            )
+            dynamic_soc_target = (
+                time_based_target + progress * forecast_pressure
+            )
+            dynamic_soc_target = min(
+                max(dynamic_soc_target, min_soc),
+                target_soc,
+            )
 
         # Predictive release uses a separate refill reserve. Expected
         # household demand is deliberately not deducted here: if necessary,
@@ -482,28 +571,34 @@ class NoahOptimizerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         ):
             dynamic_required_charge_power = 0.0
         else:
-            catchup_progress = min(
-                progress
-                + (1.0 - progress)
-                * catchup_window
-                / max(hours_to_sunset, 0.001),
-                1.0,
-            )
-            catchup_time_based_target = (
-                min_soc + soc_span * catchup_progress
-            )
-            catchup_forecast_pressure = max(
-                schedule_forecast_required_soc - catchup_time_based_target,
-                0.0,
-            )
-            catchup_target = (
-                catchup_time_based_target
-                + catchup_progress * catchup_forecast_pressure
-            )
-            catchup_target = min(
-                max(catchup_target, min_soc),
-                target_soc,
-            )
+            if forecast_plan_catchup_target is not None:
+                catchup_target = min(
+                    max(forecast_plan_catchup_target, min_soc),
+                    target_soc,
+                )
+            else:
+                catchup_progress = min(
+                    progress
+                    + (1.0 - progress)
+                    * catchup_window
+                    / max(hours_to_sunset, 0.001),
+                    1.0,
+                )
+                catchup_time_based_target = (
+                    min_soc + soc_span * catchup_progress
+                )
+                catchup_forecast_pressure = max(
+                    schedule_forecast_required_soc - catchup_time_based_target,
+                    0.0,
+                )
+                catchup_target = (
+                    catchup_time_based_target
+                    + catchup_progress * catchup_forecast_pressure
+                )
+                catchup_target = min(
+                    max(catchup_target, min_soc),
+                    target_soc,
+                )
 
             soc_shortfall = max(catchup_target - soc, 0.0)
             battery_energy_shortfall = (
@@ -593,6 +688,53 @@ class NoahOptimizerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         effective_forecast_factor = forecast_factor * applied_learning_factor
         pv_learning_last_ratio = self.pv_learning.last_ratio
 
+        # Planning options are also needed when only the Forecast.Solar curve
+        # is available, so read them before the critical-data early return.
+        capacity = float(self.get_option(OPT_BATTERY_CAPACITY))
+        target_soc = float(self.get_option(OPT_TARGET_SOC))
+        min_soc = float(self.get_option(OPT_MIN_SOC))
+        efficiency = float(self.get_option(OPT_CHARGE_EFFICIENCY))
+        forecast_safety = float(self.get_option(OPT_FORECAST_SAFETY))
+        expected_day_load = float(self.get_option(OPT_EXPECTED_DAY_LOAD))
+        dynamic_soc_catchup_hours = float(
+            self.get_option(OPT_DYNAMIC_SOC_CATCHUP_HOURS)
+        )
+
+        forecast_curve = self._build_forecast_curve(
+            effective_factor=effective_forecast_factor,
+            expected_load_w=expected_day_load,
+            forecast_safety_kwh=forecast_safety,
+            battery_capacity_kwh=capacity,
+            efficiency=efficiency,
+            min_soc=min_soc,
+            target_soc=target_soc,
+        )
+        now_utc = dt_util.utcnow()
+        forecast_plan_target = (
+            forecast_curve.soc_target_at(now_utc)
+            if forecast_curve is not None
+            else None
+        )
+        forecast_plan_catchup_target = (
+            target_after_hours(
+                forecast_curve,
+                now_utc,
+                dynamic_soc_catchup_hours,
+            )
+            if forecast_curve is not None
+            else None
+        )
+        soc_plan_source = (
+            SOC_PLAN_SOURCE_FORECAST_CURVE
+            if forecast_curve is not None
+            else SOC_PLAN_SOURCE_DAYLIGHT_FALLBACK
+        )
+        forecast_curve_attributes = (
+            forecast_curve.as_attributes()
+            if forecast_curve is not None
+            else None
+        )
+
         actuator_available = self._entity_available(
             self.entry.data[CONF_SYSTEM_OUTPUT_POWER]
         )
@@ -626,6 +768,23 @@ class NoahOptimizerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 DATA_AVAILABLE_BATTERY_ENERGY: None,
                 DATA_CHARGE_NEED: None,
                 DATA_EFFECTIVE_FORECAST: None,
+                DATA_FORECAST_CURVE: forecast_curve_attributes,
+                DATA_FORECAST_CURVE_UPDATED_AT: (
+                    forecast_curve.updated_at
+                    if forecast_curve is not None
+                    else None
+                ),
+                DATA_EFFECTIVE_FORECAST_DAY: (
+                    round(forecast_curve.effective_day_energy_kwh, 3)
+                    if forecast_curve is not None
+                    else None
+                ),
+                DATA_FORECAST_PLAN_END_SOC: (
+                    round(forecast_curve.planned_end_soc, 1)
+                    if forecast_curve is not None
+                    else None
+                ),
+                DATA_SOC_PLAN_SOURCE: soc_plan_source,
                 DATA_EFFECTIVE_FORECAST_FACTOR: round(
                     effective_forecast_factor, 3
                 ),
@@ -682,22 +841,12 @@ class NoahOptimizerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             discharging_power - charging_power if battery_data_ok else None
         )
 
-        capacity = float(self.get_option(OPT_BATTERY_CAPACITY))
-        target_soc = float(self.get_option(OPT_TARGET_SOC))
-        min_soc = float(self.get_option(OPT_MIN_SOC))
-        efficiency = float(self.get_option(OPT_CHARGE_EFFICIENCY))
-        forecast_safety = float(self.get_option(OPT_FORECAST_SAFETY))
         release_margin = float(self.get_option(OPT_RELEASE_MARGIN))
-        expected_day_load = float(self.get_option(OPT_EXPECTED_DAY_LOAD))
         grid_reserve = float(self.get_option(OPT_GRID_RESERVE))
         max_output = float(self.get_option(OPT_MAX_OUTPUT))
         night_max_output = float(self.get_option(OPT_NIGHT_MAX_OUTPUT))
         manual_output = float(self.get_option(OPT_MANUAL_OUTPUT))
         command_step = float(self.get_option(OPT_COMMAND_STEP))
-        dynamic_soc_catchup_hours = float(
-            self.get_option(OPT_DYNAMIC_SOC_CATCHUP_HOURS)
-        )
-
         selected_mode = str(self.get_option(OPT_MODE))
         enabled = bool(self.get_option(OPT_ENABLED))
         dynamic_soc_enabled = bool(self.get_option(OPT_DYNAMIC_SOC_ENABLED))
@@ -778,6 +927,8 @@ class NoahOptimizerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 hours_to_sunset=hours_to_sunset,
                 daylight_progress=daylight_progress,
                 catchup_hours=dynamic_soc_catchup_hours,
+                forecast_plan_target=forecast_plan_target,
+                forecast_plan_catchup_target=forecast_plan_catchup_target,
             )
 
         if night:
@@ -1038,6 +1189,23 @@ class NoahOptimizerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             ),
             DATA_CHARGE_NEED: round(charge_need, 3),
             DATA_EFFECTIVE_FORECAST: round(effective_forecast, 3),
+            DATA_FORECAST_CURVE: forecast_curve_attributes,
+            DATA_FORECAST_CURVE_UPDATED_AT: (
+                forecast_curve.updated_at
+                if forecast_curve is not None
+                else None
+            ),
+            DATA_EFFECTIVE_FORECAST_DAY: (
+                round(forecast_curve.effective_day_energy_kwh, 3)
+                if forecast_curve is not None
+                else None
+            ),
+            DATA_FORECAST_PLAN_END_SOC: (
+                round(forecast_curve.planned_end_soc, 1)
+                if forecast_curve is not None
+                else None
+            ),
+            DATA_SOC_PLAN_SOURCE: soc_plan_source,
             DATA_EFFECTIVE_FORECAST_FACTOR: round(
                 effective_forecast_factor, 3
             ),

@@ -32,7 +32,7 @@ DASHBOARD_ICON = "mdi:home-battery"
 
 DASHBOARD_STORAGE_VERSION = 1
 DASHBOARD_STORAGE_KEY = f"{DOMAIN}.dashboard"
-DASHBOARD_TEMPLATE_VERSION = 13
+DASHBOARD_TEMPLATE_VERSION = 14
 
 DASHBOARD_TEMPLATE_DE = Path(__file__).with_name("dashboard_de.yaml")
 DASHBOARD_TEMPLATE_EN = Path(__file__).with_name("dashboard_en.yaml")
@@ -58,6 +58,14 @@ ENTITY_TOKENS: dict[str, tuple[str, str]] = {
     ),
     "__CHARGE_NEED__": ("sensor", "charge_need"),
     "__EFFECTIVE_FORECAST__": ("sensor", "effective_forecast"),
+    "__FORECAST_CURVE__": ("sensor", "forecast_curve"),
+    "__EFFECTIVE_FORECAST_DAY__": ("sensor", "effective_forecast_day"),
+    "__FORECAST_CURVE_UPDATED_AT__": (
+        "sensor",
+        "forecast_curve_updated_at",
+    ),
+    "__FORECAST_PLAN_END_SOC__": ("sensor", "forecast_plan_end_soc"),
+    "__SOC_PLAN_SOURCE__": ("sensor", "soc_plan_source"),
     "__PV_LEARNING_FACTOR__": ("sensor", "pv_learning_factor"),
     "__EFFECTIVE_FORECAST_FACTOR__": (
         "sensor",
@@ -391,6 +399,15 @@ def _localized_dynamic_labels(hass: HomeAssistant) -> dict[str, str]:
             "pv_energy_today": "PV-Energie heute",
             "pv_forecast_reference": "PV-Prognosereferenz heute",
             "pv_learning_ready": "PV-Learning bereit",
+            "forecast_curve": "Forecast.Solar Tagesprognose",
+            "effective_forecast_day": "Wirksame Tagesprognose",
+            "forecast_curve_updated_at": "PV-Prognose aktualisiert",
+            "forecast_plan_end_soc": "Prognostizierter End-SOC",
+            "soc_plan_source": "Ladeplanbasis",
+            "forecast_chart_title": "PV-Prognose",
+            "forecast_raw": "Forecast.Solar",
+            "forecast_effective": "Wirksame Prognose",
+            "forecast_actual": "Ist-PV",
             "catchup_hours": "SOC-Nachholzeit",
             "chart_title": "Dynamischer SOC-Ladeplan",
             "actual_soc": "Ist-SOC",
@@ -418,11 +435,72 @@ def _localized_dynamic_labels(hass: HomeAssistant) -> dict[str, str]:
         "pv_energy_today": "PV energy today",
         "pv_forecast_reference": "PV forecast reference today",
         "pv_learning_ready": "PV learning ready",
+        "forecast_curve": "Forecast.Solar daily forecast",
+        "effective_forecast_day": "Effective daily forecast",
+        "forecast_curve_updated_at": "PV forecast updated",
+        "forecast_plan_end_soc": "Forecast end SOC",
+        "soc_plan_source": "SOC schedule basis",
+        "forecast_chart_title": "PV forecast",
+        "forecast_raw": "Forecast.Solar",
+        "forecast_effective": "Effective forecast",
+        "forecast_actual": "Actual PV",
         "catchup_hours": "SOC catch-up time",
         "chart_title": "Dynamic SOC charging schedule",
         "actual_soc": "Actual SOC",
         "target_soc": "Dynamic target",
         "final_target_soc": "Target SOC",
+    }
+
+
+def _forecast_curve_chart(
+    replacements: dict[str, str],
+    labels: dict[str, str],
+) -> dict[str, Any]:
+    """Return the Beta 3 Forecast.Solar curve chart."""
+    return {
+        "type": "custom:apexcharts-card",
+        "section_mode": True,
+        "header": {
+            "show": True,
+            "title": labels["forecast_chart_title"],
+            "show_states": False,
+        },
+        "graph_span": "24h",
+        "span": {"start": "day"},
+        "now": {"show": True},
+        "yaxis": [{"id": "power", "min": 0, "decimals": 0}],
+        "series": [
+            {
+                "entity": replacements["__FORECAST_CURVE__"],
+                "name": labels["forecast_raw"],
+                "yaxis_id": "power",
+                "type": "line",
+                "stroke_width": 2,
+                "data_generator": (
+                    "return (entity.attributes.raw_power || []).map("
+                    "(point) => [new Date(point[0]).getTime(), point[1]]);"
+                ),
+            },
+            {
+                "entity": replacements["__FORECAST_CURVE__"],
+                "name": labels["forecast_effective"],
+                "yaxis_id": "power",
+                "type": "line",
+                "stroke_width": 2,
+                "data_generator": (
+                    "return (entity.attributes.effective_power || []).map("
+                    "(point) => [new Date(point[0]).getTime(), point[1]]);"
+                ),
+            },
+            {
+                "entity": replacements["__SOLAR_POWER__"],
+                "name": labels["forecast_actual"],
+                "yaxis_id": "power",
+                "type": "line",
+                "stroke_width": 2,
+                "group_by": {"duration": "5min", "func": "avg"},
+            },
+        ],
     }
 
 
@@ -841,7 +919,7 @@ def _migrate_dashboard_to_beta11(
     config: dict[str, Any],
     replacements: dict[str, str],
 ) -> tuple[dict[str, Any], bool]:
-    """Apply legacy dashboard fixes and migrations through 2.1.0-beta.2."""
+    """Apply legacy dashboard fixes and migrations through 2.1.0-beta.3."""
     migrated = deepcopy(config)
     changed = False
     labels = _localized_dynamic_labels(hass)
@@ -973,6 +1051,20 @@ def _migrate_dashboard_to_beta11(
                         labels[label_key],
                     )
 
+                beta3_rows = (
+                    ("__FORECAST_CURVE__", "forecast_curve"),
+                    ("__EFFECTIVE_FORECAST_DAY__", "effective_forecast_day"),
+                    ("__FORECAST_CURVE_UPDATED_AT__", "forecast_curve_updated_at"),
+                    ("__FORECAST_PLAN_END_SOC__", "forecast_plan_end_soc"),
+                    ("__SOC_PLAN_SOURCE__", "soc_plan_source"),
+                )
+                for token, label_key in beta3_rows:
+                    changed |= _append_entity_row(
+                        item,
+                        replacements[token],
+                        labels[label_key],
+                    )
+
             if (
                 _card_contains_entity(item, replacements["__BATTERY_CAPACITY__"])
                 and _card_contains_entity(item, replacements["__COMMAND_DEADBAND__"])
@@ -998,6 +1090,55 @@ def _migrate_dashboard_to_beta11(
                 if markdown_changed:
                     item["content"] = new_content
                     changed = True
+
+    # Beta 3: add the Forecast.Solar curve chart to the main planning section.
+    views = migrated.get("views")
+    if isinstance(views, list):
+        for view in views:
+            if not isinstance(view, dict):
+                continue
+            sections = view.get("sections")
+            if not isinstance(sections, list):
+                continue
+            for section in sections:
+                if not isinstance(section, dict):
+                    continue
+                cards = section.get("cards")
+                if not isinstance(cards, list):
+                    continue
+                if any(
+                    isinstance(card, dict)
+                    and _card_contains_entity(
+                        card, replacements["__FORECAST_CURVE__"]
+                    )
+                    for card in cards
+                ):
+                    continue
+                if not (
+                    _card_contains_entity(section, replacements["__SOC__"])
+                    and _card_contains_entity(
+                        section, replacements["__FORECAST_COVERAGE__"]
+                    )
+                ):
+                    continue
+
+                insert_index = len(cards)
+                for index, card in enumerate(cards):
+                    if (
+                        isinstance(card, dict)
+                        and card.get("type") == "custom:apexcharts-card"
+                        and _card_contains_entity(
+                            card, replacements["__DYNAMIC_SOC_TARGET__"]
+                        )
+                    ):
+                        insert_index = index + 1
+                        break
+                cards.insert(
+                    insert_index,
+                    _forecast_curve_chart(replacements, labels),
+                )
+                changed = True
+                break
 
     # Add one SOC history chart to the section that already contains the
     # existing SOC/forecast key figures. Do not add a duplicate if the user
