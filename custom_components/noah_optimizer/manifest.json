@@ -1,15 +1,15 @@
 {
   "domain": "noah_optimizer",
   "name": "Growatt NOAH Optimizer",
+  "after_dependencies": [
+    "forecast_solar"
+  ],
   "codeowners": [
     "@CHLINDE"
   ],
   "config_flow": true,
   "dependencies": [
     "lovelace"
-  ],
-  "after_dependencies": [
-    "forecast_solar"
   ],
   "documentation": "https://github.com/CHLINDE/home-assistant-noah-optimizer/blob/main/docs/installation.md",
   "integration_type": "device",
