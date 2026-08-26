@@ -322,9 +322,10 @@ class NoahOptimizerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         try:
             runtime_data = forecast_entry.runtime_data
-        except RuntimeError:
-            # The Forecast.Solar config entry exists but is not loaded. Keep
-            # the legacy daylight schedule as a compatibility fallback.
+        except (AttributeError, RuntimeError):
+            # The Forecast.Solar config entry exists but is not loaded or did
+            # not finish setup. Keep the legacy daylight schedule as a
+            # compatibility fallback instead of failing the optimizer update.
             return None
 
         estimate = getattr(runtime_data, "data", None)

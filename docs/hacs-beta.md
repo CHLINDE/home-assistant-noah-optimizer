@@ -96,8 +96,10 @@ Learning itself always runs passively. The new switch:
 Use learned PV correction
 ```
 
-is disabled by default. While it is off, forecast and control behavior remains
-the same as `2.0.0`. When it is enabled and learning is ready:
+is disabled by default. While it is off, the learned PV factor does not modify
+the forecast calculation. Independent dynamic-SOC changes introduced in
+`2.1.0-beta.2` and `2.1.0-beta.3` still apply when dynamic SOC control is
+enabled. When learning is enabled and ready:
 
 ```text
 effective forecast factor

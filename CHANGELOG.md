@@ -8,6 +8,11 @@
 - Added a dashboard PV forecast chart comparing raw Forecast.Solar power, effective forecast power, and actual PV production
 - Added `forecast_curve` / `daylight_fallback` schedule-source diagnostics in German and English
 
+### Fixed
+
+- Fixed the Beta 3 dashboard migration so an existing diagnostics row for the forecast-curve sensor is not mistaken for an already existing ApexCharts forecast chart
+- Fall back to the legacy daylight schedule when the Forecast.Solar config entry exists but has no loaded `runtime_data`, instead of allowing an `AttributeError` to fail the optimizer update
+
 ### Changed
 
 - Dynamic SOC planning now follows the time distribution of the native Forecast.Solar power curve instead of astronomical daylight progress when a native Forecast.Solar source can be resolved

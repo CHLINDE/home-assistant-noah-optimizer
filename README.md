@@ -297,9 +297,11 @@ wirksame Restprognose
 ```
 
 Das Learning selbst läuft immer passiv. Der neue Schalter ist standardmäßig
-**Aus**, sodass sich das Regelverhalten unmittelbar nach dem Update gegenüber
-Version `2.0.0` nicht ändert. Mit **PV-Lerndaten zurücksetzen** kann die
-gespeicherte Lernhistorie gelöscht werden.
+**Aus**. Solange er ausgeschaltet ist, verändert der gelernte PV-Faktor die
+Forecast-Berechnung nicht. Die unabhängig davon mit `2.1.0-beta.2` und
+`2.1.0-beta.3` eingeführten Änderungen am dynamischen SOC-Ladeplan bleiben
+natürlich aktiv, wenn die dynamische SOC-Steuerung eingeschaltet ist. Mit
+**PV-Lerndaten zurücksetzen** kann die gespeicherte Lernhistorie gelöscht werden.
 
 Ein Tag wird unter anderem verworfen, wenn die Integration erst deutlich nach
 Tagesbeginn gestartet wurde, keine ausreichende Prognosereferenz vorliegt,

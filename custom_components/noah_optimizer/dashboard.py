@@ -1108,6 +1108,7 @@ def _migrate_dashboard_to_beta11(
                     continue
                 if any(
                     isinstance(card, dict)
+                    and card.get("type") == "custom:apexcharts-card"
                     and _card_contains_entity(
                         card, replacements["__FORECAST_CURVE__"]
                     )
