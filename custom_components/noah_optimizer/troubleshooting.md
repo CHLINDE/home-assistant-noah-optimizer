@@ -882,3 +882,21 @@ Prüfen:
 
 Die Planstand-Auswahl ist eine Diagnosefunktion. Fehlende Snapshots beeinflussen
 die aktive NOAH-Regelung nicht.
+
+## Historischer SOC-Ladeplan zeigt „Konfigurationsfehler“
+
+Ab `2.1.0-beta.4` wird die gebündelte Karte `noah-soc-history-card.js`
+in Home Assistants Storage-Ressourcenmodus als echte Lovelace-Modulressource
+registriert. Dadurch wird die Karte vor dem Aufbau des Dashboards geladen.
+
+Nach einem Update von einem früheren Beta-4-Stand sollte das Frontend einmal
+neu geladen werden. Falls die Karte weiterhin als `Konfigurationsfehler`
+erscheint:
+
+1. Home Assistant neu starten.
+2. Browserseite vollständig neu laden (`Strg+F5`).
+3. Unter **Einstellungen → Dashboards → Ressourcen** prüfen, ob eine Ressource
+   mit `/noah_optimizer/noah-soc-history-card.js?v=5` vorhanden ist.
+
+Im YAML-Ressourcenmodus verwendet die Integration weiterhin die
+Frontend-Injektion als Kompatibilitäts-Fallback.

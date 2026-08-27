@@ -11,6 +11,9 @@
 
 ### Changed
 
+- The bundled SOC history card is registered as a persistent Lovelace module resource in storage mode to avoid custom-card load-order races
+- Home Assistant `http` and `websocket_api` are explicitly declared for the bundled frontend resource and history WebSocket endpoint
+
 - Dashboard template version increased from 14 to 15
 - The standard dynamic-SOC ApexCharts card is migrated to the date-selectable NOAH history card while user-created charts with a different title are preserved
 - The integration now declares Home Assistant `frontend` and `history` as dependencies for the bundled history card and recorder-backed historical chart

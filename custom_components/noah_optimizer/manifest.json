@@ -12,7 +12,8 @@
     "frontend",
     "history",
     "http",
-    "lovelace"
+    "lovelace",
+    "websocket_api"
   ],
   "documentation": "https://github.com/CHLINDE/home-assistant-noah-optimizer/blob/main/docs/installation.md",
   "integration_type": "device",
