@@ -1,3 +1,32 @@
+## [2.1.0-beta.4] - 2026-08-26
+
+### Added
+
+- Added a bundled date-selectable SOC schedule history card with previous/next day controls, direct date selection and a Today shortcut
+- Added historical display of actual SOC, the dynamic SOC target that was active at the time, and configured target SOC using Home Assistant History/Recorder
+- Added persistent forecast/SOC-plan snapshots for the last 31 rolling days, with up to 48 distinct plan versions per day
+- Added a Plan snapshot selector so an older full-day forecast plan can be overlaid on the recorded SOC history
+- Snapshot metadata includes Forecast.Solar update time, raw/effective forecast curves, effective daily forecast, forecast end SOC, forecast factors and plan-relevant settings
+- Added the bundled `noah-soc-history-card.js`; no separate HACS frontend repository is required
+
+### Changed
+
+- Dashboard template version increased from 14 to 15
+- The standard dynamic-SOC ApexCharts card is migrated to the date-selectable NOAH history card while user-created charts with a different title are preserved
+- The integration now declares Home Assistant `frontend` and `history` as dependencies for the bundled history card and recorder-backed historical chart
+- Forecast/plan snapshots are deduplicated so an unchanged plan is not written repeatedly on every coordinator refresh
+- Date changes during an in-flight history request now invalidate stale requests so rapid previous/next navigation cannot display the wrong day
+- History series are clipped to the selected local day and the saved plan is extended across the full day for a consistent 00:00–24:00 view
+
+### Safety / transparency
+
+- Historical SOC lines come from states actually recorded by Home Assistant; a past day is not recalculated from today's forecast or settings
+- Stored snapshots are diagnostic only and never feed back into active NOAH control
+- Snapshot retention is bounded to 31 days and 48 distinct snapshots per day
+- Existing Beta 3 forecast-curve planning and all active control behavior remain unchanged
+
+---
+
 ## [2.1.0-beta.3] - 2026-08-26
 
 ### Added

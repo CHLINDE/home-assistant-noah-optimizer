@@ -2,7 +2,7 @@
 
 Stable release: `2.0.0`
 
-Current pre-release: `2.1.0-beta.3`
+Current pre-release: `2.1.0-beta.4`
 
 The `2.1.0-beta.1` pre-release adds passive, persistent PV learning. Applying
 the learned correction is opt-in and disabled by default. `2.1.0-beta.2` keeps
@@ -11,6 +11,8 @@ schedule is already satisfied. `2.1.0-beta.3` additionally reads Home
 Assistant's already loaded native Forecast.Solar power curve and shapes the
 dynamic SOC schedule from the time-resolved forecast without making extra
 Forecast.Solar API calls.
+`2.1.0-beta.4` adds date-selectable SOC schedule history and persistent
+forecast/plan snapshots for reviewing older days and individual plan versions.
 
 ## Direct HACS repository button
 
@@ -27,6 +29,33 @@ HACS.
 > Assistant still opens an instance URL containing `:8123`, update the instance
 > URL stored by My Home Assistant in the browser.
 
+
+## Historical SOC schedule in 2.1.0-beta.4
+
+Beta 4 adds a bundled date-selectable dashboard card. The selected day can be
+changed with previous/next controls, a direct date field, or **Today**.
+
+The card reads actual recorded states from Home Assistant History/Recorder:
+
+- actual SOC
+- dynamic SOC target that was active at that time
+- configured target SOC
+
+The optimizer also stores forecast/plan snapshots for 31 rolling days, with up
+to 48 distinct snapshots per day. A snapshot contains the Forecast.Solar update
+time, raw/effective forecast curves, the complete calculated SOC plan, forecast
+factors, planning parameters, and forecast end SOC. Identical plans are not
+stored twice.
+
+For a selected historical day, the **Plan snapshot** selector can overlay a
+specific saved full-day plan on the recorded SOC history. This preserves what
+was predicted at that time instead of reconstructing an old day with today's
+forecast or parameters.
+
+The custom `noah-soc-history-card` is shipped by the integration; no additional
+HACS frontend repository is required. Home Assistant `frontend` and `history` are
+declared as integration dependencies for the bundled card and recorder-backed data. Dashboard template version increases from
+14 to 15.
 
 ## Time-resolved Forecast.Solar schedule in 2.1.0-beta.3
 
@@ -985,6 +1014,15 @@ First stable 2.x release:
 - keeps dashboard template version 11
 - updates release and installation documentation for the stable channel
 
+### 2.1.0-beta.4
+
+- Adds date-selectable SOC schedule history
+- Reads actual SOC, active dynamic target, and target SOC from Home Assistant History/Recorder
+- Stores persistent forecast/SOC-plan snapshots for 31 rolling days
+- Allows selecting a specific saved plan snapshot for a historical day
+- Ships the NOAH SOC history card with the integration
+- Increases dashboard template version from 14 to 15
+
 ### 2.1.0-beta.3
 
 - Reuses the complete Forecast.Solar power curve already loaded by Home Assistant
@@ -1017,12 +1055,11 @@ First stable 2.x release:
 
 ## Current limitations 
 
-The current `2.1.0-beta.3` pre-release does not yet include:
+The current `2.1.0-beta.4` pre-release does not yet include:
 
 - learned household load
 - multiple independent NOAH systems
-- date-selectable historical SOC-plan browsing in the dashboard
-- persistent forecast snapshots for reviewing how an older forecast looked at a specific update time
+- time-of-day or weather-class-specific PV profile learning
 
 Active control directly changes the NOAH output setpoint and should be
 monitored during commissioning and after configuration changes.
