@@ -363,9 +363,12 @@ reserviert.
 
 Ist die dynamische SOC-Steuerung in **Automatik** aktiv und der Speicher liegt
 innerhalb der SOC-Toleranz im oder vor dem dynamischen Ladeplan, wird die
-klassische Prognosemarge nicht erneut als Ladepriorität ausgewertet. Der
-Ladeplan enthält die wirksame Restprognose, erwartete Hauslast und
-Sicherheitsreserve bereits.
+klassische Prognosemarge nicht erneut als Ladepriorität ausgewertet.
+Bei einer nativen Forecast.Solar-Kurve basiert der Ladeplan bereits auf der
+zeitlichen wirksamen PV-Prognose einschließlich Ladeeffizienz und
+Forecast-Energiereserve. Die erwartete Hauslast wird dabei bewusst nicht aus
+der Ladeplan-Kurve abgezogen; sie bleibt separat in Prognosemarge,
+Prognosedeckung und Ausgangsregelung berücksichtigt.
 
 In diesem Zustand gilt für den sicheren Roh-Sollwert:
 
@@ -580,16 +583,17 @@ Für die **SOC-Freigabe** wird eine eigene Wiederauflade-Reserve berechnet.
 Sie unterscheidet sich bewusst von der konservativen Prognose-Anforderung des
 dynamischen Ladeplans.
 
-Der dynamische Ladeplan berücksichtigt weiterhin:
+Seit `2.1.0-beta.3` hängt die Ladeplanberechnung von der verwendeten
+Ladeplanbasis ab:
 
-```text
-PV-Energie für Ladeplan
-= wirksame Restprognose
-  - erwarteter Hausenergiebedarf
-  - zusätzliche Energiereserve
-```
+- **Forecast.Solar-Kurve:** Die vollständige wirksame PV-Kurve wird integriert.
+  Der erwartete Hausenergiebedarf wird nicht vorab abgezogen; berücksichtigt
+  werden unter anderem Ladeeffizienz und Forecast-Energiereserve.
+- **Tageslicht-Fallback:** Der ältere konservative Berechnungsweg verwendet
+  weiterhin die wirksame Restprognose abzüglich erwartetem Hausenergiebedarf
+  und zusätzlicher Energiereserve.
 
-Für die SOC-Freigabe wird dagegen gefragt, wie viel Akkuenergie mit der
+Für die SOC-Freigabe wird unabhängig davon gefragt, wie viel Akkuenergie mit der
 verbleibenden PV-Prognose später wieder aufgefüllt werden könnte, wenn diese
 PV-Energie bei Bedarf für den Akku reserviert wird:
 
@@ -678,8 +682,9 @@ prognosebasierter Wiederauflade-Reserve entlädt.
 
 Wichtig ist die bewusste Prioritätsverschiebung:
 
-- der **dynamische Ladeplan** berücksichtigt weiterhin den erwarteten
-  Hausenergiebedarf
+- bei der nativen **Forecast.Solar-Kurve** wird die erwartete Hauslast nicht aus
+  der Ladeplan-Kurve abgezogen; beim **Tageslicht-Fallback** bleibt die ältere
+  konservative Lastanrechnung bestehen
 - die **Freigabe-Reserve** reserviert die verbleibende PV-Energie bei Bedarf
   für das spätere Wiederaufladen des Akkus
 - dadurch kann zu einem späteren Zeitpunkt Netzbezug für den Hausverbrauch

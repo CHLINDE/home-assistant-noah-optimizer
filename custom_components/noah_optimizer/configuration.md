@@ -178,8 +178,11 @@ dynamische SOC-Steuerung aktiv ist, Forecast-Daten verfügbar sind und der
 Ist-SOC innerhalb der SOC-Toleranz im oder vor dem dynamischen Soll liegt.
 
 Die klassische Prognosemarge wird in diesem Zustand nicht nochmals zur Wahl
-der Ladepriorität herangezogen, weil die dynamische Sollkurve die wirksame
-Restprognose, erwartete Hauslast und Sicherheitsreserve bereits berücksichtigt.
+der Ladepriorität herangezogen. Bei einer nativen Forecast.Solar-Kurve basiert
+die dynamische Sollkurve bereits auf der zeitlichen wirksamen PV-Prognose
+einschließlich Ladeeffizienz und Forecast-Energiereserve. Die erwartete Hauslast
+wird nicht aus der nativen Ladeplan-Kurve abgezogen und bleibt separat in
+Prognosemarge, Prognosedeckung und Ausgangsregelung berücksichtigt.
 
 Der sichere Ausgangs-Rohwert lautet:
 
@@ -450,14 +453,14 @@ Für die SOC-Freigabe wird eine **eigene Wiederauflade-Reserve** berechnet.
 Diese ist absichtlich nicht identisch mit der Prognose-Anforderung des
 dynamischen Ladeplans.
 
-Der dynamische Ladeplan bleibt konservativ und verwendet weiterhin:
+Seit `2.1.0-beta.3` besitzt der dynamische Ladeplan zwei Berechnungswege:
 
-```text
-PV-Energie für Ladeplan
-= wirksame Restprognose
-  - erwarteter Hausenergiebedarf
-  - zusätzliche Energiereserve
-```
+- Bei der nativen **Forecast.Solar-Kurve** wird die vollständige wirksame
+  PV-Kurve integriert. Der erwartete Hausenergiebedarf wird nicht vorab
+  abgezogen; Ladeeffizienz und Forecast-Energiereserve bleiben berücksichtigt.
+- Beim **Tageslicht-Fallback** bleibt die ältere konservative Berechnung aus
+  wirksamer Restprognose abzüglich erwartetem Hausenergiebedarf und zusätzlicher
+  Energiereserve aktiv.
 
 Die SOC-Freigabe beantwortet eine andere Frage: Wie viel SOC darf jetzt
 freigegeben werden, wenn die verbleibende prognostizierte PV-Energie später

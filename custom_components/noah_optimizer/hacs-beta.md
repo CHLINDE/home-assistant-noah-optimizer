@@ -86,11 +86,14 @@ forecast end SOC and schedule basis. Dashboard template version increases from
 
 ## Dynamic SOC schedule hold in 2.1.0-beta.2
 
-With dynamic SOC control enabled, the dynamic target already includes the
-effective remaining forecast, expected household load and forecast safety
-reserve. Before Beta 2, the legacy forecast margin could still select charge
-priority afterwards even when the actual SOC was already within tolerance at
-or ahead of that dynamic target.
+With dynamic SOC control enabled, the dynamic target already represents the
+active charging schedule. With the native Forecast.Solar curve introduced in
+Beta 3, that schedule integrates the complete effective PV profile together
+with charging efficiency and forecast energy reserve; expected household load
+is kept separate in forecast-margin and output-control calculations. Before
+Beta 2, the legacy forecast margin could still select charge priority
+afterwards even when the actual SOC was already within tolerance at or ahead
+of that dynamic target.
 
 Beta 2 adds the internal `soc_hold` mode. While the schedule is satisfied and
 neither SOC release nor PV diversion has higher priority:
@@ -372,15 +375,14 @@ in `automatic` mode.
 
 Predictive SOC release uses a separate forecast-based refill reserve.
 
-The dynamic charging schedule remains conservative and still calculates its
-forecast requirement from:
+Since Beta 3 the dynamic charging schedule has two calculation paths:
 
-```text
-PV energy for charging schedule
-= effective remaining forecast
-  - expected household energy
-  - additional energy reserve
-```
+- **Native Forecast.Solar curve:** the complete effective PV profile is
+  integrated. Expected household energy is not deducted from the schedule
+  curve; charging efficiency and forecast energy reserve remain included.
+- **Daylight fallback:** the legacy conservative path still uses effective
+  remaining forecast minus expected household energy and additional energy
+  reserve.
 
 Predictive release answers a different question: how much battery SOC may be
 released now if later forecast PV can be reserved for restoring that SOC?
@@ -483,13 +485,16 @@ remaining active while the release floor rises or household load falls.
 
 ### Forecast-based safety
 
-The release floor is based on two deliberately different forecast views:
+The release floor is based on two deliberately different forecast views.
+
+For the native Forecast.Solar schedule, the complete effective PV profile is
+integrated without pre-deducting expected household energy; charging efficiency
+and forecast energy reserve shape the resulting SOC plan. The daylight fallback
+retains the legacy conservative subtraction of expected household energy.
+
+The predictive-release refill reserve remains:
 
 ```text
-Dynamic charging schedule:
-remaining forecast - expected household energy - energy reserve
-
-Predictive release refill reserve:
 remaining forecast - energy reserve
 ```
 
@@ -510,6 +515,10 @@ interval and deadband. This prevents a stale high discharge target from
 remaining active while the release floor rises or household load falls.
 
 ## Beta 12 predictive-release correction
+
+The following describes the historical Beta 12 behavior. The native
+Forecast.Solar schedule introduced in Beta 3 later changed the charging-schedule
+allocation as documented above.
 
 Beta 12 corrects the forecast reserve used by predictive SOC release.
 

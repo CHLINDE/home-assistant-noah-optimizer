@@ -17,6 +17,7 @@
 - Forecast/plan snapshots are deduplicated so an unchanged plan is not written repeatedly on every coordinator refresh
 - Date changes during an in-flight history request now invalidate stale requests so rapid previous/next navigation cannot display the wrong day
 - History series are clipped to the selected local day and the saved plan is extended across the full day for a consistent 00:00–24:00 view
+- Current documentation is aligned with the Beta 3 forecast allocation: the native Forecast.Solar SOC schedule integrates the complete effective PV curve, while expected household load remains separate in forecast-margin/output control; the legacy load subtraction applies only to the daylight fallback
 
 ### Safety / transparency
 
