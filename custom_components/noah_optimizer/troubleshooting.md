@@ -17,7 +17,7 @@ Zusätzlich prüfen:
 
 - HACS-Installation vollständig
 - Home Assistant nach dem Update neu gestartet
-- `manifest.json` auf `2.0.0`
+- `manifest.json` auf `2.0.0` (stabil) oder `2.1.0-beta.4` (aktueller Pre-Release)
 - alle Quell-Entitäten vorhanden
 - keine Python-Fehler im Protokoll
 
@@ -142,7 +142,7 @@ bleiben, wenn Forecast.Solar zu dieser Zeit kaum Leistung prognostiziert.
 
 Prüfen:
 
-- tatsächlich `2.1.0-beta.3` installiert
+- tatsächlich `2.1.0-beta.4` installiert
 - Home Assistant nach dem Update vollständig neu gestartet
 - `sun.sun` ist verfügbar
 - `sun.sun` steht tagsüber auf `above_horizon`
@@ -182,10 +182,10 @@ klassifiziert.
 
 Falls weiterhin `Vor Ladeplan` erscheint, prüfen:
 
-- beim aktuellen Pre-Release tatsächlich `2.1.0-beta.3` installiert
+- beim aktuellen Pre-Release tatsächlich `2.1.0-beta.4` installiert
 - Home Assistant nach dem Update vollständig neu gestartet
 - `sun.sun` verfügbar
-- Dashboard-Template-Version 14 wurde übernommen
+- Dashboard-Template-Version 15 wurde übernommen
 - bei stark angepasster Reglerstatus-Karte den Rohzustand des Sensors unter
   **Werkzeuge → Zustände** prüfen
 
@@ -842,3 +842,59 @@ Soll Akkuenergie oberhalb der sicheren Freigabegrenze gezielt für den
 Hausverbrauch genutzt werden, muss weiterhin **Vorausschauende SOC-Freigabe
 aktiv** eingeschaltet sein. SOC-Nachladung und PV-Umlenkung behalten ihre
 vorhandenen Prioritäten.
+
+
+## 34. Historischer SOC-Ladeplan zeigt keine Daten
+
+Ab `2.1.0-beta.4` verwendet die Karte **Historischer SOC-Ladeplan** Home
+Assistants History/Recorder für Ist-SOC, dynamisches Soll und Ziel-SOC.
+
+Prüfen:
+
+- tatsächlich `2.1.0-beta.4` installiert und Home Assistant neu gestartet
+- Dashboard-Template-Version 15 wurde übernommen
+- die Integrationen `frontend` und `history` sind geladen
+- Recorder enthält für den gewählten Tag Zustände der drei SOC-Entitäten
+- der gewählte Tag liegt innerhalb der Aufbewahrungszeit des Recorders
+- Browser beziehungsweise Home-Assistant-App nach dem Update vollständig neu geladen
+
+Bei Tagen, die älter als die Recorder-Aufbewahrungszeit sind, können die
+Verlaufslinien nicht mehr rekonstruiert werden.
+
+## 35. Für einen vergangenen Tag ist kein Planstand auswählbar
+
+Forecast-/Plan-Snapshots werden erst ab `2.1.0-beta.4` gesammelt. Es gibt daher
+keine rückwirkenden Snapshots für Tage vor der Installation dieser Version.
+
+Die Integration hält die Snapshot-Historie rollierend für 31 Tage und maximal
+48 unterschiedliche Planstände je Tag. Ein neuer Snapshot wird nur gespeichert,
+wenn sich die Forecast-/SOC-Plan-Daten oder ein planungsrelevanter Parameter
+tatsächlich ändern. Identische Pläne erzeugen keinen zusätzlichen Eintrag.
+
+Prüfen:
+
+- **Ladeplanbasis** steht auf `Forecast.Solar-Kurve`
+- **PV-Prognosekurve** ist verfügbar
+- **PV-Prognose aktualisiert** enthält einen plausiblen Zeitstempel
+- der ausgewählte Tag liegt nicht mehr als 31 Tage zurück
+
+Die Planstand-Auswahl ist eine Diagnosefunktion. Fehlende Snapshots beeinflussen
+die aktive NOAH-Regelung nicht.
+
+## Historischer SOC-Ladeplan zeigt „Konfigurationsfehler“
+
+Ab `2.1.0-beta.4` wird die gebündelte Karte `noah-soc-history-card.js`
+in Home Assistants Storage-Ressourcenmodus als echte Lovelace-Modulressource
+registriert. Dadurch wird die Karte vor dem Aufbau des Dashboards geladen.
+
+Nach einem Update von einem früheren Beta-4-Stand sollte das Frontend einmal
+neu geladen werden. Falls die Karte weiterhin als `Konfigurationsfehler`
+erscheint:
+
+1. Home Assistant neu starten.
+2. Browserseite vollständig neu laden (`Strg+F5`).
+3. Unter **Einstellungen → Dashboards → Ressourcen** prüfen, ob eine Ressource
+   mit `/noah_optimizer/noah-soc-history-card.js?v=5` vorhanden ist.
+
+Im YAML-Ressourcenmodus verwendet die Integration weiterhin die
+Frontend-Injektion als Kompatibilitäts-Fallback.
