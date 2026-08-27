@@ -11,6 +11,7 @@
   "dependencies": [
     "frontend",
     "history",
+    "http",
     "lovelace"
   ],
   "documentation": "https://github.com/CHLINDE/home-assistant-noah-optimizer/blob/main/docs/installation.md",
