@@ -261,51 +261,29 @@ views:
                   yellow: 200
                   red: 600
 
-          - type: custom:apexcharts-card
+          - type: custom:noah-soc-history-card
             section_mode: true
-            header:
-              show: true
-              title: Dynamic SOC charging schedule
-              show_states: true
-              colorize_states: true
-            graph_span: 24h
-            span:
-              start: day
-            now:
-              show: true
-              label: Now
-            yaxis:
-              - id: soc
-                min: 0
-                max: 100
-                decimals: 0
-            series:
-              - entity: __SOC__
-                name: Actual SOC
-                yaxis_id: soc
-                type: line
-                stroke_width: 2
-                group_by:
-                  duration: 5min
-                  func: avg
-              - entity: __DYNAMIC_SOC_TARGET__
-                name: Dynamic target
-                yaxis_id: soc
-                type: line
-                curve: stepline
-                stroke_width: 3
-                group_by:
-                  duration: 5min
-                  func: avg
-              - entity: __TARGET_SOC__
-                name: Target SOC
-                yaxis_id: soc
-                type: line
-                curve: stepline
-                stroke_width: 1
-                group_by:
-                  duration: 5min
-                  func: avg
+            entry_id: __ENTRY_ID__
+            soc_entity: __SOC__
+            dynamic_target_entity: __DYNAMIC_SOC_TARGET__
+            target_soc_entity: __TARGET_SOC__
+            title: Historical SOC charging schedule
+            labels:
+              previous: Previous day
+              next: Next day
+              today: Today
+              planSnapshot: Plan snapshot
+              noSnapshot: No saved plan
+              actualSoc: Actual SOC
+              dynamicTarget: Dynamic target
+              targetSoc: Target SOC
+              savedPlan: Saved plan
+              loading: Loading history…
+              noData: No history data is available for this day.
+              forecastUpdated: Forecast updated
+              effectiveForecast: Effective forecast
+              plannedEndSoc: Forecast end SOC
+              retention: Plan snapshots are retained for {days} days
 
           - type: custom:apexcharts-card
             section_mode: true

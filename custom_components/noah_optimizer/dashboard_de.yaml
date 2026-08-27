@@ -261,51 +261,29 @@ views:
                   yellow: 200
                   red: 600
 
-          - type: custom:apexcharts-card
+          - type: custom:noah-soc-history-card
             section_mode: true
-            header:
-              show: true
-              title: Dynamischer SOC-Ladeplan
-              show_states: true
-              colorize_states: true
-            graph_span: 24h
-            span:
-              start: day
-            now:
-              show: true
-              label: Jetzt
-            yaxis:
-              - id: soc
-                min: 0
-                max: 100
-                decimals: 0
-            series:
-              - entity: __SOC__
-                name: Ist-SOC
-                yaxis_id: soc
-                type: line
-                stroke_width: 2
-                group_by:
-                  duration: 5min
-                  func: avg
-              - entity: __DYNAMIC_SOC_TARGET__
-                name: Dynamisches Soll
-                yaxis_id: soc
-                type: line
-                curve: stepline
-                stroke_width: 3
-                group_by:
-                  duration: 5min
-                  func: avg
-              - entity: __TARGET_SOC__
-                name: Ziel-SOC
-                yaxis_id: soc
-                type: line
-                curve: stepline
-                stroke_width: 1
-                group_by:
-                  duration: 5min
-                  func: avg
+            entry_id: __ENTRY_ID__
+            soc_entity: __SOC__
+            dynamic_target_entity: __DYNAMIC_SOC_TARGET__
+            target_soc_entity: __TARGET_SOC__
+            title: Historischer SOC-Ladeplan
+            labels:
+              previous: Vorheriger Tag
+              next: Nächster Tag
+              today: Heute
+              planSnapshot: Planstand
+              noSnapshot: Kein gespeicherter Plan
+              actualSoc: Ist-SOC
+              dynamicTarget: Dynamisches Soll
+              targetSoc: Ziel-SOC
+              savedPlan: Gespeicherter Plan
+              loading: Historie wird geladen…
+              noData: Für diesen Tag sind keine Verlaufsdaten vorhanden.
+              forecastUpdated: Forecast aktualisiert
+              effectiveForecast: Wirksame Prognose
+              plannedEndSoc: Prognostizierter End-SOC
+              retention: Plan-Snapshots werden {days} Tage gespeichert
 
           - type: custom:apexcharts-card
             section_mode: true
