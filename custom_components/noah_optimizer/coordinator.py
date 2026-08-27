@@ -127,6 +127,7 @@ from .const import (
     UPDATE_INTERVAL,
 )
 from .forecast_curve import ForecastCurveData, build_forecast_curve, target_after_hours
+from .history import NoahHistoryStore
 from .pv_learning import PvLearning
 
 _LOGGER = logging.getLogger(__name__)
@@ -152,10 +153,12 @@ class NoahOptimizerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._grid_samples: deque[tuple[float, float]] = deque()
         self._last_grid_timestamp: float | None = None
         self.pv_learning = PvLearning(hass, entry.entry_id)
+        self.history = NoahHistoryStore(hass, entry.entry_id)
 
     async def async_initialize(self) -> None:
         """Initialize persistent coordinator helpers."""
         await self.pv_learning.async_load()
+        await self.history.async_load()
 
     async def async_reset_pv_learning(self) -> None:
         """Reset all persistent PV-learning data."""
@@ -163,8 +166,9 @@ class NoahOptimizerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         await self.async_update_from_states()
 
     async def async_shutdown(self) -> None:
-        """Persist PV-learning data before unloading."""
+        """Persist learning and history data before unloading."""
         await self.pv_learning.async_save()
+        await self.history.async_save()
 
     def get_option(self, key: str) -> Any:
         """Return an option or its default value."""
@@ -732,6 +736,29 @@ class NoahOptimizerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             if forecast_curve is not None
             else None
         )
+
+        if forecast_curve is not None:
+            try:
+                await self.history.async_record_forecast_snapshot(
+                    forecast_curve,
+                    forecast_factor=forecast_factor,
+                    pv_learning_factor=pv_learning_factor,
+                    pv_learning_applied=(
+                        pv_learning_apply and pv_learning_ready
+                    ),
+                    effective_factor=effective_forecast_factor,
+                    battery_capacity_kwh=capacity,
+                    efficiency=efficiency,
+                    forecast_safety_kwh=forecast_safety,
+                    min_soc=min_soc,
+                    target_soc=target_soc,
+                )
+            except Exception:  # noqa: BLE001
+                # History is diagnostic only and must never block optimizer
+                # calculation or active control.
+                _LOGGER.exception(
+                    "Could not persist Forecast.Solar plan snapshot"
+                )
 
         actuator_available = self._entity_available(
             self.entry.data[CONF_SYSTEM_OUTPUT_POWER]

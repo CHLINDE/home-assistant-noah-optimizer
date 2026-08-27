@@ -1,7 +1,7 @@
 # Konfiguration
 
 Dieses Dokument beschreibt die HACS-Integration **Growatt NOAH Optimizer**
-für den Pre-Release `2.1.0-beta.3`.
+für den Pre-Release `2.1.0-beta.4`.
 
 `2.1.0-beta.1` ergänzt auf Basis des stabilen Stands `2.0.0` passives,
 persistentes PV-Learning. `2.1.0-beta.2` korrigiert zusätzlich die Automatik
@@ -10,6 +10,8 @@ mehr durch die klassische Prognosemarge erneut in Ladepriorität versetzt.
 `2.1.0-beta.3` verwendet bei einer nativen Forecast.Solar-Quelle zusätzlich
 die vollständige zeitaufgelöste PV-Leistungskurve für den dynamischen SOC-
 Ladeplan und zeigt diese Kurve im Dashboard an.
+`2.1.0-beta.4` ergänzt eine datumsabhängige SOC-Ladeplan-Historie und
+persistente Forecast-/Plan-Snapshots für die letzten 31 Tage.
 
 Die tatsächlichen Entity-IDs können durch Bereichsnamen oder manuelle
 Umbenennungen abweichen. Die Integration und das automatische Dashboard lösen
@@ -176,8 +178,11 @@ dynamische SOC-Steuerung aktiv ist, Forecast-Daten verfügbar sind und der
 Ist-SOC innerhalb der SOC-Toleranz im oder vor dem dynamischen Soll liegt.
 
 Die klassische Prognosemarge wird in diesem Zustand nicht nochmals zur Wahl
-der Ladepriorität herangezogen, weil die dynamische Sollkurve die wirksame
-Restprognose, erwartete Hauslast und Sicherheitsreserve bereits berücksichtigt.
+der Ladepriorität herangezogen. Bei einer nativen Forecast.Solar-Kurve basiert
+die dynamische Sollkurve bereits auf der zeitlichen wirksamen PV-Prognose
+einschließlich Ladeeffizienz und Forecast-Energiereserve. Die erwartete Hauslast
+wird nicht aus der nativen Ladeplan-Kurve abgezogen und bleibt separat in
+Prognosemarge, Prognosedeckung und Ausgangsregelung berücksichtigt.
 
 Der sichere Ausgangs-Rohwert lautet:
 
@@ -448,14 +453,14 @@ Für die SOC-Freigabe wird eine **eigene Wiederauflade-Reserve** berechnet.
 Diese ist absichtlich nicht identisch mit der Prognose-Anforderung des
 dynamischen Ladeplans.
 
-Der dynamische Ladeplan bleibt konservativ und verwendet weiterhin:
+Seit `2.1.0-beta.3` besitzt der dynamische Ladeplan zwei Berechnungswege:
 
-```text
-PV-Energie für Ladeplan
-= wirksame Restprognose
-  - erwarteter Hausenergiebedarf
-  - zusätzliche Energiereserve
-```
+- Bei der nativen **Forecast.Solar-Kurve** wird die vollständige wirksame
+  PV-Kurve integriert. Der erwartete Hausenergiebedarf wird nicht vorab
+  abgezogen; Ladeeffizienz und Forecast-Energiereserve bleiben berücksichtigt.
+- Beim **Tageslicht-Fallback** bleibt die ältere konservative Berechnung aus
+  wirksamer Restprognose abzüglich erwartetem Hausenergiebedarf und zusätzlicher
+  Energiereserve aktiv.
 
 Die SOC-Freigabe beantwortet eine andere Frage: Wie viel SOC darf jetzt
 freigegeben werden, wenn die verbleibende prognostizierte PV-Energie später
@@ -1214,3 +1219,41 @@ neuen Zeilen und ersetzt das übrige gespeicherte Dashboard nicht.
 Reglerstatus-Karten erhalten automatisch die Anzeige für den neuen internen
 Modus `soc_hold` als **SOC-Ladeplan halten** beziehungsweise **Hold SOC
 schedule**. Es werden keine neuen Entitäten benötigt.
+
+## Historische Ladeplanansicht ab 2.1.0-beta.4
+
+Für die Historienansicht ist keine zusätzliche Benutzerkonfiguration nötig.
+Die Integration lädt die Home-Assistant-Komponenten `frontend` und `history` als
+Abhängigkeiten. `history` verwendet den Recorder für die tatsächlich aufgezeichneten
+Zustände; `frontend` stellt die mitgelieferte Historienkarte bereit.
+
+Die mitgelieferte Karte zeigt für das gewählte Datum:
+
+```text
+Ist-SOC
+Dynamisches Soll
+Ziel-SOC
+Gespeicherter Planstand (falls vorhanden)
+```
+
+Der aktuelle Tag ist voreingestellt. Über Vor/Zurück, **Heute** und ein
+Datumsfeld kann der dargestellte Tag gewechselt werden.
+
+### Persistente Plan-Snapshots
+
+Bei einer inhaltlichen Änderung der nativen Forecast.Solar-Kurve oder eines
+planungsrelevanten Parameters speichert der Optimizer einen Snapshot des
+Forecasts und des vollständigen daraus resultierenden SOC-Plans. Identische
+Pläne werden nicht doppelt gespeichert.
+
+Aufbewahrung:
+
+```text
+31 Kalendertage
+maximal 48 unterschiedliche Snapshots je Tag
+```
+
+Die Daten liegen in Home Assistants `.storage` und werden beim Entfernen alter
+Tage rollierend bereinigt. Die Snapshot-Historie wird nicht für die Regelung
+verwendet; sie dient ausschließlich der späteren Nachvollziehbarkeit.
+

@@ -32,7 +32,7 @@ DASHBOARD_ICON = "mdi:home-battery"
 
 DASHBOARD_STORAGE_VERSION = 1
 DASHBOARD_STORAGE_KEY = f"{DOMAIN}.dashboard"
-DASHBOARD_TEMPLATE_VERSION = 14
+DASHBOARD_TEMPLATE_VERSION = 15
 
 DASHBOARD_TEMPLATE_DE = Path(__file__).with_name("dashboard_de.yaml")
 DASHBOARD_TEMPLATE_EN = Path(__file__).with_name("dashboard_en.yaml")
@@ -283,6 +283,7 @@ def _resolve_entities(hass: HomeAssistant, entry: ConfigEntry) -> dict[str, str]
 
         resolved[token] = entity_id
 
+    resolved["__ENTRY_ID__"] = entry.entry_id
     return resolved
 
 
@@ -413,6 +414,19 @@ def _localized_dynamic_labels(hass: HomeAssistant) -> dict[str, str]:
             "actual_soc": "Ist-SOC",
             "target_soc": "Dynamisches Soll",
             "final_target_soc": "Ziel-SOC",
+            "history_chart_title": "Historischer SOC-Ladeplan",
+            "history_previous": "Vorheriger Tag",
+            "history_next": "Nächster Tag",
+            "history_today": "Heute",
+            "history_plan_snapshot": "Planstand",
+            "history_no_snapshot": "Kein gespeicherter Plan",
+            "history_saved_plan": "Gespeicherter Plan",
+            "history_loading": "Historie wird geladen…",
+            "history_no_data": "Für diesen Tag sind keine Verlaufsdaten vorhanden.",
+            "history_forecast_updated": "Forecast aktualisiert",
+            "history_effective_forecast": "Wirksame Prognose",
+            "history_planned_end_soc": "Prognostizierter End-SOC",
+            "history_retention": "Plan-Snapshots werden {days} Tage gespeichert",
         }
 
     return {
@@ -449,6 +463,19 @@ def _localized_dynamic_labels(hass: HomeAssistant) -> dict[str, str]:
         "actual_soc": "Actual SOC",
         "target_soc": "Dynamic target",
         "final_target_soc": "Target SOC",
+        "history_chart_title": "Historical SOC charging schedule",
+        "history_previous": "Previous day",
+        "history_next": "Next day",
+        "history_today": "Today",
+        "history_plan_snapshot": "Plan snapshot",
+        "history_no_snapshot": "No saved plan",
+        "history_saved_plan": "Saved plan",
+        "history_loading": "Loading history…",
+        "history_no_data": "No history data is available for this day.",
+        "history_forecast_updated": "Forecast updated",
+        "history_effective_forecast": "Effective forecast",
+        "history_planned_end_soc": "Forecast end SOC",
+        "history_retention": "Plan snapshots are retained for {days} days",
     }
 
 
@@ -501,6 +528,39 @@ def _forecast_curve_chart(
                 "group_by": {"duration": "5min", "func": "avg"},
             },
         ],
+    }
+
+
+def _history_soc_chart(
+    replacements: dict[str, str],
+    labels: dict[str, str],
+) -> dict[str, Any]:
+    """Return the Beta 4 date-selectable SOC history card."""
+    return {
+        "type": "custom:noah-soc-history-card",
+        "section_mode": True,
+        "entry_id": replacements["__ENTRY_ID__"],
+        "soc_entity": replacements["__SOC__"],
+        "dynamic_target_entity": replacements["__DYNAMIC_SOC_TARGET__"],
+        "target_soc_entity": replacements["__TARGET_SOC__"],
+        "title": labels["history_chart_title"],
+        "labels": {
+            "previous": labels["history_previous"],
+            "next": labels["history_next"],
+            "today": labels["history_today"],
+            "planSnapshot": labels["history_plan_snapshot"],
+            "noSnapshot": labels["history_no_snapshot"],
+            "actualSoc": labels["actual_soc"],
+            "dynamicTarget": labels["target_soc"],
+            "targetSoc": labels["final_target_soc"],
+            "savedPlan": labels["history_saved_plan"],
+            "loading": labels["history_loading"],
+            "noData": labels["history_no_data"],
+            "forecastUpdated": labels["history_forecast_updated"],
+            "effectiveForecast": labels["history_effective_forecast"],
+            "plannedEndSoc": labels["history_planned_end_soc"],
+            "retention": labels["history_retention"],
+        },
     }
 
 
@@ -919,7 +979,7 @@ def _migrate_dashboard_to_beta11(
     config: dict[str, Any],
     replacements: dict[str, str],
 ) -> tuple[dict[str, Any], bool]:
-    """Apply legacy dashboard fixes and migrations through 2.1.0-beta.3."""
+    """Apply legacy dashboard fixes and migrations through 2.1.0-beta.4."""
     migrated = deepcopy(config)
     changed = False
     labels = _localized_dynamic_labels(hass)
@@ -1141,55 +1201,98 @@ def _migrate_dashboard_to_beta11(
                 changed = True
                 break
 
-    # Add one SOC history chart to the section that already contains the
-    # existing SOC/forecast key figures. Do not add a duplicate if the user
-    # already created a chart with the dynamic target entity.
+    # Beta 4: replace the standard dynamic-SOC ApexCharts card with the
+    # date-selectable history card. User-created charts with a different title
+    # are preserved. If no standard card exists, add the history card to the
+    # main SOC/forecast section.
     views = migrated.get("views")
     if isinstance(views, list):
-        for view in views:
-            if not isinstance(view, dict):
-                continue
+        history_exists = any(
+            isinstance(item, dict)
+            and item.get("type") == "custom:noah-soc-history-card"
+            for item in _iter_dicts(migrated)
+        )
 
-            sections = view.get("sections")
-            if not isinstance(sections, list):
-                continue
-
-            for section in sections:
-                if not isinstance(section, dict):
+        if not history_exists:
+            standard_dynamic_titles = {
+                labels["chart_title"],
+                "Dynamischer SOC-Ladeplan",
+                "Dynamic SOC charging schedule",
+            }
+            replaced = False
+            for view in views:
+                if not isinstance(view, dict):
                     continue
-
-                dynamic_chart_exists = any(
-                    isinstance(card, dict)
-                    and card.get("type") == "custom:apexcharts-card"
-                    and _card_contains_entity(
-                        card,
-                        replacements["__DYNAMIC_SOC_TARGET__"],
-                    )
-                    for card in section.get("cards", [])
-                )
-                if dynamic_chart_exists:
+                sections = view.get("sections")
+                if not isinstance(sections, list):
                     continue
+                for section in sections:
+                    if not isinstance(section, dict):
+                        continue
+                    cards = section.get("cards")
+                    if not isinstance(cards, list):
+                        continue
+                    for index, card in enumerate(cards):
+                        if not isinstance(card, dict):
+                            continue
+                        header = card.get("header")
+                        title = (
+                            header.get("title")
+                            if isinstance(header, dict)
+                            else None
+                        )
+                        if (
+                            card.get("type") == "custom:apexcharts-card"
+                            and title in standard_dynamic_titles
+                            and _card_contains_entity(
+                                card, replacements["__DYNAMIC_SOC_TARGET__"]
+                            )
+                            and _card_contains_entity(
+                                card, replacements["__SOC__"]
+                            )
+                        ):
+                            cards[index] = _history_soc_chart(
+                                replacements,
+                                labels,
+                            )
+                            changed = True
+                            replaced = True
+                            break
+                    if replaced:
+                        break
+                if replaced:
+                    break
 
-                if not (
-                    _card_contains_entity(section, replacements["__SOC__"])
-                    and _card_contains_entity(
-                        section,
-                        replacements["__FORECAST_COVERAGE__"],
-                    )
-                ):
-                    continue
-
-                cards = section.get("cards")
-                if not isinstance(cards, list):
-                    continue
-
-                insert_index = min(2, len(cards))
-                cards.insert(
-                    insert_index,
-                    _dynamic_soc_chart(replacements, labels),
-                )
-                changed = True
-                break
+            if not replaced:
+                for view in views:
+                    if not isinstance(view, dict):
+                        continue
+                    sections = view.get("sections")
+                    if not isinstance(sections, list):
+                        continue
+                    for section in sections:
+                        if not isinstance(section, dict):
+                            continue
+                        if not (
+                            _card_contains_entity(section, replacements["__SOC__"])
+                            and _card_contains_entity(
+                                section, replacements["__FORECAST_COVERAGE__"]
+                            )
+                        ):
+                            continue
+                        cards = section.get("cards")
+                        if not isinstance(cards, list):
+                            continue
+                        insert_index = min(2, len(cards))
+                        cards.insert(
+                            insert_index,
+                            _history_soc_chart(replacements, labels),
+                        )
+                        changed = True
+                        replaced = True
+                        break
+                    if replaced:
+                        break
 
     return migrated, changed
 

@@ -9,7 +9,11 @@
   ],
   "config_flow": true,
   "dependencies": [
-    "lovelace"
+    "frontend",
+    "history",
+    "http",
+    "lovelace",
+    "websocket_api"
   ],
   "documentation": "https://github.com/CHLINDE/home-assistant-noah-optimizer/blob/main/docs/installation.md",
   "integration_type": "device",
@@ -17,5 +21,5 @@
   "issue_tracker": "https://github.com/CHLINDE/home-assistant-noah-optimizer/issues",
   "requirements": [],
   "single_config_entry": true,
-  "version": "2.1.0-beta.3"
+  "version": "2.1.0-beta.4"
 }

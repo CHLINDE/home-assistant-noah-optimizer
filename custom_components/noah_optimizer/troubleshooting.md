@@ -547,9 +547,11 @@ vorhanden, ist ein prognosebasierter Mindest-SOC bis zum Ziel-SOC korrekt. Es
 steht dann nach der Sicherheitsreserve keine prognostizierte Energie mehr zur
 Verfügung, um einen jetzt freigegebenen Akkuanteil später wieder aufzuladen.
 
-Wichtig: Der **erwartete Hausenergiebedarf gehört nicht mehr zu dieser
-Fehlerprüfung**. Er beeinflusst weiterhin den dynamischen Ladeplan, aber nicht
-die separate Wiederauflade-Reserve der SOC-Freigabe.
+Wichtig: Der **erwartete Hausenergiebedarf gehört nicht zu dieser
+Fehlerprüfung** und wird auch bei der nativen Forecast.Solar-Kurve nicht aus der
+SOC-Ladeplan-Kurve abgezogen. Er bleibt separat für Prognosemarge,
+Prognosedeckung und Ausgangsregelung relevant. Nur der ältere
+**Tageslicht-Fallback** verwendet weiterhin die konservative Lastanrechnung.
 
 ## 23. Netzbezug trotz ausreichender PV-Leistung und gleichzeitiger Akkuladung
 

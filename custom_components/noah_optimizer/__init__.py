@@ -35,6 +35,11 @@ from .dashboard import (
     async_ensure_dashboard,
     remove_dashboard_panel,
 )
+from .frontend import async_register_history_card, remove_history_card
+from .history import (
+    async_register_history_store,
+    async_unregister_history_store,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -65,6 +70,7 @@ async def async_setup_entry(
 
     coordinator.controller = controller
     entry.runtime_data = coordinator
+    async_register_history_store(hass, entry.entry_id, coordinator.history)
 
     source_entities = [
         entry.data[CONF_GRID_POWER],
@@ -109,6 +115,15 @@ async def async_setup_entry(
     # Resume active control only when the user had explicitly enabled it.
     await controller.async_control_tick()
 
+    # The bundled date-selectable history card is optional and must never
+    # prevent the optimizer itself from loading.
+    try:
+        await async_register_history_card(hass)
+    except Exception:  # noqa: BLE001
+        _LOGGER.exception(
+            "Could not register the NOAH Optimizer history card"
+        )
+
     # The dashboard is optional and must never prevent the optimizer itself
     # from loading.
     try:
@@ -131,14 +146,13 @@ async def async_unload_entry(
 ) -> bool:
     """Unload the Growatt NOAH Optimizer."""
 
-    # Persist the latest PV-learning sample before a controlled reload or
-    # Home Assistant shutdown. This prevents the 15-minute periodic save
-    # interval from making a short restart look like a >10-minute data gap.
+    # Persist the latest PV-learning and plan-history state before a controlled
+    # reload or Home Assistant shutdown.
     try:
         await entry.runtime_data.async_shutdown()
     except Exception:  # noqa: BLE001
         _LOGGER.exception(
-            "Could not persist PV-learning state while unloading"
+            "Could not persist optimizer state while unloading"
         )
 
     unload_ok = (
@@ -152,5 +166,7 @@ async def async_unload_entry(
         remove_dashboard_panel(
             hass
         )
+        remove_history_card(hass)
+        async_unregister_history_store(hass, entry.entry_id)
 
     return unload_ok

@@ -1,7 +1,7 @@
 # Installation
 
 Diese Anleitung beschreibt die Installation und das Update des **Home
-Assistant Growatt NOAH Optimizers** für den Pre-Release `2.1.0-beta.3`.
+Assistant Growatt NOAH Optimizers** für den Pre-Release `2.1.0-beta.4`.
 
 Für neue Installationen wird die HACS-Integration empfohlen.
 
@@ -72,6 +72,9 @@ Danach Browser beziehungsweise Home-Assistant-App vollständig neu laden.
 
 Der Optimizer selbst funktioniert auch ohne diese Karten.
 
+Die historische SOC-Ladeplankarte ab `2.1.0-beta.4` ist Bestandteil der
+Integration und benötigt keine zusätzliche HACS-Karte.
+
 ## 4. Repository in HACS öffnen
 
 Am einfachsten über My Home Assistant:
@@ -99,16 +102,16 @@ Typ:
 Integration
 ```
 
-## 5. Version 2.1.0-beta.3 installieren
+## 5. Version 2.1.0-beta.4 installieren
 
 Zu installierende Version:
 
 ```text
-2.1.0-beta.3
+2.1.0-beta.4
 ```
 
 In HACS müssen für dieses Repository Vorabversionen angezeigt beziehungsweise
-berücksichtigt werden. Danach `2.1.0-beta.3` auswählen und installieren.
+berücksichtigt werden. Danach `2.1.0-beta.4` auswählen und installieren.
 
 Nach der Installation Home Assistant vollständig neu starten.
 
@@ -144,7 +147,7 @@ Standard:
 Ein
 ```
 
-## 7. Update auf 2.1.0-beta.3
+## 7. Update auf 2.1.0-beta.4
 
 Vor dem Update:
 
@@ -157,23 +160,22 @@ Vorausschauende SOC-Freigabe aktiv = Aus
 Nach dem Update ist zusätzlich der neue Schalter **Gelernte PV-Korrektur
 verwenden** standardmäßig aus.
 
-`2.1.0-beta.3` übernimmt PV-Learning und **SOC-Ladeplan halten** aus Beta 1/2
-und ergänzt den zeitaufgelösten Forecast.Solar-Ladeplan. Wenn die ausgewählte
-Restprognose direkt aus der Home-Assistant-Integration Forecast.Solar stammt,
-verwendet der Optimizer deren bereits geladene vollständige Leistungskurve.
-Zusätzliche Forecast.Solar-API-Aufrufe werden nicht ausgeführt.
+`2.1.0-beta.4` übernimmt PV-Learning, **SOC-Ladeplan halten** und den
+zeitaufgelösten Forecast.Solar-Ladeplan aus Beta 1 bis 3. Neu ist die
+datumsabhängige Ladeplan-Historie im Dashboard. Die Integration speichert
+zusätzlich Forecast-/Plan-Snapshots für die letzten 31 Tage.
 
-Der dynamische SOC-Ladeplan folgt damit der erwarteten PV-Erzeugung statt dem
-reinen Tageslichtfortschritt. Als Diagnose kommen **PV-Prognose aktualisiert**,
-**Wirksame Tagesprognose**, **Prognostizierter End-SOC** und **Ladeplanbasis**
-hinzu. Das Dashboard erhält eine eigene PV-Prognosekurve.
+Die Historienkarte wird mit der Integration ausgeliefert. Es muss keine weitere
+HACS-Frontendkarte installiert werden. Die benötigten Home-Assistant-Komponenten
+`frontend` und `history` werden als Abhängigkeiten geladen. History/Recorder liefert
+die historischen Zustände von Ist-SOC, dynamischem Soll und Ziel-SOC.
 
-Danach Version `2.1.0-beta.3` über HACS installieren und Home Assistant
+Danach Version `2.1.0-beta.4` über HACS installieren und Home Assistant
 vollständig neu starten.
 
 ### Update von 2.0.0
 
-`2.1.0-beta.3` übernimmt alle Einstellungen des stabilen Releases `2.0.0`.
+`2.1.0-beta.4` übernimmt alle Einstellungen des stabilen Releases `2.0.0`.
 Enthalten sind das PV-Learning aus Beta 1 sowie der korrigierte dynamische
 Automatikmodus. Neu gegenüber `2.0.0` sind unter anderem:
 
@@ -186,7 +188,9 @@ Automatikmodus. Neu gegenüber `2.0.0` sind unter anderem:
 - zeitaufgelöste Forecast.Solar-Leistungskurve ohne zusätzliche API-Aufrufe
 - Forecast-geformter dynamischer SOC-Ladeplan mit Tageslicht-Fallback
 - neue Forecast-Diagnosewerte und PV-Prognosekarte
-- Dashboard-Template-Version 14
+- historische SOC-Ladeplanansicht mit Datumsauswahl und Planstand-Auswahl
+- persistente Forecast-/Plan-Snapshots für 31 Tage
+- Dashboard-Template-Version 15
 
 Das Learning startet nach dem Neustart automatisch mit der Datensammlung. Die
 gelernte PV-Korrektur ist jedoch standardmäßig ausgeschaltet und kann
@@ -201,13 +205,13 @@ Werten sollte die gelernte Korrektur eingeschaltet werden.
 ### Update von 2.0.0-beta.14
 
 Der stabile Zwischenstand `2.0.0` entspricht funktional `2.0.0-beta.14`.
-`2.1.0-beta.3` baut auf genau diesem Regelstand auf, enthält das PV-Learning
+`2.1.0-beta.4` baut auf genau diesem Regelstand auf, enthält das PV-Learning
 aus Beta 1 und ergänzt außerdem den oben beschriebenen Modus
 **SOC-Ladeplan halten**.
 
 Damit gelten gegenüber Beta 14 zusätzlich die Änderungen aus
 **Update von 2.0.0**: neue PV-Learning-Entitäten, der Opt-in-Schalter, die
-Reset-Schaltfläche, den SOC-Halten-Modus, die zeitaufgelöste Forecast-Kurve und Dashboard-Template-Version 14.
+Reset-Schaltfläche, den SOC-Halten-Modus, die zeitaufgelöste Forecast-Kurve, die historische Ladeplanansicht und Dashboard-Template-Version 15.
 Die gelernte PV-Korrektur verändert die Forecast-Berechnung weiterhin erst
 nach ausdrücklicher Aktivierung; der SOC-Halten-Modus ist davon unabhängig und
 gehört zur dynamischen SOC-Steuerung.
@@ -372,7 +376,7 @@ Das Dashboard wird **nicht vollständig ersetzt**. Eigene Anpassungen bleiben
 bestehen, soweit die bekannten Standardkarten eindeutig erkannt werden.
 
 Bei einer Neuinstallation wird direkt die vollständige aktuelle
-Dashboard-Vorlage mit Template-Version 14 erzeugt.
+Dashboard-Vorlage mit Template-Version 15 erzeugt.
 
 Für `2.1.0-beta.1` steigt die Dashboard-Template-Version von 11 auf 12. Die
 Migration ergänzt die PV-Learning-Diagnosewerte, den neuen Anwendungsschalter
@@ -387,6 +391,11 @@ Für `2.1.0-beta.3` steigt die Dashboard-Template-Version von 13 auf 14. Die
 Migration ergänzt die Karte **PV-Prognose** sowie Forecast-Aktualisierungszeit,
 wirksame Tagesprognose, prognostizierten End-SOC und Ladeplanbasis in den
 Planungsdetails.
+
+Für `2.1.0-beta.4` steigt die Dashboard-Template-Version von 14 auf 15. Die
+Standardkarte **Dynamischer SOC-Ladeplan** wird gezielt durch die neue
+datumsabhängige Historienkarte ersetzt. Benutzerdefinierte ApexCharts-Karten
+mit anderem Titel bleiben erhalten.
 
 ## 9. Erste Prüfung nach dem Update
 

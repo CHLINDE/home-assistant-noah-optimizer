@@ -11,12 +11,16 @@
 
 ### Changed
 
+- The bundled SOC history card is registered as a persistent Lovelace module resource in storage mode to avoid custom-card load-order races
+- Home Assistant `http` and `websocket_api` are explicitly declared for the bundled frontend resource and history WebSocket endpoint
+
 - Dashboard template version increased from 14 to 15
 - The standard dynamic-SOC ApexCharts card is migrated to the date-selectable NOAH history card while user-created charts with a different title are preserved
 - The integration now declares Home Assistant `frontend` and `history` as dependencies for the bundled history card and recorder-backed historical chart
 - Forecast/plan snapshots are deduplicated so an unchanged plan is not written repeatedly on every coordinator refresh
 - Date changes during an in-flight history request now invalidate stale requests so rapid previous/next navigation cannot display the wrong day
 - History series are clipped to the selected local day and the saved plan is extended across the full day for a consistent 00:00–24:00 view
+- Current documentation is aligned with the Beta 3 forecast allocation: the native Forecast.Solar SOC schedule integrates the complete effective PV curve, while expected household load remains separate in forecast-margin/output control; the legacy load subtraction applies only to the daylight fallback
 
 ### Safety / transparency
 
