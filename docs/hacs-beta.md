@@ -1,1076 +1,211 @@
 # HACS Beta / Pre-Release
 
-Stable release: `2.0.0`
+Stable release:
 
-Current pre-release: `2.1.0-beta.4`
+```text
+2.0.0
+```
 
-The `2.1.0-beta.1` pre-release adds passive, persistent PV learning. Applying
-the learned correction is opt-in and disabled by default. `2.1.0-beta.2` keeps
-that learning model unchanged and fixes automatic control when the dynamic SOC
-schedule is already satisfied. `2.1.0-beta.3` additionally reads Home
-Assistant's already loaded native Forecast.Solar power curve and shapes the
-dynamic SOC schedule from the time-resolved forecast without making extra
-Forecast.Solar API calls.
-`2.1.0-beta.4` adds date-selectable SOC schedule history and persistent
-forecast/plan snapshots for reviewing older days and individual plan versions.
+Current pre-release:
+
+```text
+2.1.0-beta.8
+```
 
 ## Direct HACS repository button
 
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=CHLINDE&repository=home-assistant-noah-optimizer&category=integration)
 
-The button uses My Home Assistant to open this custom integration repository in
-HACS.
+Enable pre-release versions in HACS and restart Home Assistant after every
+integration update.
 
-> **Home Assistant 2026.8 and newer:**  
-> Home Assistant OS uses port 80 by default for new installations. Home
-> Assistant Container continues to use port 8123 by default.
->
-> The HACS button itself does not contain the Home Assistant port. If My Home
-> Assistant still opens an instance URL containing `:8123`, update the instance
-> URL stored by My Home Assistant in the browser.
+## 2.1 beta overview
 
+### Beta 1
 
-## Historical SOC schedule in 2.1.0-beta.4
+PV learning:
 
-Beta 4 adds a bundled date-selectable dashboard card. The selected day can be
-changed with previous/next controls, a direct date field, or **Today**.
+- passive learning
+- median of up to seven valid days
+- minimum three days
+- optional application
+- disabled by default
 
-The card reads actual recorded states from Home Assistant History/Recorder:
+### Beta 2
 
-- actual SOC
-- dynamic SOC target that was active at that time
-- configured target SOC
+SOC schedule hold:
 
-The optimizer also stores forecast/plan snapshots for 31 rolling days, with up
-to 48 distinct snapshots per day. A snapshot contains the Forecast.Solar update
-time, raw/effective forecast curves, the complete calculated SOC plan, forecast
-factors, planning parameters, and forecast end SOC. Identical plans are not
-stored twice.
+- prevents unnecessary charge priority once the dynamic plan is satisfied
+- uses current PV for household demand
+- does not intentionally release battery energy
 
-For a selected historical day, the **Plan snapshot** selector can overlay a
-specific saved full-day plan on the recorded SOC history. This preserves what
-was predicted at that time instead of reconstructing an old day with today's
-forecast or parameters.
+### Beta 3
 
-The custom `noah-soc-history-card` is shipped by the integration; no additional
-HACS frontend repository is required. Home Assistant `frontend` and `history` are
-declared as integration dependencies for the bundled card and recorder-backed data. Dashboard template version increases from
-14 to 15.
+Time-resolved Forecast.Solar:
 
-## Time-resolved Forecast.Solar schedule in 2.1.0-beta.3
+- reuses Home Assistant runtime forecast
+- no additional API calls
+- shapes dynamic SOC schedule
+- daylight fallback remains available
 
-When the configured remaining-forecast entity belongs directly to Home
-Assistant's Forecast.Solar integration, the optimizer reuses the complete
-Forecast.Solar power curve already held by that config entry. No additional
-Forecast.Solar API request is made.
+### Beta 4
 
-The effective curve applies the configured forecast safety factor and, when
-enabled and ready, the learned PV factor. The complete effective PV profile is
-integrated for the SOC schedule; expected household load is not subtracted from
-each forecast interval. This allows the controller to reserve forecast PV for
-battery charging when necessary and let the grid cover household demand.
-Charging efficiency and the forecast energy reserve remain part of the plan,
-while expected household load stays in the separate forecast-margin and output
-control calculations.
+Historical SOC schedule:
 
-Actual PV production and actual SOC are not used to reshape the forecast plan
-after the fact. If Forecast.Solar updates its prediction, the plan is
-recalculated from the new forecast. If a native curve is unavailable, the
-legacy daylight-progress schedule remains available as a compatibility
-fallback.
+- date selection
+- Recorder history
+- saved plan snapshots
+- rolling retention
+- bundled frontend card
 
-The dashboard adds a PV forecast chart with raw Forecast.Solar power, effective
-forecast power and actual PV production, plus the forecast update timestamp,
-forecast end SOC and schedule basis. Dashboard template version increases from
-13 to 14.
+### Beta 5 to Beta 7
 
-## Dynamic SOC schedule hold in 2.1.0-beta.2
+Standardized dashboard-series palette.
 
-With dynamic SOC control enabled, the dynamic target already represents the
-active charging schedule. With the native Forecast.Solar curve introduced in
-Beta 3, that schedule integrates the complete effective PV profile together
-with charging efficiency and forecast energy reserve; expected household load
-is kept separate in forecast-margin and output-control calculations. Before
-Beta 2, the legacy forecast margin could still select charge priority
-afterwards even when the actual SOC was already within tolerance at or ahead
-of that dynamic target.
+### Beta 8
 
-Beta 2 adds the internal `soc_hold` mode. While the schedule is satisfied and
-neither SOC release nor PV diversion has higher priority:
+Corrects stale explicit colors in existing stored dashboards.
 
 ```text
-schedule-hold target = min(current PV power, self-consumption target)
+Dashboard template 17 -> 18
 ```
 
-The target is rounded down to the configured command step. This uses available
-PV for household consumption without deliberately requesting battery discharge.
-Predictive SOC release remains the separate opt-in mechanism for intentionally
-using safely releasable battery energy.
+Recognition requires:
 
-The dashboard template version increases from 12 to 13 so existing controller
-status cards receive the localized new mode label automatically.
+- known title
+- expected entity set
+- PV forecast additionally checks known data generators
 
-## PV learning in 2.1.0-beta.1
+Custom ApexCharts remain untouched.
 
-PV learning compares measured NOAH solar production with an early-day
-Forecast.Solar reference. It integrates the configured **NOAH Solar Power**
-source over the day and stores one ratio for each valid completed learning day:
+## Standard palette
 
 ```text
-daily ratio
-= measured PV energy / PV forecast reference
+Blue    #2196F3
+Green   #009B21
+Orange  #FF6A00
+Yellow  #FFD800
+Cyan    #00FFFF
+Violet  #B200FF
 ```
 
-The learned PV factor is the median of up to the latest seven valid daily
-ratios. Individual ratios used for learning are limited to `0.50 ... 1.50`.
-At least three valid learning days are required before the factor is ready.
-
-Learning itself always runs passively. The new switch:
+Controller behavior:
 
 ```text
-Use learned PV correction
+Controller target            Blue
+Actual output                Green
+Self-consumption target      Orange
+Charge-priority target       Yellow
+Required charging power      Cyan
+Dynamic catch-up power       Violet
 ```
 
-is disabled by default. While it is off, the learned PV factor does not modify
-the forecast calculation. Independent dynamic-SOC changes introduced in
-`2.1.0-beta.2` and `2.1.0-beta.3` still apply when dynamic SOC control is
-enabled. When learning is enabled and ready:
+Historical SOC:
 
 ```text
-effective forecast factor
-= forecast safety factor × learned PV factor
-
-effective remaining forecast
-= Forecast.Solar remaining forecast × effective forecast factor
+Actual SOC       Blue
+Dynamic target   Green
+Target SOC       Orange
+Saved plan       Yellow
 ```
 
-The **Reset PV learning data** button clears all persisted learning samples.
-The integration then needs at least three new valid learning days before the
-learned factor can affect the forecast again.
-
-A first partial day started well after sunrise is not learned. Measurement gaps
-longer than 10 minutes are not integrated, and at least two hours of daytime
-observation are required for a valid learning day.
-
-## Dynamic SOC plan
-
-Beta 10 changes the dynamic SOC calculation into a time-based charging
-schedule from sunrise to sunset.
-
-The goal is to answer:
-
-> Where should the battery SOC be at the current point of the daylight period,
-> while still reacting earlier when the remaining PV forecast becomes weak?
-
-### Daylight progress
-
-Between sunrise and sunset, the integration calculates a daylight progress
-factor `p` from `0` to `1`:
+History-card cache:
 
 ```text
-p = elapsed time since sunrise / daylight duration
+v8
 ```
 
-This gives:
+## Dynamic SOC
+
+Fallback:
 
 ```text
-sunrise     p = 0
-midday      p ≈ 0.5
-sunset      p = 1
+p = elapsed daylight / daylight duration
 ```
-
-Outside daylight, the SOC schedule uses `p = 0`.
-
-### Time-based SOC target
-
-The base schedule is:
 
 ```text
 time target
-= minimum SOC
-  + p × (target SOC - minimum SOC)
+= minimum SOC + p × (target SOC - minimum SOC)
 ```
 
-For a minimum SOC of `10%` and a target SOC of `100%`, the base curve is
-approximately:
-
-```text
-sunrise          10.0%
-25% of daylight  32.5%
-50% of daylight  55.0%
-75% of daylight  77.5%
-sunset          100.0%
-```
-
-### Forecast pressure
-
-The remaining PV forecast is still evaluated conservatively:
-
-```text
-PV energy available for battery
-= effective remaining forecast
-  - expected household energy
-  - additional energy reserve
-```
-
-The possible future SOC gain is:
-
-```text
-storable battery energy
-= available PV energy × charging efficiency
-
-possible SOC gain
-= storable battery energy / battery capacity × 100
-```
-
-An internal forecast requirement is then calculated:
-
-```text
-forecast requirement
-= target SOC - possible SOC gain
-```
-
-Beta 8 used this value directly as the dynamic SOC target. With a weak forecast,
-that could force the target to `100%` very early in the day.
-
-Beta 10 uses it only as progressive forecast pressure:
-
-```text
-forecast pressure
-= max(forecast requirement - time target, 0)
-
-dynamic SOC target
-= time target + p × forecast pressure
-```
-
-The final target is clamped between minimum SOC and target SOC.
-
-This means:
-
-- with sufficient remaining PV, the dynamic target follows the time curve
-- with weak remaining PV, the curve rises earlier
-- a weak forecast no longer turns directly into a hard 100% target early in the day
-- the daylight curve reaches target SOC at sunset
-- outside daylight, the dynamic target returns to minimum SOC
-
-### SOC deviation
-
-```text
-SOC deviation = actual SOC - dynamic SOC target
-```
-
-A tolerance of 2 percentage points is used:
-
-```text
-> +2 percentage points = ahead
--2 ... +2             = on_track
-< -2                  = behind
-```
-
-### Dynamic catch-up power
-
-When the battery is behind schedule, the integration calculates the charging
-power required to recover the SOC shortfall within the configured **SOC
-catch-up time**.
-
-Default catch-up time:
-
-```text
-2.0 h
-```
-
-The effective catch-up window is never longer than the remaining time until
-sunset.
-
-Beta 12 corrects the catch-up target for the rising daytime SOC curve. Earlier
-versions calculated the energy needed to reach only the **current** dynamic SOC
-target. Because that target keeps rising during the catch-up interval, the
-battery could remain permanently behind schedule even while catch-up was
-active.
-
-Beta 12 projects daylight progress to the end of the catch-up window and
-evaluates the same dynamic SOC curve at that future point. The current forecast
-requirement is kept for this short projection and is recalculated on every
-coordinator update.
-
-```text
-catch-up target
-= dynamic SOC target at the end of the catch-up window
-
-SOC shortfall
-= max(catch-up target - actual SOC, 0)
-
-required PV energy
-= battery capacity × SOC shortfall / 100 / charging efficiency
-
-dynamic catch-up power
-= required PV energy / catch-up window
-```
-
-Catch-up control still becomes active only when the battery is more than 2
-percentage points behind the **current** dynamic SOC target. The ahead,
-on-track, and behind status therefore remains unchanged.
-
-### Safe opt-in
-
-The switch:
-
-```text
-Dynamic SOC control
-```
-
-is disabled by default for a new setup.
-
-Before updating to the current beta, disable active control and dynamic SOC control:
-
-```text
-Active NOAH control
-Dynamic SOC control
-Predictive SOC release
-```
-
-The new **Use learned PV correction** switch is disabled by default after the
-update.
-
-After the update, the new SOC plan sensors can be observed before control is
-enabled again.
-
-Dynamic SOC control can affect the output target only when:
-
-- optimizer calculation is enabled
-- operating mode is `automatic`
-- dynamic SOC control is enabled
-- forecast data is available
-- it is daytime
-- SOC is above minimum SOC
-- SOC is below target SOC
-- the battery is more than 2 percentage points behind the dynamic SOC target
-
-Manual, self-consumption, and charge-priority modes are not changed by the
-dynamic SOC feature.
-
-When active, the controller mode is:
-
-```text
-soc_catchup
-```
+Native Forecast.Solar source uses the time-resolved curve.
 
 ## Predictive SOC release
 
-Beta 11 adds predictive SOC release for situations where the battery is safely
-ahead of the charging schedule. The goal is to use part of that safe SOC
-surplus for current household demand instead of importing from the grid, while
-preserving enough SOC to remain on track for the evening target.
-
-The feature has a separate switch:
+Separate refill reserve:
 
 ```text
-Predictive SOC release enabled
+effective remaining forecast - additional energy reserve
 ```
 
-It is disabled by default and only operates together with dynamic SOC control
-in `automatic` mode.
+Expected household energy is intentionally not deducted here.
 
-### Forecast-required minimum SOC
-
-Predictive SOC release uses a separate forecast-based refill reserve.
-
-Since Beta 3 the dynamic charging schedule has two calculation paths:
-
-- **Native Forecast.Solar curve:** the complete effective PV profile is
-  integrated. Expected household energy is not deducted from the schedule
-  curve; charging efficiency and forecast energy reserve remain included.
-- **Daylight fallback:** the legacy conservative path still uses effective
-  remaining forecast minus expected household energy and additional energy
-  reserve.
-
-Predictive release answers a different question: how much battery SOC may be
-released now if later forecast PV can be reserved for restoring that SOC?
-
-For the release reserve:
+## PV diversion
 
 ```text
-PV energy available for refilling
-= effective remaining forecast
-  - additional energy reserve
-
-storable refill energy
-= PV energy available for refilling × charging efficiency
-
-possible refill SOC
-= storable refill energy / battery capacity × 100
-
-forecast-required minimum SOC
-= target SOC - possible refill SOC
+diversion power
+= min(grid import, battery charging power)
 ```
 
-The result is clamped between minimum SOC and target SOC.
-
-Expected household energy is intentionally **not deducted from the predictive
-release refill reserve**. If necessary, later household demand may be supplied
-from the grid while remaining forecast PV is used to restore the battery.
-
-This prevents a full battery from being locked at 100% merely because the
-normal forecast margin is negative due to expected household demand.
-
-### SOC release floor
-
-The release floor protects both the active time-based schedule and the
-forecast-required minimum SOC:
+## Controller cadence
 
 ```text
-base release floor
-= max(dynamic SOC target, forecast-required minimum SOC)
-
-SOC release floor
-= min(base release floor + 2 percentage points, 100%)
+evaluation                              15 s
+normal command interval                120 s
+soc_release/pv_redirect increases       30 s
 ```
 
-The extra 2 percentage points use the existing dynamic SOC tolerance as a
-safety buffer.
+## Controller status
 
-### Releasable battery energy
-
-```text
-releasable SOC
-= max(actual SOC - SOC release floor, 0)
-
-releasable battery energy
-= battery capacity × releasable SOC / 100
-```
-
-Only energy above the release floor is considered available for predictive
-release.
-
-### SOC release target
-
-When positive grid import exists, the release target is calculated as:
+Typical raw states:
 
 ```text
-SOC release target
-= current NOAH output + current positive grid import
-```
-
-The target is limited to maximum output power and then processed through the
-normal output step logic.
-
-This aims to reduce current grid import without intentionally requesting
-battery export to the grid. Small temporary deviations around zero can still
-occur because of output step size, measurement delay, and changing household
-load.
-
-### Activation conditions
-
-The `soc_release` controller mode requires all of the following:
-
-- optimizer calculation enabled
-- operating mode `automatic`
-- dynamic SOC control enabled
-- predictive SOC release enabled
-- forecast available
-- daytime
-- actual SOC above the SOC release floor
-- releasable battery energy greater than zero
-- positive grid import
-
-SOC catch-up is evaluated before SOC release. If the forecast later worsens,
-the release floor rises and predictive release stops automatically; dynamic SOC
-control can then switch to `soc_catchup` when charging recovery becomes
-necessary.
-
-If the previous output command was issued in `soc_release` mode and the new
-target must decrease, that reduction bypasses the normal two-minute command
-interval and deadband. This prevents a stale high discharge target from
-remaining active while the release floor rises or household load falls.
-
-### Forecast-based safety
-
-The release floor is based on two deliberately different forecast views.
-
-For the native Forecast.Solar schedule, the complete effective PV profile is
-integrated without pre-deducting expected household energy; charging efficiency
-and forecast energy reserve shape the resulting SOC plan. The daylight fallback
-retains the legacy conservative subtraction of expected household energy.
-
-The predictive-release refill reserve remains:
-
-```text
-remaining forecast - energy reserve
-```
-
-The predictive release calculation assumes that remaining PV may be prioritized
-for restoring released battery SOC. Later household demand can therefore cause
-grid import if the PV energy is needed for battery refilling.
-
-This is intentional: predictive release uses safe battery headroom for current
-household demand and creates capacity for later PV surplus.
-
-The controller does not intentionally discharge below the calculated release
-floor. The calculation is still forecast-based and cannot guarantee the evening
-target if actual PV production is lower than forecast.
-
-If the previous output command was issued in `soc_release` mode and the new
-target must decrease, that reduction bypasses the normal two-minute command
-interval and deadband. This prevents a stale high discharge target from
-remaining active while the release floor rises or household load falls.
-
-## Beta 12 predictive-release correction
-
-The following describes the historical Beta 12 behavior. The native
-Forecast.Solar schedule introduced in Beta 3 later changed the charging-schedule
-allocation as documented above.
-
-Beta 12 corrects the forecast reserve used by predictive SOC release.
-
-Beta 11 reused the same conservative forecast requirement as the dynamic
-charging schedule. That calculation deducted expected household energy and
-could therefore raise the forecast-required minimum SOC to the target SOC even
-when a full battery still had forecast PV available for later refilling.
-
-Beta 12 separates the two forecast views:
-
-```text
-Dynamic charging schedule:
-effective remaining forecast
-- expected household energy
-- additional energy reserve
-
-Predictive release refill reserve:
-effective remaining forecast
-- additional energy reserve
-```
-
-Expected household energy is deliberately not deducted from the predictive
-release refill reserve.
-
-The dynamic charging schedule itself is unchanged.
-
-No new entities or dashboard elements are added in Beta 12, so dashboard
-template version remains `10`.
-
-## Beta 13 faster predictive-release response
-
-Beta 13 changes only the low-level command cadence used while predictive SOC
-release is active. The predictive SOC calculations and release floor remain
-unchanged.
-
-The controller is evaluated every 15 seconds. Normal controller modes keep the
-existing two-minute minimum command interval, while `soc_release` may increase
-the NOAH output target every 30 seconds when a real target change is pending.
-
-During `soc_release`, the effective command deadband is limited to at most
-`25 W`; a smaller configured deadband is preserved. Final command-step rounding
-remains unchanged. Safety-relevant reductions after a SOC-release command still
-bypass the command interval and deadband.
-
-The `rate_limited` controller status is now set only when an actual command is
-required but still has to wait for the applicable minimum interval.
-
-No new entities or dashboard elements are added in Beta 13, so dashboard
-template version remains `10`.
-
-## Beta 14 night status, PV diversion, and controller status
-
-Beta 14 adds a dedicated `night` state to the existing dynamic SOC schedule
-status sensor. During night operation, the sensor no longer reports the
-daytime classifications `ahead`, `on_track`, or `behind` merely because the
-dynamic target has returned to minimum SOC.
-
-```text
-German:  Nachtbetrieb
-English: Night operation
-```
-
-Beta 14 also adds the automatic controller mode `pv_redirect`. It is used when
-the actual SOC is at least at the dynamic SOC target, the battery is still
-charging, and positive grid import exists. The controller only redirects the
-smaller of current grid import and current battery charging power:
-
-```text
-PV diversion power = min(grid import, battery charging power)
-PV diversion target = current NOAH output + PV diversion power
-```
-
-This mode therefore reduces simultaneous battery charging before intentionally
-using battery energy. Its final target is rounded **down** to the configured
-command step so step rounding cannot exceed the safe diversion raw target. If
-no stepped target above the currently measured NOAH output is safely available,
-PV diversion remains inactive for that cycle. Dynamic SOC catch-up still has
-priority when the battery is behind schedule.
-Predictive SOC release can still use additional battery energy when its separate
-release floor permits it.
-
-`pv_redirect` uses the same load-following cadence introduced for SOC release:
-15-second controller evaluation, 30-second minimum interval for target
-increases, a maximum 25 W effective deadband, and immediate required downward
-corrections.
-
-A new enum sensor `Controller status` exposes the low-level controller state.
-Its state translations are provided by the integration instead of a separate
-Jinja lookup table in the dashboard. In particular:
-
-```text
+disabled
+optimizer_disabled
+legacy_controller_active
+critical_data_missing
+actuator_unavailable
+target_unavailable
+rate_limited
 waiting_for_retry
-German:  Warte auf Stellwertübernahme
-English: Waiting for setpoint confirmation
+in_sync
+command_sent
+command_failed
+failsafe
 ```
 
-The raw `control_status` switch attribute remains available for compatibility.
-
-Dashboard template version increases from `10` to `11`. Existing stored
-controller-status cards are migrated selectively to add the night and PV
-diversion states and to display the translated controller-status enum sensor.
-Unrelated dashboard customizations are preserved.
-
-## Automatic dashboard
-
-Starting with `2.0.0-beta.6`, the integration creates a dedicated Lovelace
-dashboard panel named **NOAH Optimizer**.
-
-The panel is shown in the sidebar by default.
-
-For new installations, sidebar visibility can be selected during setup. When
-upgrading from a version that did not yet contain the setting, the missing
-value defaults to enabled.
-
-The dashboard resolves integration entities dynamically through Home
-Assistant's entity registry, so area-based prefixes and user-renamed entity IDs
-do not need to be known in advance.
-
-The dashboard configuration is stored by the integration itself. It is not
-created through a second Home Assistant `DashboardsCollection`.
-
-The initial dashboard language follows the Home Assistant language:
-
-- German -> `dashboard_de.yaml`
-- all other languages -> `dashboard_en.yaml`
-
-### Beta 8 dashboard migration
-
-Beta 8 introduced dashboard template version 8.
-
-Existing Beta 6 and Beta 7 dashboards are migrated selectively rather than
-replaced. The migration can add the dynamic SOC controls and sensors while
-preserving unrelated user changes.
-
-If the exact old Beta 6 battery mapping is still present, it is corrected to
-the Beta 7 mapping during migration.
-
-### Beta 9 dashboard repair
-
-Beta 9 increased the dashboard template version to 9.
-
-Beta 8 contained an error in the targeted migration of an existing controller
-status Markdown card. The generated Jinja expression for the SOC schedule could
-end with only one closing brace and cause:
+## Dashboard migration history
 
 ```text
-TemplateSyntaxError: unexpected '}'
+8   Dynamic SOC
+9   Jinja repair
+10  Predictive SOC release
+11  Night / PV diversion / controller status
+12  PV learning
+13  SOC schedule hold
+14  Forecast.Solar curve
+15  SOC history card
+16  Standard series colors
+17  Final color alignment
+18  Stored-color migration fix
 ```
 
-Beta 9 detects this exact malformed SOC schedule line and repairs it
-automatically.
+## Upgrade test
 
-The repair is intentionally targeted. Other user changes to the dashboard are
-not replaced.
+After Beta 8 restart:
 
-### Beta 10 dashboard behavior
+1. Dashboard loads.
+2. Controller behavior uses six standard colors.
+3. Historical SOC uses blue/green/orange/yellow.
+4. Other standard charts are consistent.
+5. Custom ApexCharts are unchanged.
+6. Optimizer behavior is unchanged.
 
-Beta 10 does not change the dashboard structure.
+## Rollback
 
-Dashboard template version remains:
+Install the previous release through HACS and restart.
 
-```text
-9
-```
+## Legacy YAML
 
-The existing dynamic SOC chart automatically displays the new time-based target
-curve because the same `dynamic_soc_target` sensor is used.
-
-### Beta 11 dashboard migration
-
-Beta 11 adds new release controls and diagnostics, so the dashboard template
-version increases to:
-
-```text
-10
-```
-
-Existing dashboards are migrated selectively. The integration adds the
-predictive release switch, forecast-required minimum SOC, SOC release floor,
-releasable battery energy, SOC release target, and the `soc_release` controller
-mode where the standard cards can be identified. Unrelated user customizations
-are preserved.
-
-### Beta 14 dashboard migration
-
-Beta 14 increases dashboard template version from `10` to `11`. The targeted
-migration extends the SOC schedule status mapping with `night`, adds
-`pv_redirect` to the controller-mode mapping, and replaces the dashboard-local
-controller-status translation table with `state_translated()` on the new
-controller-status enum sensor. Other dashboard content and user customizations
-are preserved.
-
-### 2.1.0-beta.1 dashboard migration
-
-The dashboard template version increases from 11 to 12. Existing dashboards
-are selectively extended with PV-learning diagnostics, the opt-in learning
-switch, and the reset button. Existing user customizations are preserved where
-possible.
-
-### 2.1.0-beta.2 dashboard migration
-
-The dashboard template version increases from 12 to 13. Existing controller
-status cards are selectively extended with the localized `soc_hold` / **Hold
-SOC schedule** mode. Unrelated dashboard customizations are preserved where the
-standard card can be identified reliably.
-
-## Dashboard requirements
-
-The enhanced dashboard requires:
-
-- Power Flow Card Plus
-- ApexCharts Card
-
-These frontend cards are separate HACS dashboard components and are not
-installed automatically.
-
-The optimizer itself continues to operate if they are missing.
-
-## Dashboard energy flow
-
-### Grid
-
-```text
-consumption = grid import
-production  = grid export
-```
-
-### NOAH battery
-
-```text
-consumption = discharging power
-production  = charging power
-```
-
-This results in:
-
-```text
-Charging power    -> energy flows into the NOAH battery
-Discharging power -> energy flows out of the NOAH battery
-```
-
-## Required source entities
-
-The configuration flow asks for:
-
-- signed grid power
-- NOAH Solar Power
-- NOAH Output Power
-- NOAH SOC
-- NOAH Charging Power
-- NOAH Discharge Power
-- Forecast.Solar remaining energy today
-- NOAH System Output Power
-
-The `NOAH System Output Power` entity must be a writable `number` entity.
-
-## Supported units
-
-Power:
-
-- W
-- kW
-
-Energy:
-
-- Wh
-- kWh
-
-Battery state of charge:
-
-- %
-
-## Grid sign
-
-Expected convention:
-
-```text
-positive = grid import
-negative = grid export
-```
-
-If the source sensor uses the opposite convention, enable
-`Invert grid power sign` during setup.
-
-## Active control
-
-Starting with Beta 5, the integration can optionally write the calculated
-output target to the configured NOAH System Output Power entity using Home
-Assistant's `number.set_value` service.
-
-Four switches are available:
-
-- `Optimizer calculation enabled`
-- `Active NOAH control`
-- `Dynamic SOC control`
-- `Predictive SOC release enabled`
-
-The active controller includes:
-
-- configurable command deadband
-- minimum interval between normal output commands
-- retry handling
-- failsafe after prolonged loss of critical data
-- persistent Home Assistant failsafe notification
-- legacy YAML controller interlock
-
-Beta 10 changes the dynamic SOC calculation used in automatic mode.
-
-Beta 11 adds predictive SOC release as an additional automatic controller mode.
-
-The controller in `control.py` is also extended so that downward target
-corrections after a SOC-release command bypass the normal command interval and
-deadband. This allows falling household load or a rising SOC release floor to
-reduce battery discharge without waiting for the normal rate limit.
-
-Predictive SOC release is disabled by default.
-
-## Legacy YAML interlock
-
-The HACS controller checks:
-
-```text
-input_boolean.noah_optimizer_enabled
-```
-
-If the entity exists and is `on`, normal HACS output commands are blocked.
-
-## Failsafe
-
-If critical data remains unavailable for ten minutes while active control is
-enabled:
-
-1. Home Assistant creates a persistent notification.
-2. If the actuator is reachable, the integration attempts to set `0 W`.
-3. If the actuator is unavailable, the notification is still created.
-4. After data recovery, the failsafe state is reset and the notification is
-   dismissed.
-
-## Controller diagnostics
-
-The `Active NOAH control` switch exposes:
-
-- `control_status`
-- `last_command_target`
-- `last_command_at`
-
-Typical `control_status` values:
-
-- `disabled`
-- `optimizer_disabled`
-- `legacy_controller_active`
-- `critical_data_missing`
-- `actuator_unavailable`
-- `target_unavailable`
-- `rate_limited`
-- `waiting_for_retry`
-- `in_sync`
-- `command_sent`
-- `command_failed`
-- `failsafe`
-
-## Version history
-
-### 2.0.0-beta.1
-
-Observation-only foundation with source entity selection, unit normalization,
-basic energy-flow calculations, and availability checks.
-
-### 2.0.0-beta.2
-
-Improved the Home Assistant integration structure and verified the HACS update
-path.
-
-### 2.0.0-beta.3
-
-Ported the legacy YAML optimizer calculation logic to Python. This version was
-still observation-only.
-
-### 2.0.0-beta.4
-
-Fixed the missing `select.py` platform and completed the 1:1 calculation
-comparison against the legacy YAML optimizer.
-
-### 2.0.0-beta.5
-
-Added optional active output control, rate limiting, retry handling, failsafe
-behavior, controller diagnostics, and protection against simultaneous control
-by the legacy YAML optimizer.
-
-### 2.0.0-beta.6
-
-Added the integration-managed Lovelace dashboard panel with dynamic entity
-resolution, German and English templates, energy-flow visualization, charts,
-calibration controls, and diagnostics.
-
-### 2.0.0-beta.7
-
-Corrected the battery energy-flow direction in Power Flow Card Plus and the
-related documentation.
-
-### 2.0.0-beta.8
-
-Added the dynamic SOC plan with:
-
-- dynamic minimum SOC target
-- SOC deviation
-- ahead/on-track/behind status
-- dynamic catch-up charging power
-- configurable SOC catch-up time
-- separate opt-in dynamic SOC switch
-- `soc_catchup` controller mode
-- dynamic SOC dashboard chart and diagnostics
-- selective migration of existing dashboard configurations
-- My Home Assistant HACS repository button in the documentation
-
-### 2.0.0-beta.9
-
-Dashboard migration hotfix:
-
-- fixes the malformed SOC schedule Jinja expression
-- repairs dashboards already migrated by Beta 8
-- increases dashboard template version to 9
-- preserves user dashboard customizations
-- does not change optimizer or active-control logic
-
-### 2.0.0-beta.10
-
-Dynamic SOC load-plan rework:
-
-- adds a time-based SOC curve from sunrise to sunset
-- keeps minimum SOC as the start of the daytime curve
-- reaches target SOC at sunset
-- applies weak remaining PV forecast as progressive forecast pressure
-- prevents weak forecast from forcing an immediate 100% target early in the day
-- keeps existing dashboard entities and template version 9
-- leaves manual, self-consumption, and charge-priority modes unchanged
-
-### 2.0.0-beta.11
-
-Predictive SOC release:
-
-- adds a separate opt-in predictive release switch
-- calculates a forecast-required minimum SOC
-- protects the dynamic schedule and forecast requirement with an SOC release floor
-- exposes releasable battery energy and an SOC release target
-- adds the `soc_release` controller mode
-- uses safe SOC surplus to reduce current grid import
-- does not intentionally request battery export to the grid
-- increases dashboard template version to 10
-- preserves manual, self-consumption, charge-priority, and night behavior
-
-### 2.0.0-beta.12
-
-Predictive SOC release reserve and dynamic catch-up fix:
-
-- separates the predictive-release refill reserve from the dynamic charging schedule
-- no longer deducts expected household demand from the refill reserve
-- prevents a negative normal forecast margin from unnecessarily locking the release floor at 100%
-- keeps the dynamic SOC target curve unchanged
-- projects the catch-up target to the end of the configured catch-up window
-- prevents catch-up charging from permanently trailing a rising SOC target
-- keeps dashboard template version 10
-- adds no new entities, switches, or controller modes
-
-### 2.0.0-beta.13
-
-Faster predictive SOC release response:
-
-- evaluates the active controller every 15 seconds
-- allows SOC-release target increases every 30 seconds
-- keeps the two-minute minimum interval for normal controller modes
-- uses a release-specific effective deadband of at most 25 W
-- keeps immediate safety reductions after SOC release
-- reports `rate_limited` only for an actual pending command
-- keeps dashboard template version 10
-- adds no new entities, switches, or controller modes
-
-### 2.0.0-beta.14
-
-Night status, PV diversion, and centralized controller status:
-
-- adds `night` to the existing SOC schedule enum sensor
-- shows `Nachtbetrieb` in German and `Night operation` in English
-- adds `pv_redirect` / `PV-Umlenkung` / `PV diversion` as an automatic controller mode
-- redirects at most `min(grid import, battery charging power)` when the battery is at or above its dynamic SOC target
-- avoids deliberate battery discharge in PV diversion; predictive SOC release remains responsible for safe battery-energy release
-- rounds PV-diversion targets down to the configured command step so step rounding cannot exceed the safe diversion value
-- applies the 15-/30-second load-following cadence to both SOC release and PV diversion
-- adds a translated `Controller status` enum sensor
-- translates `waiting_for_retry` as `Warte auf Stellwertübernahme` / `Waiting for setpoint confirmation`
-- keeps the raw switch `control_status` attribute for compatibility
-- increases dashboard template version from 10 to 11
-- selectively migrates existing controller-status cards
-
-### 2.0.0
-
-First stable 2.x release:
-
-- promotes the tested `2.0.0-beta.14` feature set to stable `2.0.0`
-- makes no optimizer-calculation or active-control changes compared with Beta 14
-- adds no entities, switches, controller modes, or dashboard migrations
-- keeps dashboard template version 11
-- updates release and installation documentation for the stable channel
-
-### 2.1.0-beta.4
-
-- Adds date-selectable SOC schedule history
-- Reads actual SOC, active dynamic target, and target SOC from Home Assistant History/Recorder
-- Stores persistent forecast/SOC-plan snapshots for 31 rolling days
-- Allows selecting a specific saved plan snapshot for a historical day
-- Ships the NOAH SOC history card with the integration
-- Introduces the history-card migration at dashboard template version 15
-- Increases the current dashboard template version to 17 for fully aligned series colors
-- Adds explicit standard chart colors while preserving already configured custom series colors
-
-### 2.1.0-beta.3
-
-- Reuses the complete Forecast.Solar power curve already loaded by Home Assistant
-- Makes no additional Forecast.Solar API requests
-- Shapes the dynamic SOC schedule from the time-resolved forecast instead of daylight progress when a native curve is available
-- Uses the complete effective PV curve for the battery schedule and keeps expected household load separate in forecast-margin/output control; forecast/learning factor, charge efficiency and forecast reserve remain part of planning
-- Adds forecast update timestamp, effective daily forecast, forecast end SOC and schedule-basis diagnostics
-- Adds a dashboard PV forecast chart
-- Keeps the previous daylight schedule as a fallback
-- Increases dashboard template version from 13 to 14
-
-### 2.1.0-beta.2
-
-- Adds `soc_hold` / `Hold SOC schedule` when the dynamic charging schedule is already satisfied
-- Avoids applying the legacy negative forecast margin as charge priority a second time
-- Uses PV-only schedule holding unless predictive SOC release is explicitly active and safe
-- Rounds the safe schedule-hold target down to the command step
-- Increases dashboard template version from 12 to 13 and migrates the controller-status label
-- Keeps PV-learning behavior unchanged from Beta 1
-
-### 2.1.0-beta.1
-
-- passive persistent PV learning
-- median learning factor from up to seven valid days
-- three valid days required before application
-- optional learned correction multiplied with the existing forecast safety factor
-- new learning diagnostics, readiness sensor, opt-in switch, and reset button
-- dashboard template version 12
-- active control behavior unchanged while learned correction is disabled
-
-## Current limitations 
-
-The current `2.1.0-beta.4` pre-release does not yet include:
-
-- learned household load
-- multiple independent NOAH systems
-- time-of-day or weather-class-specific PV profile learning
-
-Active control directly changes the NOAH output setpoint and should be
-monitored during commissioning and after configuration changes.
+Never control the same NOAH simultaneously from legacy YAML and the HACS
+integration.

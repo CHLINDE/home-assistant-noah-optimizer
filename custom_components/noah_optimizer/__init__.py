@@ -31,7 +31,7 @@ from .control import (
     NoahOptimizerController,
 )
 from .coordinator import NoahOptimizerCoordinator
-from .dashboard import (
+from .dashboard_migration_v18 import (
     async_ensure_dashboard,
     remove_dashboard_panel,
 )
@@ -59,7 +59,6 @@ async def async_setup_entry(
         hass,
         entry,
     )
-
     await coordinator.async_initialize()
     await coordinator.async_config_entry_first_refresh()
 
@@ -67,9 +66,9 @@ async def async_setup_entry(
         hass,
         coordinator,
     )
-
     coordinator.controller = controller
     entry.runtime_data = coordinator
+
     async_register_history_store(hass, entry.entry_id, coordinator.history)
 
     source_entities = [
@@ -98,7 +97,6 @@ async def async_setup_entry(
             _async_source_state_changed,
         )
     )
-
     entry.async_on_unload(
         async_track_time_interval(
             hass,
@@ -131,7 +129,6 @@ async def async_setup_entry(
             hass,
             entry,
         )
-
     except Exception:  # noqa: BLE001
         _LOGGER.exception(
             "Could not create the NOAH Optimizer dashboard"
@@ -163,9 +160,7 @@ async def async_unload_entry(
     )
 
     if unload_ok:
-        remove_dashboard_panel(
-            hass
-        )
+        remove_dashboard_panel(hass)
         remove_history_card(hass)
         async_unregister_history_store(hass, entry.entry_id)
 

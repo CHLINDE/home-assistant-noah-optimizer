@@ -4,7 +4,8 @@ Prognosebasierte Steuerung der Ausgangsleistung eines Growatt NOAH 2000
 über Home Assistant und Noah-MQTT.
 
 > **Status:** Stabiler Release `2.0.0`. Aktueller Pre-Release:
-> `2.1.0-beta.4` mit historischer Ladeplanansicht und persistenten Forecast-/Plan-Snapshots.
+> `2.1.0-beta.8`.
+>
 > Die aktive Steuerung kann die NOAH-Ausgangsleistung verändern. Vor der
 > Aktivierung sollten Quellwerte, Netzvorzeichen und Stellgröße geprüft werden.
 
@@ -18,13 +19,15 @@ Prognosebasierte Steuerung der Ausgangsleistung eines Growatt NOAH 2000
 - Nachtentladung bis zu einem Mindest-SOC ermöglichen
 - Forecast.Solar in die Ladeplanung einbeziehen
 - dynamischen SOC-Ladeplan aus der zeitaufgelösten Forecast.Solar-Kurve ableiten
-- systematische Abweichungen zwischen Forecast.Solar und realem PV-Ertrag automatisch lernen
-- Regelzustand, Prognose und Energiefluss in einem Dashboard darstellen
-- vergangene SOC-Ladepläne mit Ist-SOC, dynamischem Soll und Ziel-SOC nachvollziehen
+- systematische Abweichungen zwischen Forecast.Solar und realem PV-Ertrag lernen
+- einen erfüllten SOC-Ladeplan halten, ohne unnötig Ladepriorität auszulösen
+- sicheren SOC-Vorsprung kontrolliert für den Hausverbrauch freigeben
+- gleichzeitig vorhandene Akkuladung bei Netzbezug zum Haus umlenken
+- Regelzustand, Prognose und Energiefluss im Dashboard darstellen
+- historische SOC-Ladepläne und gespeicherte Forecast-Stände nachvollziehen
+- konsistente Farben in allen NOAH-Standarddiagrammen verwenden
 
 ## HACS-Integration
-
-Eine HACS-kompatible Custom Integration ist verfügbar.
 
 Aktuelle stabile Version:
 
@@ -32,107 +35,126 @@ Aktuelle stabile Version:
 2.0.0
 ```
 
-Version `2.0.0` übernimmt den Funktionsstand von `2.0.0-beta.14` unverändert.
-Gegenüber Beta 14 wurden keine Berechnungs- oder Regelalgorithmen geändert;
-nur Versionierung und Release-Dokumentation wurden auf den stabilen Stand
-umgestellt.
-
 Aktueller Pre-Release:
 
 ```text
-2.1.0-beta.4
+2.1.0-beta.8
 ```
 
-`2.1.0-beta.1` ergänzt ein zunächst passiv arbeitendes **PV-Learning**. Es
-vergleicht den gemessenen PV-Tagesertrag mit Forecast.Solar, bildet aus bis zu
-sieben gültigen Tagen einen robusten Lernfaktor und kann diesen optional auf
-die bestehende Restprognose anwenden. Die Anwendung ist nach dem Update
-standardmäßig ausgeschaltet.
+### 2.1.0-beta.1 – PV-Learning
 
-`2.1.0-beta.2` korrigiert zusätzlich die Automatik bei aktivem dynamischem
-SOC-Ladeplan. Liegt der Ist-SOC im oder über dem dynamischen Soll, wird die
-alte Prognosemarge nicht nochmals als Ladepriorität ausgewertet. Der neue
-interne Reglermodus **SOC-Ladeplan halten** nutzt die aktuell verfügbare
+PV-Learning arbeitet zunächst passiv. Die Integration vergleicht den
+gemessenen PV-Tagesertrag mit der Forecast.Solar-Prognosereferenz.
+
+Für einen gültigen Lerntag wird näherungsweise gebildet:
+
+```text
+Tagesverhältnis
+= gemessene PV-Energie / PV-Prognosereferenz
+```
+
+Der PV-Lernfaktor ist der Median der letzten maximal sieben gültigen
+Tagesverhältnisse. Ein Tageswert wird auf einen plausiblen Bereich begrenzt,
+damit einzelne Ausreißer das Ergebnis nicht dominieren.
+
+Mindestens drei gültige Lerntage sind erforderlich, bevor der Faktor
+angewendet werden kann.
+
+Ohne angewendetes Learning:
+
+```text
+wirksamer Prognosefaktor
+= Prognose-Sicherheitsfaktor
+```
+
+Bei bereitem und aktiviertem Learning:
+
+```text
+wirksamer Prognosefaktor
+= Prognose-Sicherheitsfaktor × PV-Lernfaktor
+```
+
+Die Anwendung ist standardmäßig ausgeschaltet.
+
+### 2.1.0-beta.2 – SOC-Ladeplan halten
+
+Ist der dynamische SOC-Ladeplan erfüllt, wird die alte Prognosemarge nicht
+nochmals als Grund für eine unnötige Ladepriorität ausgewertet.
+
+Der neue interne Modus **SOC-Ladeplan halten** verwendet die aktuelle
 PV-Leistung für den Hausverbrauch, ohne absichtlich Akkuenergie freizugeben.
+
+Näherung:
+
+```text
+SOC-Halten-Soll
+= min(aktuelle PV-Leistung, Eigenverbrauchs-Soll)
+```
+
+Der Wert wird auf das Stellgrößenraster abgerundet.
+
 Eine bewusste Akkuentladung bleibt Aufgabe der optionalen SOC-Freigabe.
 
-`2.1.0-beta.3` ersetzt bei einer nativen Forecast.Solar-Quelle die bisherige
-zeitbasierte SOC-Sollkurve durch einen **zeitaufgelösten PV-Ladeplan**. Die
-Integration verwendet die bereits von Home Assistant geladene Forecast.Solar-
-Leistungskurve und erzeugt daraus – unter Berücksichtigung von Prognosefaktor,
-optionalem PV-Lernfaktor, Ladeeffizienz und Energiereserve – den dynamischen
-SOC-Verlauf. Die erwartete Hauslast bleibt separat in Prognosemarge und
-Ausgangsregelung berücksichtigt. Es erfolgen keine zusätzlichen Forecast.Solar-API-
-Aufrufe. Das Dashboard zeigt Forecast.Solar, wirksame Prognose und reale PV-
-Leistung einschließlich des Aktualisierungszeitpunkts. Ist keine native
-Forecast.Solar-Kurve verfügbar, bleibt der bisherige Tageslicht-Ladeplan als
-Fallback aktiv.
+### 2.1.0-beta.3 – zeitaufgelöste Forecast.Solar-Kurve
 
-`2.1.0-beta.4` ergänzt eine **datumsabhängige Ladeplan-Historie**. Im Dashboard
-kann zwischen Tagen zurück- und vorgeblättert oder ein Datum direkt gewählt
-werden. Angezeigt werden Ist-SOC, tatsächlich aktives dynamisches Soll und
-Ziel-SOC aus Home Assistants Recorder. Zusätzlich speichert die Integration
-bis zu 31 Tage lang Forecast-/Ladeplan-Snapshots. Für einen vergangenen Tag
-kann dadurch ein konkreter Planstand ausgewählt und mit dem realen Verlauf
-verglichen werden.
+Wenn die konfigurierte Restprognose direkt zu Forecast.Solar gehört, verwendet
+der Optimizer die bereits von Home Assistant geladene zeitaufgelöste
+Leistungskurve.
 
-Ab Beta 5 kann die Integration den berechneten Sollwert optional aktiv an
-`NOAH System Output Power` übertragen.
+Es werden keine zusätzlichen Forecast.Solar-API-Aufrufe erzeugt.
 
-Ab Beta 6 wird zusätzlich ein eigenes Lovelace-Dashboard erzeugt.
+Die wirksame Kurve berücksichtigt:
 
-Beta 7 korrigiert die Batterie-Flussrichtung im Dashboard.
+- Prognose-Sicherheitsfaktor
+- optionalen PV-Lernfaktor
+- Ladewirkungsgrad
+- zusätzliche Energiereserve
+- zeitliche Verteilung der erwarteten PV-Leistung
 
-Beta 8 ergänzt einen dynamischen SOC-Ladeplan. Die neue Regelungsfunktion ist
-nach dem Update standardmäßig ausgeschaltet und kann zunächst rein beobachtet
-werden.
+Die erwartete Hauslast bleibt separat Bestandteil von Prognosemarge und
+Ausgangsregelung. Sie wird nicht aus jedem einzelnen Forecast-Intervall
+herausgerechnet.
 
-Beta 9 behebt einen Fehler in der Dashboard-Migration von Beta 8. Bei bereits
-migrierten Installationen konnte die Karte **Reglerstatus** wegen eines
-fehlerhaften Jinja-Ausdrucks mit `TemplateSyntaxError: unexpected '}'`
-ausfallen. Beta 9 repariert betroffene gespeicherte Dashboards automatisch,
-ohne Benutzeranpassungen am übrigen Dashboard zu ersetzen.
+Wenn keine native Forecast.Solar-Kurve sicher aufgelöst werden kann, bleibt der
+Tageslicht-Ladeplan als Fallback aktiv.
 
-Beta 10 überarbeitet den dynamischen SOC-Ladeplan. Das dynamische Soll folgt
-nun einer zeitbasierten Kurve von Mindest-SOC bei Sonnenaufgang bis Ziel-SOC
-bei Sonnenuntergang. Eine knappe PV-Restprognose hebt diese Kurve progressiv
-an, ohne das Soll bereits früh am Tag hart auf 100 % zu setzen.
+### 2.1.0-beta.4 – historische Ladeplanansicht
 
-Beta 11 ergänzt eine **vorausschauende SOC-Freigabe**. Liegt der Speicher
-sicher über dem aktuellen Ladeplan und über dem prognosebasierten Mindest-SOC
-für eine spätere Wiederaufladung, darf dieser SOC-Vorsprung für den
-Hausverbrauch genutzt werden. Dabei kann verbleibende PV-Energie später für
-das Wiederaufladen des Akkus reserviert werden. Dadurch wird Netzbezug
-reduziert und gleichzeitig wieder Platz für späteren PV-Überschuss geschaffen.
-Die neue Funktion ist standardmäßig ausgeschaltet.
+Die Integration liefert eine eigene historische SOC-Karte.
 
-Beta 12 korrigiert die Berechnung der **prognosebasierten Wiederauflade-Reserve**
-für die SOC-Freigabe. Der erwartete Hausenergiebedarf wird für diese separate
-Freigabe-Reserve nicht mehr von der Restprognose abgezogen. Dadurch kann ein
-bereits voller Akku bei vorhandenem Netzbezug kontrolliert Energie freigeben,
-wenn noch genügend PV-Energie für eine spätere Wiederaufladung prognostiziert
-ist. Zusätzlich berücksichtigt die SOC-Nachladung jetzt, dass das dynamische
-SOC-Soll während der Nachholzeit weiter ansteigt. Die Sollkurve selbst bleibt
-unverändert.
+Möglichkeiten:
 
-Beta 13 beschleunigt die **Lastnachführung während der SOC-Freigabe**. Die
-Regellogik wird alle 15 Sekunden ausgewertet. Während `SOC-Freigabe` dürfen
-erforderliche Sollwerterhöhungen im Abstand von 30 Sekunden geschrieben
-werden; normale Betriebsarten behalten den konservativen Mindestabstand von
-zwei Minuten. Sicherheitsrelevante Reduzierungen nach einer SOC-Freigabe
-bleiben weiterhin sofort möglich.
+- vorheriger Tag
+- nächster Tag
+- Heute
+- direkte Datumsauswahl
+- Ist-SOC aus Home Assistants Recorder
+- tatsächlich aktives dynamisches SOC-Soll
+- Ziel-SOC
+- gespeicherte Forecast-/Ladeplan-Snapshots
+- Auswahl eines konkreten historischen Planstands
 
-Beta 14 bündelt drei Korrekturen und eine Diagnoseverbesserung. Der
-**SOC-Ladeplan** erhält nachts den eindeutigen Status `Nachtbetrieb`. Zusätzlich
-führt die Automatik die neue **PV-Umlenkung** ein: Liegt der Ist-SOC mindestens
-am dynamischen Soll, während der Akku gleichzeitig lädt und Netzbezug besteht,
-wird nur der gleichzeitig vorhandene Ladestrom zum Haus umgelenkt. Dadurch soll
-kein Netzstrom mehr bezogen werden, nur um den Akku stärker zu laden; eine
-gezielte Akkuentladung ist für diese Funktion nicht erforderlich. Außerdem gibt
-es jetzt einen eigenen Enum-Sensor **Controllerstatus** mit zentralen deutschen
-und englischen Übersetzungen. `waiting_for_retry` wird dabei als **Warte auf
-Stellwertübernahme** beziehungsweise **Waiting for setpoint confirmation**
-angezeigt.
+Forecast-/Plan-Snapshots werden für bis zu 31 Tage gespeichert.
+
+Die historische Darstellung dient ausschließlich der Diagnose und greift nicht
+in die aktive Regelung ein.
+
+### 2.1.0-beta.5 bis beta.7 – Serienfarben
+
+Die Dashboard-Serienfarben wurden schrittweise auf eine feste Palette
+vereinheitlicht.
+
+Beta 7 schließt die noch abweichenden Diagramme ab, insbesondere
+**Reglerverhalten** und den historischen SOC-Ladeplan.
+
+### 2.1.0-beta.8 – Farbmigration
+
+Beta 8 behebt den Upgrade-Fall, bei dem ein bestehendes gespeichertes
+Dashboard trotz korrekter neuer Vorlagen noch alte explizite Serienfarben
+enthielt.
+
+Die Dashboard-Template-Version steigt auf 18. Eigene ApexCharts bleiben
+unangetastet, sofern sie nicht eindeutig als NOAH-Standardchart erkannt werden.
 
 ## Voraussetzungen
 
@@ -153,25 +175,20 @@ Für das erweiterte Dashboard zusätzlich:
 Die beiden Custom Cards werden nicht automatisch installiert. Der Optimizer
 selbst funktioniert auch ohne sie.
 
+Die historische SOC-Karte wird mit der Integration ausgeliefert.
+
 ## Installation über HACS
 
 ### Direkt in HACS öffnen
 
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=CHLINDE&repository=home-assistant-noah-optimizer&category=integration)
 
-Der Button öffnet das Repository direkt in HACS über **My Home Assistant**.
-
 > **Hinweis zu Home Assistant 2026.8 und neuer:**  
 > Home Assistant OS verwendet bei neuen Installationen standardmäßig Port 80
 > statt Port 8123. Home Assistant Container verwendet weiterhin standardmäßig
-> Port 8123. Der HACS-Link selbst enthält keinen Home-Assistant-Port.
->
-> Falls My Home Assistant noch eine Adresse mit `:8123` öffnet, muss dort die
-> im Browser gespeicherte Instanz-URL auf die tatsächlich verwendete
-> Home-Assistant-Adresse angepasst werden.
+> Port 8123.
 
-Alternativ kann das Repository als benutzerdefiniertes Repository eingetragen
-werden:
+Alternativ:
 
 ```text
 https://github.com/CHLINDE/home-assistant-noah-optimizer
@@ -183,9 +200,12 @@ Typ:
 Integration
 ```
 
-Danach **Growatt NOAH Optimizer** installieren und Home Assistant neu starten.
+Für `2.1.0-beta.8` müssen in HACS Vorabversionen für dieses Repository
+angezeigt werden.
 
-Die vollständige Anleitung steht unter:
+Nach Installation oder Update Home Assistant vollständig neu starten.
+
+Ausführliche Dokumentation:
 
 - [Installation](docs/installation.md)
 - [Konfiguration](docs/configuration.md)
@@ -220,8 +240,7 @@ positiv = Netzbezug
 negativ = Netzeinspeisung
 ```
 
-Bei umgekehrter Konvention kann während der Einrichtung
-**Netzvorzeichen umkehren** aktiviert werden.
+Bei umgekehrter Konvention kann **Netzvorzeichen umkehren** aktiviert werden.
 
 ## Optimizer-Berechnung
 
@@ -235,14 +254,15 @@ Die Integration berechnet unter anderem:
 - verfügbare Akkuenergie
 - benötigte Ladeenergie
 - wirksame PV-Restprognose
-- vollständige Forecast.Solar-Leistungskurve für den aktuellen Tag
+- vollständige Forecast.Solar-Leistungskurve
 - Zeitpunkt der letzten Forecast-Aktualisierung
-- wirksame Tagesprognose und prognostizierten End-SOC
-- Ladeplanbasis (Forecast.Solar-Kurve oder Tageslicht-Fallback)
-- PV-Prognosereferenz des aktuellen Tages
-- gemessene PV-Energie des aktuellen Tages
-- PV-Lernfaktor aus bis zu sieben gültigen Lerntagen
-- wirksamen Prognosefaktor aus Sicherheits- und optionalem Lernfaktor
+- wirksame Tagesprognose
+- prognostizierten End-SOC
+- Ladeplanbasis
+- PV-Prognosereferenz
+- gemessene PV-Energie
+- PV-Lernfaktor
+- wirksamen Prognosefaktor
 - Bereitschaftsstatus des PV-Learnings
 - erwarteten Hausenergiebedarf
 - Prognosemarge
@@ -252,7 +272,7 @@ Die Integration berechnet unter anderem:
 - Eigenverbrauch-Sollwert
 - Ladeprioritäts-Sollwert
 - dynamisches SOC-Soll
-- SOC-Abweichung zum dynamischen Ladeplan
+- SOC-Abweichung
 - dynamisch erforderliche Nachladeleistung
 - prognosebasierten Mindest-SOC
 - SOC-Freigabegrenze
@@ -262,69 +282,7 @@ Die Integration berechnet unter anderem:
 - Controllerstatus
 - endgültigen Ausgangssollwert
 
-Die ursprüngliche Berechnungslogik wurde in Beta 4 gegen den bisherigen
-YAML-Optimizer verglichen. Bei identischen Einstellungen stimmten die
-relevanten Berechnungsergebnisse, der Reglermodus und der Ausgangssollwert mit
-der YAML-Version überein.
-
-## PV-Learning ab 2.1.0-beta.1
-
-PV-Learning gleicht systematische Unterschiede zwischen der Forecast.Solar-
-Prognose und dem tatsächlich vom NOAH gemessenen PV-Ertrag aus. Es benötigt
-keine zusätzliche Quellentität. Verwendet werden die bereits konfigurierte
-**NOAH Solar Power**-Entität, die **Forecast.Solar Restprognose heute** und die
-Sun-Integration.
-
-Die Integration integriert die PV-Leistung über den Tag und bildet für jeden
-gültigen Lerntag:
-
-```text
-Tagesverhältnis
-= gemessene PV-Energie / PV-Prognosereferenz
-```
-
-Der **PV-Lernfaktor** ist der Median der letzten maximal sieben gültigen
-Tagesverhältnisse. Ein Tageswert wird für das Learning auf `0,50 ... 1,50`
-begrenzt, damit einzelne Ausreißer das Ergebnis nicht übermäßig verändern.
-Mindestens drei gültige Lerntage sind erforderlich, bevor der Lernfaktor auf
-die Regelung angewendet werden kann.
-
-Ohne angewendetes PV-Learning gilt unverändert:
-
-```text
-wirksamer Prognosefaktor
-= Prognose-Sicherheitsfaktor
-```
-
-Ist PV-Learning bereit und **Gelernte PV-Korrektur verwenden** eingeschaltet:
-
-```text
-wirksamer Prognosefaktor
-= Prognose-Sicherheitsfaktor × PV-Lernfaktor
-
-wirksame Restprognose
-= Forecast.Solar Restprognose × wirksamer Prognosefaktor
-```
-
-Das Learning selbst läuft immer passiv. Der neue Schalter ist standardmäßig
-**Aus**. Solange er ausgeschaltet ist, verändert der gelernte PV-Faktor die
-Forecast-Berechnung nicht. Die unabhängig davon mit `2.1.0-beta.2` und
-`2.1.0-beta.3` eingeführten Änderungen am dynamischen SOC-Ladeplan bleiben
-natürlich aktiv, wenn die dynamische SOC-Steuerung eingeschaltet ist. Mit
-**PV-Lerndaten zurücksetzen** kann die gespeicherte Lernhistorie gelöscht werden.
-
-Ein Tag wird unter anderem verworfen, wenn die Integration erst deutlich nach
-Tagesbeginn gestartet wurde, keine ausreichende Prognosereferenz vorliegt,
-weniger als zwei Stunden gültige Tagesdaten beobachtet wurden oder der Tag nicht
-bis mindestens 85 % des Tageslichtfensters verfolgt werden konnte. Eine
-Messlücke von mehr als zehn Minuten, die die Tagesbeobachtung berührt, macht den
-gesamten Lerntag ungültig, damit fehlende PV-Produktion nicht als zu geringer
-Tagesertrag angelernt wird. Nach begonnener Tagesbeobachtung wird nachts keine
-neue Prognosereferenz mehr übernommen.
-
 ## Betriebsarten
-
-Der Optimizer unterstützt:
 
 ```text
 Automatik
@@ -335,19 +293,21 @@ Manuell
 
 ### Automatik
 
-Die Betriebsart wird abhängig von unter anderem SOC, Ziel-SOC, Mindest-SOC,
-Restprognose, Prognosemarge, erwarteter Hauslast, Netzleistung und verbleibender
-Zeit bis Sonnenuntergang automatisch gewählt.
+Abhängig von Situation und freigeschalteten Funktionen sind unter anderem
+möglich:
 
-Ist zusätzlich **Dynamische SOC-Steuerung aktiv** eingeschaltet, kann die
-Automatik den Reglermodus **SOC-Nachladung** verwenden. Ist außerdem die
-**Vorausschauende SOC-Freigabe** aktiviert und ausreichend sicherer
-SOC-Vorsprung vorhanden, kann der Reglermodus **SOC-Freigabe** verwendet
-werden. Ab Beta 14 kann die Automatik außerdem **PV-Umlenkung** verwenden,
-wenn der Akku mindestens am dynamischen SOC-Soll liegt, gleichzeitig geladen
-wird und dennoch Netzbezug besteht. Ab `2.1.0-beta.2` wird bei erfülltem
-dynamischem Ladeplan andernfalls **SOC-Ladeplan halten** verwendet, statt die
-alte Prognosemarge nochmals als Ladepriorität auszuwerten.
+```text
+Mindest-SOC
+Eigenverbrauch
+Ladepriorität
+SOC-Nachladung
+SOC-Ladeplan halten
+SOC-Freigabe
+PV-Umlenkung
+Nachtbetrieb
+Ziel-SOC erreicht
+Konservativ ohne Prognose
+```
 
 ### Eigenverbrauch
 
@@ -359,801 +319,493 @@ wird.
 Ein Teil der verfügbaren PV-Leistung wird für das Erreichen des Ziel-SOC
 reserviert.
 
-### SOC-Ladeplan halten ab 2.1.0-beta.2
-
-Ist die dynamische SOC-Steuerung in **Automatik** aktiv und der Speicher liegt
-innerhalb der SOC-Toleranz im oder vor dem dynamischen Ladeplan, wird die
-klassische Prognosemarge nicht erneut als Ladepriorität ausgewertet.
-Bei einer nativen Forecast.Solar-Kurve basiert der Ladeplan bereits auf der
-zeitlichen wirksamen PV-Prognose einschließlich Ladeeffizienz und
-Forecast-Energiereserve. Die erwartete Hauslast wird dabei bewusst nicht aus
-der Ladeplan-Kurve abgezogen; sie bleibt separat in Prognosemarge,
-Prognosedeckung und Ausgangsregelung berücksichtigt.
-
-In diesem Zustand gilt für den sicheren Roh-Sollwert:
-
-```text
-SOC-Halten-Soll = min(aktuelle PV-Leistung, Eigenverbrauchs-Soll)
-```
-
-Der Sollwert wird auf das Stellgrößenraster **abgerundet**, damit durch das
-Rastern keine absichtliche Akkuentladung entsteht. Ist die vorausschauende
-SOC-Freigabe aktiv und sicher möglich, hat diese weiterhin Vorrang und darf
-gezielt freigebare Akkuenergie für den Hausverbrauch nutzen.
-
 ### Manuell
 
-Die konfigurierte manuelle Ausgangsleistung wird als Sollwert verwendet.
+Die konfigurierte manuelle Ausgangsleistung wird verwendet.
 
-### PV-Umlenkung ab Beta 14
+## Dynamischer SOC-Ladeplan
 
-Die PV-Umlenkung behandelt einen Zustand, der keine Akkuentladung erfordert:
-Der Akku liegt bereits mindestens am dynamischen SOC-Soll, wird aber weiter
-geladen, während das Haus gleichzeitig Leistung aus dem Netz bezieht.
+### Tagesfortschritt im Fallback
 
-Dann wird höchstens der kleinere Wert aus aktuellem Netzbezug und aktueller
-Akkuladeleistung zum Haus umgelenkt:
+Zwischen Sonnenaufgang und Sonnenuntergang:
 
 ```text
-PV-Umlenkungsleistung
-= min(Netzbezug, Akkuladeleistung)
-
-Ausgangssollwert
-= aktuelle NOAH-Ausgangsleistung + PV-Umlenkungsleistung
+p = vergangene Zeit seit Sonnenaufgang / Tageslichtdauer
 ```
 
-Beispiel:
+### Zeitbasiertes Grund-Soll
 
 ```text
-NOAH-Ausgang:       480 W
-Netzbezug:          191 W
-Akkuladung:         269 W
-
-PV-Umlenkung:       191 W
-neues Roh-Soll:     671 W
+Zeit-Soll
+= Mindest-SOC
+  + p × (Ziel-SOC - Mindest-SOC)
 ```
 
-Die Umlenkung reduziert damit zunächst nur die Akkuladung. Sie fordert nicht
-absichtlich mehr Leistung an, als gleichzeitig als Akkuladung vorhanden ist.
-Der endgültige Sollwert wird für diesen Modus auf das konfigurierte
-Stellgrößenraster **abgerundet**, damit das Rastern den sicheren Rohwert nicht
-überschreitet. Ergibt das Raster keinen Sollwert oberhalb der aktuell gemessenen
-NOAH-Ausgangsleistung, wird keine PV-Umlenkung aktiviert. Erst wenn eine
-zusätzliche Entladung zulässig und erforderlich ist, greift die separate
-vorausschauende SOC-Freigabe. **SOC-Nachladung** hat weiterhin Vorrang, wenn
-der Speicher hinter dem Ladeplan liegt.
-
-## Dynamischer SOC-Ladeplan ab Beta 10 / Forecast-Kurve ab 2.1.0-beta.3
-
-Bis `2.1.0-beta.2` wurde das dynamische SOC-Soll aus dem Fortschritt zwischen
-Sonnenaufgang und Sonnenuntergang abgeleitet. Das war robust, bildet aber die
-tatsächliche zeitliche PV-Verteilung einer Anlage nur grob ab. Eine Süd-Anlage
-kann beispielsweise lange nach Sonnenaufgang noch kaum Leistung liefern.
-
-Ab `2.1.0-beta.3` verwendet der Optimizer deshalb – sofern die konfigurierte
-Restprognose direkt aus der Home-Assistant-Integration **Forecast.Solar**
-stammt – deren vollständige intern vorhandene Leistungskurve. Home Assistant
-verwendet dieselben Forecast-Daten bereits für das Energiedashboard. Der NOAH
-Optimizer greift auf die bereits geladenen Daten zu und verursacht **keine
-zusätzlichen Forecast.Solar-API-Aufrufe**.
-
-### 1. Zeitaufgelöste PV-Prognose
-
-Forecast.Solar liefert Leistungspunkte über den Tagesverlauf. Daraus entsteht
-beispielsweise eine Kurve wie:
+Beispiel bei Mindest-SOC 10 % und Ziel-SOC 100 %:
 
 ```text
-08:00    30 W
-09:00   110 W
-10:00   280 W
-11:00   520 W
-12:00   690 W
-13:00   740 W
-14:00   660 W
-15:00   470 W
-16:00   250 W
+Sonnenaufgang      10,0 %
+25 % des Tages     32,5 %
+50 % des Tages     55,0 %
+75 % des Tages     77,5 %
+Sonnenuntergang   100,0 %
 ```
 
-Die wirksame Leistungskurve verwendet denselben Faktor wie die vorhandene
-Restprognose:
+### Konservative Prognose-Anforderung
 
 ```text
-wirksame PV-Leistung
-= Forecast.Solar-Leistung
-  × Prognose-Sicherheitsfaktor
-  × optionaler PV-Lernfaktor
+PV-Energie für Ladeplan
+= wirksame Restprognose
+  - erwarteter Hausenergiebedarf
+  - zusätzliche Energiereserve
 ```
 
-### 2. Für den Ladeplan verfügbare PV-Energie
+Daraus wird berechnet, welcher SOC aufgrund der noch erwarteten PV-Energie
+bereits erreicht sein sollte.
 
-Der Ladeplan wird aus der vollständigen wirksamen PV-Kurve aufgebaut. Die
-konfigurierte erwartete Hauslast wird dabei **nicht vorab von jedem
-Forecast-Intervall abgezogen**. Der Optimizer kann bei Bedarf prognostizierte
-PV-Leistung für das Laden des Akkus reservieren und den Hausverbrauch in diesem
-Zeitraum teilweise aus dem Netz decken.
-
-Das ist wichtig, wenn die PV-Leistung beispielsweise unter der erwarteten
-Hauslast liegt: Diese PV-Leistung ist trotzdem zum Akkuladen verfügbar, wenn die
-Regelung dafür die NOAH-Ausgangsleistung reduziert.
-
-Die wirksame PV-Kurve wird über den Tag integriert, mit der Ladeeffizienz
-bewertet und um die konfigurierte Forecast-Energiereserve reduziert. Die
-erwartete Hauslast bleibt weiterhin Bestandteil von Prognosemarge,
-Prognosedeckung und der Entscheidung über die Ausgangsleistung.
-
-### 3. Forecast-geformter SOC-Ladeplan
-
-Der SOC-Ladeplan startet weiterhin beim Mindest-SOC. Er steigt aber nicht mehr
-linear mit der Uhrzeit, sondern entsprechend der zeitlichen Verteilung der laut
-Forecast.Solar verfügbaren PV-Energie.
-
-Damit bleibt das Soll bei einer Süd-Anlage am frühen Morgen niedrig und steigt
-erst mit der erwarteten Einstrahlung. Bei bedecktem Himmel kann der
-prognostizierte End-SOC unter dem eingestellten Ziel-SOC liegen. Das Ziel-SOC
-bleibt als Wunschziel sichtbar; der dynamische Ladeplan zeigt dagegen, was die
-aktuelle Prognose unter den konfigurierten Annahmen erwarten lässt.
-
-Wichtig: Der aktuelle Ist-SOC und die tatsächlich gemessene PV-Leistung werden
-**nicht** verwendet, um den Tagesplan nachträglich passend zu machen. Änderungen
-des Ladeplans entstehen nur durch neue Forecast.Solar-Daten oder geänderte
-Planungsparameter. Dadurch bleibt sichtbar, ob die Prognose richtig oder falsch
-war.
-
-### 4. SOC-Nachladung
-
-Die Abweichung bleibt:
+Im Tageslicht-Fallback gilt:
 
 ```text
-SOC-Abweichung = Ist-SOC - dynamisches SOC-Soll
+Prognosedruck
+= max(Prognose-Anforderung - Zeit-Soll, 0)
+
+Dynamisches SOC-Soll
+= Zeit-Soll + p × Prognosedruck
 ```
 
-Bei mehr als 2 Prozentpunkten Rückstand aktiviert die Automatik weiterhin
-**SOC-Nachladung**. Für die Nachholzeit wird jetzt ebenfalls der zukünftige
-Punkt auf der Forecast-geformten SOC-Kurve verwendet.
+### Native Forecast.Solar-Kurve
 
-### 5. Fallback
+Ab 2.1.0-beta.3 wird bei direkt auflösbarer Forecast.Solar-Quelle die
+zeitaufgelöste Leistungskurve verwendet.
 
-Kann die konfigurierte Restprognose keiner nativen Forecast.Solar-Config-Entry
-zugeordnet werden oder stellt Forecast.Solar vorübergehend keine Kurve bereit,
-verwendet der Optimizer automatisch die bisherige Tageslichtberechnung aus
-Beta 10 bis Beta 2.1.0-beta.2. Der Sensor **Ladeplanbasis** zeigt an, welcher
-Pfad aktuell aktiv ist.
+Dadurch folgt das dynamische SOC-Soll stärker der erwarteten tatsächlichen
+PV-Verteilung über den Tag.
 
-## Historische Ladeplanansicht ab 2.1.0-beta.4
-
-Beta 4 ersetzt die bisherige reine Tagesansicht des SOC-Diagramms durch eine
-datumsabhängige Historienkarte. Standardmäßig wird der aktuelle Tag angezeigt.
-Über **‹**, **›**, **Heute** oder die Datumsauswahl kann wie im Energiedashboard
-zu einem anderen Kalendertag gewechselt werden.
-
-Die Verlaufslinien stammen aus Home Assistants Recorder:
-
-- **Ist-SOC** – tatsächlich gemessener Ladezustand
-- **Dynamisches Soll** – das zu diesem Zeitpunkt tatsächlich aktive SOC-Soll
-- **Ziel-SOC** – der konfigurierte Tageszielwert
-
-Damit wird ein vergangener Tag nicht nachträglich neu berechnet. Die Karte
-zeigt die Werte, die Home Assistant an diesem Tag tatsächlich aufgezeichnet hat.
-
-### Forecast- und Ladeplan-Snapshots
-
-Zusätzlich speichert der Optimizer bei jeder inhaltlichen Änderung des
-Forecast-basierten Plans einen Snapshot. Gespeichert werden unter anderem:
-
-- Zeitpunkt des Snapshots und Forecast-Aktualisierungszeitpunkt
-- rohe und wirksame Forecast.Solar-Leistungskurve
-- vollständiger daraus berechneter SOC-Ladeplan
-- wirksame Tagesprognose und prognostizierter End-SOC
-- verwendete Forecast-/Learning-Faktoren und Planungsparameter
-
-Die Snapshot-Historie wird rollierend für **31 Tage** gehalten. Pro Tag werden
-maximal 48 unterschiedliche Planstände gespeichert. Identische Pläne werden
-nicht erneut geschrieben.
-
-Für vergangene Tage erscheint in der Historienkarte die Auswahl **Planstand**.
-Damit kann beispielsweise verglichen werden, wie der um 08:00 Uhr prognostizierte
-Tagesplan aussah und wie sich Ist-SOC und aktives dynamisches Soll anschließend
-tatsächlich entwickelt haben.
-
-Die Historienkarte wird mit der Integration ausgeliefert; es ist keine
-zusätzliche HACS-Frontendkarte erforderlich. Für die drei Verlaufslinien wird
-Home Assistants History/Recorder verwendet.
-Die benötigten Home-Assistant-Komponenten `frontend` und `history` werden von der Integration als Abhängigkeiten geladen.
-
-## Vorausschauende SOC-Freigabe ab Beta 11
-
-Beta 11 nutzt einen sicher freigebbaren SOC-Vorsprung, um bei einem bereits
-weit geladenen Akku unnötigen Netzbezug zu vermeiden und gleichzeitig wieder
-Aufnahmekapazität für späteren PV-Überschuss zu schaffen.
-
-Die Funktion wirkt ausschließlich in der Betriebsart **Automatik** und besitzt
-einen eigenen Schalter:
+### SOC-Abweichung
 
 ```text
-Vorausschauende SOC-Freigabe aktiv
+SOC-Abweichung
+= Ist-SOC - dynamisches SOC-Soll
 ```
 
-Der Schalter ist standardmäßig **Aus**. Zusätzlich muss die dynamische
-SOC-Steuerung aktiv sein. Dadurch bleibt die SOC-Nachladung verfügbar, falls
-sich die Prognose später verschlechtert.
+Tagsüber:
 
-### Prognosebasierter Mindest-SOC
+```text
+> +2 %-Punkte  = Vor Ladeplan
+-2 ... +2      = Im Ladeplan
+< -2           = Hinter Ladeplan
+```
 
-Für die **SOC-Freigabe** wird eine eigene Wiederauflade-Reserve berechnet.
-Sie unterscheidet sich bewusst von der konservativen Prognose-Anforderung des
-dynamischen Ladeplans.
+Nachts:
 
-Seit `2.1.0-beta.3` hängt die Ladeplanberechnung von der verwendeten
-Ladeplanbasis ab:
+```text
+Nachtbetrieb
+```
 
-- **Forecast.Solar-Kurve:** Die vollständige wirksame PV-Kurve wird integriert.
-  Der erwartete Hausenergiebedarf wird nicht vorab abgezogen; berücksichtigt
-  werden unter anderem Ladeeffizienz und Forecast-Energiereserve.
-- **Tageslicht-Fallback:** Der ältere konservative Berechnungsweg verwendet
-  weiterhin die wirksame Restprognose abzüglich erwartetem Hausenergiebedarf
-  und zusätzlicher Energiereserve.
+### Dynamische Nachladung
 
-Für die SOC-Freigabe wird unabhängig davon gefragt, wie viel Akkuenergie mit der
-verbleibenden PV-Prognose später wieder aufgefüllt werden könnte, wenn diese
-PV-Energie bei Bedarf für den Akku reserviert wird:
+Ein aktiver Eingriff erfolgt erst, wenn der Ist-SOC mehr als zwei
+Prozentpunkte hinter dem aktuellen dynamischen Soll liegt.
+
+Das Nachholziel wird bis zum Ende des Nachholfensters vorausberechnet:
+
+```text
+Nachholfenster
+= min(SOC-Nachholzeit, verbleibende Zeit bis Sonnenuntergang)
+```
+
+```text
+Nachholziel
+= dynamisches SOC-Soll am Ende des Nachholfensters
+```
+
+Dadurch läuft die Nachladung einer steigenden Sollkurve nicht dauerhaft
+hinterher.
+
+## SOC-Ladeplan halten
+
+Ist der Ladeplan erfüllt, kann der Modus **SOC-Ladeplan halten** verhindern,
+dass die alte Prognosemarge unnötig wieder Ladepriorität auswählt.
+
+Der Sollwert wird PV-basiert und nach unten auf das Stellgrößenraster
+gerundet.
+
+## Vorausschauende SOC-Freigabe
+
+Die Funktion ist separat schaltbar und standardmäßig aus.
+
+Für die Wiederauflade-Reserve gilt:
 
 ```text
 PV-Energie für Wiederaufladung
 = wirksame Restprognose
   - zusätzliche Energiereserve
+```
 
-Speicherbare Wiederaufladeenergie
-= PV-Energie für Wiederaufladung × Ladewirkungsgrad
+Der erwartete Hausenergiebedarf wird für diese separate Reserve nicht
+abgezogen.
 
-Möglicher Wiederauflade-SOC
-= Speicherbare Wiederaufladeenergie / Akkukapazität × 100
-
+```text
 Prognosebasierter Mindest-SOC
 = Ziel-SOC - möglicher Wiederauflade-SOC
 ```
 
-Der erwartete Hausenergiebedarf wird bei **dieser Freigabe-Reserve nicht
-abgezogen**. Das ist beabsichtigt: Falls erforderlich, kann späterer
-Hausverbrauch aus dem Netz versorgt werden, während die prognostizierte
-PV-Energie zum Wiederaufladen des zuvor freigegebenen Akkuanteils verwendet
-wird.
-
-Dadurch wird ein bereits voller Akku nicht allein deshalb bei `100 %`
-festgehalten, weil die normale Prognosemarge wegen des erwarteten
-Hausverbrauchs negativ ist.
-
-Der Wert wird auf Mindest-SOC bis Ziel-SOC begrenzt.
-
-### SOC-Freigabegrenze
-
-Für eine Entladung wird nicht nur der aktuelle dynamische Ladeplan betrachtet.
-Die sichere Untergrenze ist der größere Wert aus dynamischem SOC-Soll und
-prognosebasiertem Mindest-SOC. Zusätzlich bleiben 2 SOC-Prozentpunkte Reserve:
+Die Freigabegrenze schützt den größeren Wert aus dynamischem Soll und
+prognosebasiertem Mindest-SOC:
 
 ```text
 SOC-Freigabegrenze
 = max(Dynamisches SOC-Soll, Prognosebasierter Mindest-SOC)
-  + 2 %-Punkte Sicherheitsreserve
+  + 2 %-Punkte
 ```
 
-Die Grenze wird maximal auf `100 %` begrenzt.
+Nur der SOC oberhalb dieser Grenze gilt als freigebbar.
 
-Der Optimizer gibt nur den Anteil oberhalb dieser Grenze frei:
-
-```text
-Freigebarer SOC
-= max(Ist-SOC - SOC-Freigabegrenze, 0)
-
-Freigebare Akkuenergie
-= Akkukapazität × Freigebarer SOC / 100
-```
-
-### Regelwirkung
-
-Die SOC-Freigabe wird nur aktiv, wenn gleichzeitig:
-
-- Optimierer-Berechnung aktiv ist
-- Betriebsart **Automatik** gewählt ist
-- Dynamische SOC-Steuerung aktiv ist
-- Vorausschauende SOC-Freigabe aktiv ist
-- Forecast.Solar verfügbar ist
-- es Tag ist
-- der Ist-SOC über der SOC-Freigabegrenze liegt
-- tatsächlich Netzbezug vorhanden ist
-
-Dann erhöht der Optimizer die NOAH-Ausgangsleistung um den aktuell gemessenen
-Netzbezug, höchstens bis zur maximalen Ausgangsleistung:
+Bei positivem Netzbezug:
 
 ```text
 SOC-Freigabe-Soll
 = aktuelle NOAH-Ausgangsleistung + aktueller Netzbezug
 ```
 
-Ziel ist ein möglichst kleiner Netzbezug. Es wird **keine absichtliche
-Batterieeinspeisung ins Netz** angefordert. Wegen Stellgrößenraster,
-Messverzögerungen und Laständerungen können kurzfristig dennoch kleine
-Abweichungen um 0 W entstehen.
+Die Funktion fordert keine absichtliche Netzeinspeisung aus dem Akku an.
 
-### Sicherheitsgrenze der Prognose
+## PV-Umlenkung
 
-Die SOC-Freigabe ist prognosebasiert. Sie verhindert, dass der Optimizer den
-Akku absichtlich unter den höheren Wert aus dynamischem Ladeplan und
-prognosebasierter Wiederauflade-Reserve entlädt.
+Wenn:
 
-Wichtig ist die bewusste Prioritätsverschiebung:
+```text
+Ist-SOC >= dynamisches SOC-Soll
+Akkuladeleistung > 0 W
+Netzbezug > 0 W
+```
 
-- bei der nativen **Forecast.Solar-Kurve** wird die erwartete Hauslast nicht aus
-  der Ladeplan-Kurve abgezogen; beim **Tageslicht-Fallback** bleibt die ältere
-  konservative Lastanrechnung bestehen
-- die **Freigabe-Reserve** reserviert die verbleibende PV-Energie bei Bedarf
-  für das spätere Wiederaufladen des Akkus
-- dadurch kann zu einem späteren Zeitpunkt Netzbezug für den Hausverbrauch
-  entstehen, wenn die PV-Energie zum Wiederaufladen benötigt wird
+kann die Automatik vorhandene Akkuladung zum Haus umleiten:
 
-Das ist beabsichtigt: Ziel der Freigabe ist, jetzt vorhandenen Netzbezug aus
-einem sicheren SOC-Vorsprung zu decken und gleichzeitig Ladekapazität für
-späteren PV-Überschuss zu schaffen.
+```text
+PV-Umlenkungsleistung
+= min(Netzbezug, Akkuladeleistung)
+```
 
-Die Berechnung kann keine absolute Garantie geben. Fällt der reale PV-Ertrag
-geringer aus als Forecast.Solar oder ändern sich die Lastverhältnisse stark,
-kann das tatsächliche Abend-SOC vom Ziel abweichen.
-
-Verschlechtert sich die Prognose, steigt die SOC-Freigabegrenze. Die Freigabe
-endet dann automatisch; bei aktiviertem dynamischem SOC-Regler kann anschließend
-wieder **SOC-Nachladung** erforderlich werden.
+Die Funktion fordert keine zusätzliche Akkuentladung an.
 
 ## Aktive Steuerung
 
-Die Integration besitzt getrennte Schalter:
+Getrennte Schalter:
 
 ```text
 Optimierer-Berechnung aktiv
 NOAH-Steuerung aktiv
 Dynamische SOC-Steuerung aktiv
 Vorausschauende SOC-Freigabe aktiv
+Gelernte PV-Korrektur verwenden
 ```
 
-Die aktive NOAH-Steuerung, die dynamische SOC-Steuerung und die
-vorausschauende SOC-Freigabe sind standardmäßig ausgeschaltet.
+Schutzmechanismen:
 
-Der Controller enthält unter anderem:
-
-- Schalt-Hysterese
 - Stellgrößenraster
-- Mindestabstand von zwei Minuten zwischen normalen Stellbefehlen
-- schnellere Lastnachführung während SOC-Freigabe und PV-Umlenkung mit 30 Sekunden Mindestabstand für Sollwerterhöhungen
-- Controller-Auswertung alle 15 Sekunden
-- sofortige sicherheitsrelevante Sollwertreduzierung nach SOC-Freigabe, PV-Umlenkung oder im Modus SOC-Ladeplan halten
-- eigener Enum-Sensor `Controllerstatus` mit zentralen Übersetzungen
-- erneute Sollwertübernahme, wenn ein zuvor geschriebener Sollwert nicht bestätigt wurde
-- Failsafe bei längerem Verlust kritischer Daten
-- persistente Home-Assistant-Benachrichtigung
-- Sperre gegen den alten YAML-Controller
+- Hysterese
+- Mindestabstand zwischen normalen Stellbefehlen
+- 15-Sekunden-Controllerauswertung
+- 30-Sekunden-Lastnachführung bei SOC-Freigabe und PV-Umlenkung
+- sofortige sicherheitsrelevante Sollwertreduzierungen
+- Retry bei nicht bestätigtem Stellwert
+- Failsafe
+- persistente Home-Assistant-Warnung
+- Sperre gegen gleichzeitige Legacy-YAML-Steuerung
 
-Der alte YAML-Optimizer und die HACS-Steuerung dürfen niemals gleichzeitig
-denselben NOAH aktiv regeln.
+## Controllerstatus
 
-## Dashboard ab Beta 6
+Typische Rohzustände:
 
-Die Integration erzeugt beim ersten Start ein eigenes Lovelace-Dashboard mit
-dem Seitenleisteneintrag:
+```text
+disabled
+optimizer_disabled
+legacy_controller_active
+critical_data_missing
+actuator_unavailable
+target_unavailable
+rate_limited
+waiting_for_retry
+in_sync
+command_sent
+command_failed
+failsafe
+```
+
+`waiting_for_retry` wird lokalisiert als:
+
+```text
+DE: Warte auf Stellwertübernahme
+EN: Waiting for setpoint confirmation
+```
+
+## Automatisches Dashboard
+
+Die Integration erzeugt das Dashboard:
 
 ```text
 NOAH Optimizer
 ```
 
-Bei einer Neuinstallation kann im Einrichtungsdialog gewählt werden, ob der
-Eintrag in der Seitenleiste erscheinen soll. Standard ist **Ein**.
+Die eigenen Entity-IDs werden über die Home-Assistant Entity Registry
+aufgelöst.
 
-Die Integration löst ihre eigenen Entity-IDs über die Home-Assistant Entity
-Registry auf. Bereichspräfixe oder vom Benutzer geänderte Entity-IDs müssen
-deshalb nicht fest in den Dashboard-Dateien stehen.
+Standardsprache:
 
-Die Standardsprache des Dashboards richtet sich bei der erstmaligen Erzeugung
-nach der Home-Assistant-Sprache:
+```text
+Deutsch -> dashboard_de.yaml
+sonst   -> dashboard_en.yaml
+```
 
-- Deutsch → `dashboard_de.yaml`
-- alle anderen Sprachen → `dashboard_en.yaml`
+Dashboard-Inhalte:
 
-### Dashboard-Migration in Beta 8
-
-Ein vorhandenes Beta-6-/Beta-7-Dashboard wird nicht vollständig ersetzt.
-Beta 8 ergänzt gezielt die neuen dynamischen SOC-Entitäten und den SOC-Chart.
-Vorhandene Benutzeranpassungen bleiben erhalten. Gleichzeitig wird die alte
-fehlerhafte Batterie-Flusszuordnung korrigiert, falls sie noch exakt im
-Beta-6-Zustand vorhanden ist.
-
-### Dashboard-Migration in Beta 11
-
-Beta 11 ergänzt die neue Freigabefunktion und deren Diagnosesensoren gezielt in
-bestehende Dashboards. Dafür wird die Dashboard-Template-Version von 9 auf 10
-erhöht. Das Dashboard wird nicht vollständig ersetzt; vorhandene
-Benutzeranpassungen bleiben erhalten, soweit die bekannten Standardkarten
-eindeutig erkannt werden können.
-
-### Dashboard-Migration in Beta 14
-
-Beta 14 erhöht die Dashboard-Template-Version von 10 auf 11. Die gezielte
-Migration ergänzt den SOC-Ladeplanstatus `night`, den Reglermodus `PV-Umlenkung`
-und stellt die Controllerstatus-Anzeige auf den neuen Enum-Sensor um. Die
-Statusübersetzungen kommen damit aus `translations/de.json` beziehungsweise
-`translations/en.json` statt aus einer separaten Jinja-Tabelle im Dashboard.
-Benutzeranpassungen am übrigen Dashboard werden nicht ersetzt.
-
-### Dashboard-Migration in 2.1.0-beta.1
-
-PV-Learning erhöht die Dashboard-Template-Version von 11 auf 12. Bestehende
-Dashboards werden gezielt um die PV-Learning-Diagnosewerte, den Opt-in-Schalter
-und die Reset-Schaltfläche ergänzt.
-
-### Dashboard-Migration in 2.1.0-beta.2
-
-`2.1.0-beta.2` erhöht die Dashboard-Template-Version von 12 auf 13. Die
-Reglerstatus-Karte wird gezielt um den lokalisierten Modus **SOC-Ladeplan halten**
-erweitert. Übrige Benutzeranpassungen bleiben erhalten, soweit die bekannte
-Standardkarte eindeutig erkannt werden kann.
-
-### Dashboard-Migration in 2.1.0-beta.3
-
-`2.1.0-beta.3` erhöht die Dashboard-Template-Version von 13 auf 14. Bestehende
-Standard-Dashboards erhalten eine neue Karte **PV-Prognose** mit der rohen
-Forecast.Solar-Leistungskurve, der wirksamen korrigierten Kurve und der real
-gemessenen PV-Leistung. In den Planungsdetails werden zusätzlich
-Forecast-Aktualisierungszeitpunkt, wirksame Tagesprognose, prognostizierter
-End-SOC und Ladeplanbasis ergänzt. Benutzeranpassungen werden weiterhin nur
-gezielt migriert.
-
-### Dashboard-Migration in 2.1.0-beta.4
-
-`2.1.0-beta.4` ersetzt mit Template-Version 15 zunächst die bekannte
-Standardkarte **Dynamischer SOC-Ladeplan** gezielt durch die neue
-datumsabhängige Historienkarte. Die Serienfarben-Migration erhöhte die
-Dashboard-Template-Version zunächst auf 16; die abschließende Angleichung von
-Reglerverhalten und historischem SOC-Ladeplan erhöht sie auf **17**. Bereits
-explizit gesetzte Benutzerfarben bleiben erhalten; lediglich der frühere
-NOAH-Standard Rot für Ziel-SOC wird gezielt auf Orange migriert.
-
-### Energiefluss
+- Energiefluss
+- SOC und Prognosedeckung
+- historische SOC-Ladeplanansicht
+- PV-Prognose
+- Energieplanung bis Sonnenuntergang
+- Leistung heute
+- Reglerverhalten
+- Planungsdetails
+- PV-Learning
+- Kalibrierung
+- Diagnose
 
 Für Power Flow Card Plus gilt:
 
 ```text
-Netz:
+Grid:
 consumption = Netzbezug
 production  = Netzeinspeisung
 
-NOAH:
+Battery:
 consumption = Entladeleistung
 production  = Ladeleistung
 ```
 
-Damit zeigt die Card Ladeleistung als Energiefluss **in** den Akku und
-Entladeleistung als Energiefluss **aus** dem Akku.
+## Feste Dashboard-Farbpalette
 
-### Feste Serienfarben ab 2.1.0-beta.4
-
-Die Standarddiagramme verwenden feste Farben, damit eine Serie nach Updates oder
-beim Hinzufügen weiterer Serien nicht automatisch eine andere ApexCharts-Farbe
-erhält. Für den historischen SOC-Ladeplan gilt insbesondere:
-
-- Ist-SOC: Blau `#2196F3`
-- Dynamisches Soll: Grün `#009B21`
-- Ziel-SOC: Orange `#FF6A00`
-- Gespeicherter Plan: Gelb `#FFD800`
-
-Auch **Reglerverhalten** verwendet die feste Reihenfolge Blau, Grün, Orange,
-Gelb, Cyan und Violett. Der historische SOC-Ladeplan verwendet Blau, Grün,
-Orange und Gelb. Die Migration ergänzt fehlende Farben; beim Wechsel auf
-Template-Version 17 wird zusätzlich nur der frühere NOAH-Standard Rot für
-Ziel-SOC auf Orange umgestellt. Andere explizite Benutzerfarben bleiben erhalten.
-
-### Dashboard-Inhalt
-
-- aktueller Energiefluss
-- Netzbezug und Netzeinspeisung getrennt
-- Laden und Entladen des NOAH getrennt
-- Akkustand und Prognosedeckung
-- datumsabhängiger SOC-Ladeplan mit Ist-SOC, dynamischem Soll, Ziel-SOC und auswählbarem gespeicherten Planstand
-- PV-Prognosekurve mit Forecast.Solar, wirksamer Prognose und Ist-PV
-- Forecast-Aktualisierungszeitpunkt und prognostizierter End-SOC
-- SOC-Abweichung und Ladeplanstatus
-- prognosebasierter Mindest-SOC und SOC-Freigabegrenze
-- freigebare Akkuenergie und SOC-Freigabe-Soll
-- Reglermodus und Controllerstatus
-- letzter Stellwert und letzter Stellbefehl
-- Energieplanung bis Sonnenuntergang
-- Leistung heute
-- Reglerverhalten
-- Planung im Detail
-- Kalibrierparameter
-- Diagnose
-
-### Browseransicht
-
-![NOAH Optimizer Dashboard im Browser](screenshots/noah_dashboard_browser.png)
-
-### Mobile Ansicht
-
-![NOAH Optimizer Dashboard auf dem iPhone](screenshots/noah_dashboard_iPhone.jpeg)
-
-## Versionshistorie
-
-### 2.0.0-beta.1
-
-Erste HACS-kompatible Custom Integration im reinen Beobachtungsbetrieb mit
-Config Flow, Quellentitäten, Einheiten-Normalisierung und grundlegenden
-Energiefluss-Sensoren.
-
-### 2.0.0-beta.2
-
-Integrationstyp auf `device` umgestellt und HACS-Updatepfad verbessert.
-
-### 2.0.0-beta.3
-
-Berechnungslogik des Legacy-YAML-Optimizers nach Python portiert. Noch keine
-aktive Stellwertausgabe.
-
-### 2.0.0-beta.4
-
-Fehlende `select.py` ergänzt und Berechnungswerte 1:1 gegen die Legacy-Version
-geprüft.
-
-### 2.0.0-beta.5
-
-Optionale aktive NOAH-Steuerung, Hysterese, Mindestabstand zwischen Befehlen,
-Retry, Failsafe, Controllerdiagnose und Legacy-Sperre ergänzt.
-
-### 2.0.0-beta.6
-
-Automatisches Lovelace-Dashboard mit dynamischer Entity-Auflösung, deutschen
-und englischen Vorlagen, Power Flow Card Plus und ApexCharts eingeführt.
-
-### 2.0.0-beta.7
-
-Batterie-Flussrichtung im Dashboard korrigiert:
+Die von der Integration erzeugten Standarddiagramme verwenden eine feste
+Farbpalette:
 
 ```text
-consumption = Entladeleistung
-production  = Ladeleistung
+Blau     #2196F3
+Grün     #009B21
+Orange   #FF6A00
+Gelb     #FFD800
+Cyan     #00FFFF
+Violett  #B200FF
 ```
 
-### 2.0.0-beta.8
+### Reglerverhalten
 
-Dynamischen SOC-Ladeplan ergänzt:
+```text
+Regler-Soll                  #2196F3  Blau
+Ist-Ausgang                  #009B21  Grün
+Eigenverbrauch-Soll          #FF6A00  Orange
+Ladepriorität-Soll           #FFD800  Gelb
+Nötige Ladeleistung          #00FFFF  Cyan
+Dynamische Nachladeleistung  #B200FF  Violett
+```
 
-- dynamisches SOC-Soll
-- SOC-Abweichung
-- Ladeplanstatus
-- dynamisch erforderliche Nachladeleistung
-- neue SOC-Nachholzeit
-- separate, standardmäßig deaktivierte Freigabe der dynamischen Regelung
-- neuer Reglermodus `SOC-Nachladung`
-- Diagramm mit Ist-SOC, dynamischem Soll und Ziel-SOC im Dashboard
-- gezielte Dashboard-Migration für bestehende Installationen
+### Historischer SOC-Ladeplan
 
-### 2.0.0-beta.9
+```text
+Ist-SOC                      #2196F3  Blau
+Dynamisches SOC-Soll         #009B21  Grün
+Ziel-SOC                     #FF6A00  Orange
+Gespeicherter Ladeplan       #FFD800  Gelb
+```
 
-Dashboard-Hotfix:
+### Dashboard-Migration in 2.1.0-beta.8
 
-- fehlerhaften Jinja-Ausdruck im Reglerstatus behoben
-- bereits von Beta 8 beschädigte Reglerstatus-Karten werden automatisch repariert
-- Dashboard-Template-Version auf 9 erhöht
-- Benutzeranpassungen am Dashboard bleiben erhalten
-- keine Änderung an Berechnung oder aktiver NOAH-Regelung
+Beta 8 erhöht die Dashboard-Template-Version von `17` auf `18`.
 
-### 2.0.0-beta.10
+Die vorherigen Farbänderungen hatten die Dashboardvorlagen bereits korrigiert.
+In einem schon gespeicherten Lovelace-Dashboard konnten jedoch explizite alte
+`color`-Werte erhalten bleiben. Dadurch waren nach einem Update weiterhin
+falsche Farben sichtbar.
 
-Dynamischen SOC-Ladeplan neu aufgebaut:
+Template v18 korrigiert deshalb vorhandene Farben nur auf eindeutig erkannten
+NOAH-Standard-ApexCharts. Für die Erkennung werden der bekannte deutsche oder
+englische Kartentitel und die erwartete Entity-Kombination geprüft. Bei der
+PV-Prognose werden zusätzlich die bekannten Data-Generatoren ausgewertet.
 
-- zeitbasierte Sollkurve von Sonnenaufgang bis Sonnenuntergang
-- Mindest-SOC als Startwert und Ziel-SOC als Endwert
-- Restprognose wirkt als progressive Anhebung der Sollkurve
-- kein sofortiges 100-%-Soll mehr nur wegen einer knappen Restprognose
-- Ladeplanstatus und Nachladeleistung verwenden die neue Sollkurve
-- keine Änderung der Dashboard-Struktur; Template-Version bleibt 9
+Eigene oder zusätzlich angelegte ApexCharts werden nicht pauschal verändert.
 
-### 2.0.0-beta.11
+Die historische SOC-Karte verwendet bereits die aktuelle
+Blau/Grün/Orange/Gelb-Palette. Ihr Frontend-Cache wird mit Beta 8 auf `v8`
+angehoben.
 
-Vorausschauende SOC-Freigabe ergänzt:
+Die Änderung betrifft ausschließlich Dashboarddarstellung und
+Dashboardmigration. Optimizer-Berechnung und aktive NOAH-Regelung bleiben
+unverändert.
 
-- sicher freigebbarer SOC-Vorsprung wird aus Ladeplan und Restprognose ermittelt
-- neuer prognosebasierter Mindest-SOC
-- neue SOC-Freigabegrenze mit 2 Prozentpunkten Sicherheitsreserve
-- freigebare Akkuenergie wird separat angezeigt
-- neuer Sollwert für die SOC-Freigabe
-- neuer Reglermodus `SOC-Freigabe`
-- eigener, standardmäßig deaktivierter Freigabeschalter
-- Netzbezug kann bei sicherem SOC-Vorsprung bevorzugt aus dem Akku gedeckt werden
-- keine absichtliche Batterieeinspeisung ins Netz
-- Dashboard-Template-Version auf 10 erhöht und bestehende Dashboards gezielt migriert
-- sicherheitsrelevante Sollwertreduzierungen nach SOC-Freigabe umgehen die normale 2-Minuten-Wartezeit
 
-### 2.0.0-beta.12
+## Dashboard-Migrationshistorie
 
-SOC-Freigabe-Reserve und SOC-Nachladung korrigiert:
+```text
+8   Dynamischer SOC
+9   Jinja-Reparatur
+10  SOC-Freigabe
+11  Nachtstatus / PV-Umlenkung / Controllerstatus
+12  PV-Learning
+13  SOC-Ladeplan halten
+14  Forecast.Solar-Kurve
+15  Historische SOC-Karte
+16  feste Serienfarben
+17  abschließende Farbangleichung
+18  Korrektur alter expliziter Farben
+```
 
-- eigene Wiederauflade-Reserve für die SOC-Freigabe eingeführt
-- erwarteter Hausenergiebedarf wird bei dieser Reserve nicht mehr abgezogen
-- dynamische SOC-Sollkurve bleibt weiterhin konservativ und unverändert
-- SOC-Nachladung zielt auf das vorausberechnete Soll am Ende der Nachholzeit
-- verhindert dauerhaftes Hinterherlaufen hinter einer steigenden SOC-Sollkurve
-- verhindert eine unnötige 100-%-Freigabegrenze nur wegen negativer normaler Prognosemarge
-- prognosebasierter Mindest-SOC beschreibt nun den für spätere Wiederaufladung notwendigen SOC
-- Dashboard-Struktur unverändert; Template-Version bleibt 10
-
-### 2.0.0-beta.13
-
-Schnellere Lastnachführung der SOC-Freigabe:
-
-- Controller-Auswertung von 60 auf 15 Sekunden verkürzt
-- Sollwerterhöhungen in `SOC-Freigabe` können alle 30 Sekunden geschrieben werden
-- normale Betriebsarten behalten den 2-Minuten-Mindestabstand
-- SOC-Freigabe verwendet intern eine engere Deadband von maximal 25 W; das Stellgrößenraster bleibt maßgeblich
-- sicherheitsrelevante Reduzierungen nach SOC-Freigabe bleiben ohne Wartezeit möglich
-- `rate_limited` wird nur noch angezeigt, wenn tatsächlich ein neuer Stellbefehl ansteht und noch auf den Mindestabstand wartet
-- keine neuen Entitäten oder Dashboardelemente; Template-Version bleibt 10
-
-### 2.0.0-beta.14
-
-Nachtstatus, PV-Umlenkung und zentrale Controllerstatus-Anzeige:
-
-- neuer Enum-Zustand `night` für den Sensor `SOC-Ladeplan`
-- deutsche Anzeige `Nachtbetrieb`, englische Anzeige `Night operation`
-- neuer Reglermodus `pv_redirect` / `PV-Umlenkung` / `PV diversion`
-- bei Ist-SOC mindestens am dynamischen Soll wird gleichzeitig vorhandene Akkuladung bevorzugt zum Abbau von Netzbezug verwendet
-- PV-Umlenkung ist auf `min(Netzbezug, Akkuladeleistung)` begrenzt und fordert damit keine absichtliche Akkuentladung an
-- PV-Umlenkungs-Sollwerte werden auf das Stellgrößenraster abgerundet, damit das Rastern den sicheren Umlenkungswert nicht überschreitet
-- SOC-Nachladung und SOC-Freigabe behalten ihre bisherigen Schutzbedingungen und Prioritäten
-- eigener Enum-Sensor `Controllerstatus` hinzugefügt
-- Controllerstatus wird zentral über `translations/de.json` und `translations/en.json` lokalisiert
-- `waiting_for_retry`: `Warte auf Stellwertübernahme` / `Waiting for setpoint confirmation`
-- PV-Umlenkung verwendet wie SOC-Freigabe die schnelle 15-/30-Sekunden-Lastnachführung und sofortige Absenkung
-- Dashboard-Template-Version von 10 auf 11 erhöht
-- bestehende Reglerstatus-Karten werden gezielt migriert
-
-### 2.0.0
-
-Erster stabiler Release der 2.x-Reihe:
-
-- Funktionsstand entspricht `2.0.0-beta.14`
-- keine Änderung an Optimizer-Berechnung oder aktiver NOAH-Regelung gegenüber Beta 14
-- keine neuen Entitäten, Schalter oder Dashboardelemente
-- Dashboard-Template-Version bleibt 11
-- Versions- und Release-Dokumentation auf stabilen Betrieb umgestellt
-
-### 2.1.0-beta.1
-
-- passives, persistentes PV-Learning ergänzt
-- Median aus bis zu sieben gültigen Lerntagen; ab drei Tagen einsatzbereit
-- neue Diagnoseentitäten für Lernfaktor, Lerntage, Tagesertrag und Prognosereferenz
-- neuer Opt-in-Schalter **Gelernte PV-Korrektur verwenden**
-- neue Schaltfläche **PV-Lerndaten zurücksetzen**
-- wirksamer Prognosefaktor optional aus Sicherheitsfaktor × Lernfaktor
-- Dashboard-Template-Version von 11 auf 12 erhöht
-- bei ausgeschaltetem Lern-Schalter bleibt das Regelverhalten von 2.0.0 erhalten
-
-### 2.1.0-beta.2
-
-- neuer interner Reglermodus `soc_hold` / **SOC-Ladeplan halten**
-- bei aktivem dynamischem SOC-Ladeplan wird eine negative klassische Prognosemarge nicht mehr doppelt als Ladepriorität ausgewertet, wenn der Ist-SOC im oder vor dem Ladeplan liegt
-- SOC-Halten nutzt höchstens die aktuell verfügbare PV-Leistung bis zum Eigenverbrauchs-Soll und fordert damit keine absichtliche Akkuentladung an
-- SOC-Nachladung, SOC-Freigabe und PV-Umlenkung behalten höhere Priorität
-- Dashboard-Template-Version von 12 auf 13 erhöht; bestehende Reglerstatus-Karten werden migriert
-
-### 2.1.0-beta.4
-
-- datumsabhängige SOC-Ladeplan-Historie mit Vor/Zurück, Heute und direkter Datumsauswahl
-- historische Anzeige von Ist-SOC, aktivem dynamischem Soll und Ziel-SOC aus Home Assistants Recorder
-- persistente Forecast-/Ladeplan-Snapshots für die letzten 31 Tage
-- Auswahl eines konkreten gespeicherten Planstands eines vergangenen Tages
-- Snapshot-Metadaten mit Forecast-Aktualisierungszeit, wirksamer Tagesprognose und prognostiziertem End-SOC
-- mitgelieferte `noah-soc-history-card` ohne zusätzliche HACS-Frontendinstallation
-- Dashboard-Template-Version von 14 auf 15 für die Historienkarte, anschließend auf 16 für feste Serienfarben und abschließend auf 17 für die vollständige Farbangleichung erhöht
-
-### 2.1.0-beta.3
-
-- vollständige Forecast.Solar-Leistungskurve aus Home Assistants bereits geladenen Forecast-Daten übernommen
-- keine zusätzlichen Forecast.Solar-API-Aufrufe
-- dynamischen SOC-Ladeplan bei nativer Forecast.Solar-Quelle von Tageslichtfortschritt auf zeitaufgelöste Prognosekurve umgestellt
-- Prognose-/Lernfaktor, Ladeeffizienz und Energiereserve in die prognostizierte Akku-Ladekurve einbezogen; Hauslast bleibt separat in Prognosemarge und Ausgangsregelung
-- prognostizierten End-SOC und Ladeplanbasis als neue Diagnosewerte ergänzt
-- neue Dashboard-Karte für rohe Prognose, wirksame Prognose und reale PV-Leistung
-- Forecast-Aktualisierungszeitpunkt im Dashboard ergänzt
-- Tageslichtmodell als kompatiblen Fallback beibehalten
-- Dashboard-Template-Version von 13 auf 14 erhöht
+Migrationen sind gezielt. Das komplette Dashboard wird nicht pauschal ersetzt.
 
 ## Legacy-YAML-Optimizer
 
-Die ältere Package-Variante bleibt im Repository enthalten.
-
-Dateien:
+Die ältere Package-Variante bleibt im Repository:
 
 ```text
 noah_optimizer.yaml
 dashboards/noah_dashboard.yaml
 ```
 
-Für neue Installationen wird die HACS-Integration empfohlen.
-
-Die Legacy-YAML-Regelung muss ausgeschaltet sein, bevor die aktive
-HACS-Steuerung eingeschaltet wird.
+Legacy-YAML und HACS dürfen denselben NOAH nicht gleichzeitig aktiv regeln.
 
 ## Sicherheit
 
-Dieses Projekt ist ein Community-Projekt und keine offizielle Growatt-
-Integration.
-
-Die aktive Steuerung sollte erst eingeschaltet werden, nachdem:
-
-- alle Quellwerte plausibel geprüft wurden
-- das Netzvorzeichen stimmt
-- Forecast.Solar plausible Werte liefert
-- NOAH System Output Power manuell beschreibbar ist
-- der berechnete Ausgangssollwert plausibel ist
-
-Nach Änderungen an der dynamischen SOC-Logik sollte die dynamische
-SOC-Steuerung zunächst ausgeschaltet bleiben, bis dynamisches Soll,
-SOC-Abweichung und Nachladeleistung über einen geeigneten Zeitraum plausibel
-beobachtet wurden.
-
-Die vorausschauende SOC-Freigabe sollte nach einem Update ebenfalls zunächst
-ausgeschaltet bleiben. Vor der Aktivierung sollten insbesondere
-prognosebasierter Mindest-SOC, SOC-Freigabegrenze und freigebare Akkuenergie
-plausibel geprüft werden.
-
-## Projektstruktur
+Nach einem Pre-Release-Update zunächst:
 
 ```text
-home-assistant-noah-optimizer/
-├── .github/
-│   └── workflows/
-├── custom_components/
-│   └── noah_optimizer/
-│       ├── translations/
-│       │   ├── de.json
-│       │   └── en.json
-│       ├── __init__.py
-│       ├── binary_sensor.py
-│       ├── button.py
-│       ├── config_flow.py
-│       ├── const.py
-│       ├── control.py
-│       ├── coordinator.py
-│       ├── dashboard.py
-│       ├── dashboard_de.yaml
-│       ├── dashboard_en.yaml
-│       ├── entity.py
-│       ├── frontend/
-│       │   └── noah-soc-history-card.js
-│       ├── frontend.py
-│       ├── history.py
-│       ├── manifest.json
-│       ├── number.py
-│       ├── pv_learning.py
-│       ├── select.py
-│       ├── sensor.py
-│       └── switch.py
-├── dashboards/
-│   └── noah_dashboard.yaml
-├── docs/
-│   ├── configuration.md
-│   ├── hacs-beta.md
-│   ├── installation.md
-│   └── troubleshooting.md
-├── screenshots/
-├── CHANGELOG.md
-├── LICENSE
-├── README.md
-├── THIRD_PARTY.md
-├── hacs.json
-└── noah_optimizer.yaml
+NOAH-Steuerung aktiv = Aus
 ```
+
+Prüfen:
+
+- Quellwerte
+- Netzvorzeichen
+- Forecast
+- dynamisches SOC-Soll
+- Controllerstatus
+- Ausgangssollwert
+- Dashboard
+
+Danach aktive Steuerung wieder freigeben.
+
+## Versionshistorie
+
+### 2.1.0-beta.8
+
+- Template-Version 18
+- alte explizite Serienfarben auf eindeutig erkannten Standardcharts korrigiert
+- eigene ApexCharts geschützt
+- History-Card-Cache v8
+- keine Änderung der Regelalgorithmen
+
+### 2.1.0-beta.7
+
+- abschließende Farbangleichung
+- Reglerverhalten und historischer SOC-Ladeplan korrigiert
+- Template-Version 17
+
+### 2.1.0-beta.6
+
+- Standardfarben der Dashboardserien vereinheitlicht
+
+### 2.1.0-beta.5
+
+- erste Vereinheitlichung der Serienfarben
+
+### 2.1.0-beta.4
+
+- historische SOC-Ladeplanansicht
+- Recorder-Historie
+- persistente Forecast-/Plan-Snapshots
+
+### 2.1.0-beta.3
+
+- zeitaufgelöste Forecast.Solar-Kurve
+- keine zusätzlichen Forecast-API-Aufrufe
+- Tageslicht-Fallback
+
+### 2.1.0-beta.2
+
+- SOC-Ladeplan halten
+
+### 2.1.0-beta.1
+
+- PV-Learning
+- persistente Lernhistorie
+- optionaler Lernfaktor
+
+### 2.0.0
+
+Erster stabiler Release der 2.x-Reihe. Funktionsstand entspricht
+`2.0.0-beta.14`.
+
+### 2.0.0-beta.14
+
+- Nachtstatus
+- PV-Umlenkung
+- eigener Controllerstatus-Enum-Sensor
+- Template-Version 11
+
+### 2.0.0-beta.13
+
+- schnellere Lastnachführung der SOC-Freigabe
+
+### 2.0.0-beta.12
+
+- korrigierte Wiederauflade-Reserve
+- vorausschauendes Nachholziel
+
+### 2.0.0-beta.11
+
+- vorausschauende SOC-Freigabe
+- Template-Version 10
+
+### 2.0.0-beta.10
+
+- zeitbasierter dynamischer SOC-Ladeplan
+
+### 2.0.0-beta.9
+
+- Dashboard-Jinja-Hotfix
+- Template-Version 9
+
+### 2.0.0-beta.8
+
+- erster dynamischer SOC-Ladeplan
+- Template-Version 8
+
+### 2.0.0-beta.7
+
+- Batterie-Flussrichtung korrigiert
+
+### 2.0.0-beta.6
+
+- automatisches Lovelace-Dashboard
+
+### 2.0.0-beta.5
+
+- optionale aktive Steuerung
+
+### 2.0.0-beta.4
+
+- fehlende `select.py` ergänzt
+
+### 2.0.0-beta.3
+
+- Optimizer-Berechnung nach Python portiert
+
+### 2.0.0-beta.2
+
+- Integrationstyp `device`
+
+### 2.0.0-beta.1
+
+- erste HACS-kompatible Integration
 
 ## Lizenz
 
-Dieses Projekt steht unter der MIT License.
-
-Siehe:
-
-- [LICENSE](LICENSE)
-- [THIRD_PARTY.md](THIRD_PARTY.md)
+MIT License. Siehe `LICENSE` und `THIRD_PARTY.md`.
