@@ -11,6 +11,7 @@ from homeassistant.components.lovelace.resources import ResourceStorageCollectio
 from homeassistant.core import HomeAssistant
 
 from .const import DOMAIN
+
 HISTORY_CARD_STATIC_URL = f"/{DOMAIN}/noah-soc-history-card.js"
 HISTORY_CARD_VERSION = "8"
 HISTORY_CARD_URL = f"{HISTORY_CARD_STATIC_URL}?v={HISTORY_CARD_VERSION}"
@@ -18,8 +19,10 @@ HISTORY_CARD_FILE = Path(__file__).with_name("frontend") / "noah-soc-history-car
 
 _DATA_STATIC_REGISTERED = f"{DOMAIN}_history_card_static_registered"
 
+
 async def async_register_history_card(hass: HomeAssistant) -> None:
     """Serve and register the bundled SOC history card."""
+
     if not hass.data.get(_DATA_STATIC_REGISTERED):
         await hass.http.async_register_static_paths(
             [
@@ -31,6 +34,7 @@ async def async_register_history_card(hass: HomeAssistant) -> None:
             ]
         )
         hass.data[_DATA_STATIC_REGISTERED] = True
+
     # In storage resource mode, register the card as a real Lovelace module
     # resource. Home Assistant awaits Lovelace resources before constructing
     # custom cards, avoiding the load-order race that can otherwise leave a
@@ -40,6 +44,7 @@ async def async_register_history_card(hass: HomeAssistant) -> None:
 
     if isinstance(resources, ResourceStorageCollection):
         await resources.async_get_info()
+
         for item in resources.async_items():
             url = item.get("url", "")
             if not url.startswith(HISTORY_CARD_STATIC_URL):
@@ -54,6 +59,7 @@ async def async_register_history_card(hass: HomeAssistant) -> None:
                     },
                 )
             return
+
         await resources.async_create_item(
             {
                 "res_type": "module",
@@ -66,6 +72,8 @@ async def async_register_history_card(hass: HomeAssistant) -> None:
     # Keep the frontend injection as a compatibility fallback there.
     frontend.add_extra_js_url(hass, HISTORY_CARD_URL)
 
+
 def remove_history_card(hass: HomeAssistant) -> None:
     """Remove runtime fallback injection while leaving Lovelace resources intact."""
+
     frontend.remove_extra_js_url(hass, HISTORY_CARD_URL)

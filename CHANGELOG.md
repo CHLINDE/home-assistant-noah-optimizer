@@ -2,134 +2,112 @@
 
 ### Fixed
 
-- Fixed the dashboard color migration for installations that already contain explicit series colors from an earlier generated dashboard.
-- Recognized generated NOAH standard ApexCharts cards are realigned to the documented stable color palette instead of skipping every series that already has a `color` value.
-- The migration is deliberately limited by known standard chart titles and entity sets so additional/user-created ApexCharts cards remain untouched.
-- Dashboard template version increased from 17 to 18 so systems already migrated by Beta 7 run the corrected color migration once.
-- History-card frontend cache version increased from `v=7` to `v=8`.
-- Corrected `manifest.json` version to `2.1.0-beta.8`.
+- Corrected migration of stale explicit colors in already stored NOAH dashboards
+- Recognized generated standard ApexCharts now receive the current stable palette even when an older `color` value already exists
+- Fixed the remaining upgrade case where updated dashboard templates alone did not change the colors of an existing stored dashboard
 
-### Documentation
+### Changed
 
-- Updated README, installation, configuration, HACS beta and troubleshooting documentation for dashboard template version 18.
-- Documented the one-time reset of stale generated standard-chart colors.
-- Documented that unrelated custom ApexCharts cards are not modified.
+- Dashboard template storage version increased from 17 to 18
+- Standard charts are identified by known title and expected entity combination before colors are changed
+- Custom or additional ApexCharts cards are not modified by the v18 color migration
+- Bundled SOC history card frontend cache version increased from `v7` to `v8`
+- Integration version updated to `2.1.0-beta.8`
 
-### Safety / transparency
+### Standard palette
 
-- No optimizer calculation or active-control logic is changed.
-- Manual colors inside recognized generated NOAH standard charts are reset once by the template-v18 migration; unrelated custom charts are not modified.
+- blue `#2196F3`
+- green `#009B21`
+- orange `#FF6A00`
+- yellow `#FFD800`
+- cyan `#00FFFF`
+- violet `#B200FF`
+
+### Safety
+
+This release changes dashboard presentation and migration only. Optimizer
+calculations and active NOAH control behavior are unchanged.
 
 ---
 
-## [2.1.0-beta.7] - 2026-08-29
+## [2.1.0-beta.7]
 
 ### Dashboard color consistency
 
-- Completed the explicit color alignment of generated NOAH standard charts.
-- Aligned controller behavior to blue / green / orange / yellow / cyan / violet.
-- Aligned the historical SOC view to blue / green / orange / yellow.
-- Increased dashboard template version to 17.
-- Migrated the previous NOAH default red target-SOC color to orange while leaving other explicit colors untouched.
-- Increased the bundled history-card frontend cache version from `v=6` to `v=7`.
+- Completed the fixed series-color definitions in the generated dashboard templates
+- Historical SOC presentation uses blue / green / orange / yellow
+- Controller behavior uses blue / green / orange / yellow / cyan / violet
+- Template version 17 aligned the final standard chart defaults
 
-### Safety / transparency
+### Known issue fixed by beta.8
 
-- No optimizer calculation or active-control logic changed.
+Existing stored dashboards could retain stale explicit colors because the
+migration preserved already present `color` entries too broadly.
 
 ---
 
-## [2.1.0-beta.4] - 2026-08-26
+## [2.1.0-beta.4]
 
 ### Added
 
-- Added a bundled date-selectable SOC schedule history card with previous/next day controls, direct date selection and a Today shortcut.
-- Added historical display of actual SOC, the dynamic SOC target that was active at the time, and configured target SOC using Home Assistant History/Recorder.
-- Added persistent forecast/SOC-plan snapshots for the last 31 rolling days, with multiple distinct plan versions per day.
-- Added a plan-snapshot selector so an older full-day forecast plan can be overlaid on recorded SOC history.
-- Snapshot metadata includes Forecast.Solar update time, raw/effective forecast curves, effective daily forecast, forecast end SOC, forecast factors and plan-relevant settings.
-- Added the bundled `noah-soc-history-card.js`; no separate HACS frontend repository is required.
+- Date-selectable SOC schedule history card
+- Historical actual SOC, dynamic SOC target and configured target SOC
+- Persistent forecast/SOC-plan snapshots
+- Plan snapshot selection for past days
+- Bundled history-card frontend resource
 
 ### Changed
 
-- Registered the bundled SOC history card as a persistent Lovelace module resource in storage mode.
-- Declared the Home Assistant frontend/history/http/websocket dependencies required by the bundled card and history endpoint.
-- Migrated the standard dynamic-SOC chart to the date-selectable history card while preserving user-created charts with a different title.
-- Deduplicated stored forecast/plan snapshots.
-- Clipped history series to the selected local day and extended the selected saved plan across the full day.
-
-### Safety / transparency
-
-- Historical states come from Home Assistant Recorder and are not recalculated from current settings.
-- Stored snapshots are diagnostic only and never feed back into active NOAH control.
-- Existing forecast-curve planning and active control behavior remain unchanged.
+- Standard dynamic-SOC chart migrated to the bundled history card
+- Snapshot history limited to 31 rolling days
+- Stored snapshots remain diagnostic and do not affect active control
 
 ---
 
-## [2.1.0-beta.3] - 2026-08-26
+## [2.1.0-beta.3]
 
 ### Added
 
-- Reuse of the complete time-resolved Forecast.Solar power curve already loaded by Home Assistant; no additional Forecast.Solar API requests are made.
-- `PV forecast curve` diagnostic sensor with raw forecast power, effective forecast power and derived SOC plan attributes.
-- Sensors for effective daily forecast, Forecast.Solar update timestamp, forecast plan end SOC and SOC schedule basis.
-- Dashboard PV forecast chart comparing raw Forecast.Solar power, effective forecast power and actual PV production.
-- `forecast_curve` / `daylight_fallback` schedule-source diagnostics.
+- Reuse of the complete time-resolved Forecast.Solar power curve already loaded by Home Assistant
+- PV forecast curve diagnostics
+- Effective daily forecast and forecast update timestamp
+- Forecast-shaped SOC schedule with daylight fallback
+- Dashboard forecast chart
+
+### Changed
+
+- No additional Forecast.Solar API calls are made
+- Actual PV production does not retroactively reshape the plan
+
+---
+
+## [2.1.0-beta.2]
+
+### Added
+
+- `soc_hold` controller mode
 
 ### Fixed
 
-- Corrected Forecast-curve planning so PV power below expected household load is not incorrectly treated as unavailable for battery charging.
-- Corrected dashboard migration so a diagnostics row is not mistaken for an existing forecast chart.
-- Fall back to the legacy daylight schedule if Forecast.Solar runtime data is unavailable.
-
-### Changed
-
-- Dynamic SOC planning follows the time distribution of the native Forecast.Solar power curve when available.
-- The effective forecast curve applies the configured forecast safety factor and optional learned PV correction factor.
-- Expected household demand remains part of forecast-margin and output-control calculations rather than being subtracted from every native forecast interval.
-- SOC catch-up targets the future point of the same forecast-shaped SOC plan.
-- Dashboard template version increased from 13 to 14.
+- Prevented the old forecast-margin path from selecting charge priority again after the dynamic schedule is already satisfied
+- SOC-hold target is PV-only and rounded downward
 
 ---
 
-## [2.1.0-beta.2] - 2026-08-24
+## [2.1.0-beta.1]
 
 ### Added
 
-- Added automatic `soc_hold` controller mode (`SOC-Ladeplan halten` / `Hold SOC schedule`) for a satisfied dynamic SOC charging schedule.
+- Passive persistent PV learning
+- Median correction factor from up to seven valid days
+- Minimum three valid days before application
+- Opt-in learned forecast correction
+- Reset button and diagnostics
 
-### Fixed
+### Safety
 
-- Prevented legacy forecast-margin logic from selecting charge priority a second time when dynamic SOC control is active and the battery is within tolerance at or ahead of the dynamic SOC target.
-- Limited schedule-hold output to PV-only operation so it does not intentionally discharge the battery.
-- Required output reductions in `soc_hold` bypass the normal command interval so falling PV cannot temporarily cause unintended battery discharge.
-
-### Changed
-
-- Predictive SOC release remains the mechanism for intentionally using safely releasable battery energy.
-- Dashboard template version increased from 12 to 13.
-
----
-
-## [2.1.0-beta.1] - 2026-08-24
-
-### Added
-
-- Passive PV learning based on measured NOAH solar power and Forecast.Solar.
-- Persistent PV-learning history across Home Assistant restarts.
-- Robust learned correction factor using valid learning days.
-- Minimum number of valid learning days before learned correction can be applied.
-- Opt-in switch for applying the learned PV correction.
-- Button for resetting PV-learning data.
-- Diagnostic sensors for learning factor, effective forecast factor, learning days, daily ratio, measured PV energy and forecast reference.
-- PV-learning readiness binary sensor.
-- PV-learning diagnostics and controls in the automatic dashboard.
-
-### Changed
-
-- Effective remaining PV forecast can optionally use the learned correction.
-- Dashboard template version increased from 11 to 12.
-- Existing forecast and control behavior remains unchanged while learned PV correction is disabled.
+PV learning is passive by default and application of the learned factor is
+disabled by default.
 
 ---
 
@@ -137,68 +115,169 @@
 
 ### Release
 
-- First stable release of the 2.x integration.
-- Promoted the tested `2.0.0-beta.14` feature set to stable `2.0.0`.
-- No optimizer-calculation, active-control, entity-model or dashboard-logic changes compared with `2.0.0-beta.14`.
-
-### Safety
-
-Active NOAH control remains opt-in and all existing controller safeguards remain unchanged.
+- First stable release of the 2.x integration
+- Promoted the tested Beta-14 feature set to stable
 
 ---
 
 ## [2.0.0-beta.14]
 
-### Added / fixed
+### Added
 
-- Added automatic `pv_redirect` controller mode for redirecting simultaneous battery charging to household consumption when the battery is already at or above the dynamic SOC target.
-- Added a dedicated translated `controller_status` enum sensor.
-- Added `night` as a dedicated state of the dynamic SOC schedule sensor.
-- Replaced misleading night/ahead and retry status text.
-- Dashboard template version increased from 10 to 11.
+- `pv_redirect` controller mode
+- dedicated translated controller-status enum sensor
+- dedicated night state for the SOC schedule
+
+### Fixed
+
+- Reduced avoidable grid import while the battery charges although the SOC schedule is already met
+- Replaced misleading night `ahead` status
+- Improved `waiting_for_retry` display text
+
+### Changed
+
+- PV diversion is capped by `min(grid import, battery charging power)`
+- load-following modes use the faster controller cadence
+- dashboard migration updated the status card
 
 ---
 
 ## [2.0.0-beta.13]
 
-- Faster predictive SOC-release response with 15-second controller evaluation and 30-second command cadence for applicable load-following modes.
+### Fixed
+
+- Faster predictive SOC-release response to changing household load
+- `rate_limited` only when a command is actually pending
+
+### Changed
+
+- Controller evaluation every 15 seconds
+- SOC-release increases may be written every 30 seconds
+- Normal modes retain the two-minute interval
+
+---
 
 ## [2.0.0-beta.12]
 
-- Corrected predictive SOC-release refill reserve and dynamic SOC catch-up projection.
+### Fixed
+
+- Corrected predictive SOC-release refill reserve
+- Corrected catch-up charging to target the future point of a rising schedule
+
+---
 
 ## [2.0.0-beta.11]
 
-- Added predictive SOC release, release diagnostics and dashboard template version 10.
+### Added
+
+- Predictive SOC release
+- forecast-required minimum SOC
+- SOC release floor
+- releasable battery energy
+- SOC release target
+- `soc_release` mode
+
+### Safety
+
+Predictive SOC release is opt-in.
+
+---
 
 ## [2.0.0-beta.10]
 
-- Reworked dynamic SOC target into a time-based charging schedule from sunrise to sunset.
+### Changed
+
+- Dynamic SOC target rebuilt as a real time-based charging schedule
+- Remaining forecast raises the schedule progressively
+
+---
 
 ## [2.0.0-beta.9]
 
-- Repaired the Beta-8 controller-status Jinja migration and increased dashboard template version to 9.
+### Fixed
+
+- Repaired malformed controller-status Jinja migration from Beta 8
+- Existing migrated dashboards are repaired selectively
+
+---
 
 ## [2.0.0-beta.8]
 
-- Added dynamic SOC target, deviation, plan status, catch-up power and opt-in dynamic SOC control.
+### Added
+
+- Dynamic SOC target
+- SOC deviation
+- schedule status
+- catch-up charging power
+- separate dynamic SOC switch
+- `soc_catchup` mode
+- dashboard SOC chart
+
+---
 
 ## [2.0.0-beta.7]
 
-- Corrected battery energy-flow direction in the dashboard.
+### Fixed
+
+- Corrected battery energy-flow direction in the dashboard
+
+---
 
 ## [2.0.0-beta.6]
 
-- Added the automatic NOAH Optimizer Lovelace dashboard.
+### Added
+
+- Integration-managed Lovelace dashboard
+- Dynamic entity resolution
+- Power-flow and diagnostics cards
+
+---
 
 ## [2.0.0-beta.5]
 
-- Added optional active NOAH output control, rate limiting, retry and failsafe handling.
+### Added
+
+- Optional active NOAH output control
+- command deadband
+- rate limiting
+- retry handling
+- failsafe
+- legacy-controller interlock
+
+---
 
 ## [2.0.0-beta.4]
 
-- Added the missing `select.py` platform.
+### Fixed
+
+- Added missing `select.py`
+- Fixed integration setup failure
+
+---
 
 ## [2.0.0-beta.3]
 
-- Ported the legacy YAML optimizer calculation logic to Python while remaining observation-only.
+### Added
+
+- Ported optimizer calculation logic to Python
+
+---
+
+## [2.0.0-beta.2]
+
+### Fixed
+
+- Integration type changed to `device`
+- Improved HACS update handling
+
+---
+
+## [2.0.0-beta.1]
+
+### Added
+
+- First HACS-compatible custom integration
+- Config Flow
+- source entity selection
+- unit normalization
+- observation-only diagnostics

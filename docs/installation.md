@@ -1,9 +1,7 @@
 # Installation
 
-Diese Anleitung beschreibt die Installation und das Update des **Home Assistant
-Growatt NOAH Optimizers** für den Pre-Release `2.1.0-beta.8`.
-
-Für neue Installationen wird die HACS-Integration empfohlen.
+Diese Anleitung beschreibt Installation und Update des **Home Assistant Growatt
+NOAH Optimizers** für den Pre-Release `2.1.0-beta.8`.
 
 ## 1. Voraussetzungen
 
@@ -23,9 +21,9 @@ Für das vollständige Dashboard zusätzlich:
 - Power Flow Card Plus
 - ApexCharts Card
 
-Die beiden Dashboardkarten werden nicht automatisch installiert.
+Die historische SOC-Ladeplankarte wird mit der Integration ausgeliefert.
 
-## 2. Benötigte Quell-Entitäten
+## 2. Quell-Entitäten
 
 | Funktion | Entitätstyp | Einheit |
 |---|---|---|
@@ -38,25 +36,18 @@ Die beiden Dashboardkarten werden nicht automatisch installiert.
 | Forecast.Solar Restprognose heute | `sensor` | Wh oder kWh |
 | NOAH System Output Power | `number` | W oder kW |
 
-Für den zeitaufgelösten Forecast-Ladeplan muss die Forecast-Entität direkt von
-Forecast.Solar stammen. Template- oder Fremdsensoren verwenden automatisch den
-Tageslicht-Fallback.
+Für den zeitaufgelösten Forecast-Ladeplan sollte die Restprognose direkt von
+Forecast.Solar stammen. Bei Template-/Fremdsensoren wird automatisch der
+Tageslicht-Fallback verwendet.
 
-Die Entity-IDs können unter **Werkzeuge → Zustände** geprüft werden.
-
-### Netzvorzeichen
-
-Erwartet wird:
+Erwartetes Netzvorzeichen:
 
 ```text
 positiv = Netzbezug
 negativ = Netzeinspeisung
 ```
 
-Bei umgekehrter Konvention während der Einrichtung **Netzvorzeichen umkehren**
-aktivieren.
-
-## 3. Dashboardkarten installieren
+## 3. Dashboard-Abhängigkeiten
 
 In HACS installieren:
 
@@ -65,16 +56,9 @@ Power Flow Card Plus
 ApexCharts Card
 ```
 
-Danach Browser beziehungsweise Home-Assistant-App vollständig neu laden.
+Browser/App danach vollständig neu laden.
 
-Die historische SOC-Ladeplankarte ist Bestandteil der Integration und benötigt
-keine zusätzliche HACS-Karte.
-
-## 4. Repository in HACS öffnen
-
-[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=CHLINDE&repository=home-assistant-noah-optimizer&category=integration)
-
-Alternativ als benutzerdefiniertes Repository hinzufügen:
+## 4. Repository hinzufügen
 
 ```text
 https://github.com/CHLINDE/home-assistant-noah-optimizer
@@ -86,12 +70,9 @@ Typ:
 Integration
 ```
 
-> **Home Assistant 2026.8+:** Neue HA-OS-Installationen verwenden standardmäßig
-> Port 80. Der HACS-Link selbst enthält keinen Home-Assistant-Port.
+## 5. Pre-Release installieren
 
-## 5. Version 2.1.0-beta.8 installieren
-
-In HACS Vorabversionen für dieses Repository aktivieren und auswählen:
+In HACS Vorabversionen aktivieren und auswählen:
 
 ```text
 2.1.0-beta.8
@@ -99,134 +80,205 @@ In HACS Vorabversionen für dieses Repository aktivieren und auswählen:
 
 Danach Home Assistant vollständig neu starten.
 
-## 6. Neue Installation einrichten
+## 6. Neue Installation
 
-Öffne:
+Unter:
 
 **Einstellungen → Geräte & Dienste → Integration hinzufügen**
 
-und suche nach:
+nach:
 
 ```text
 Growatt NOAH Optimizer
 ```
 
-Wähle die acht Quell-Entitäten aus.
+suchen und die acht Quellentitäten auswählen.
 
-Zusätzlich stehen zur Verfügung:
+Zusätzliche Setup-Optionen:
 
 - Netzvorzeichen umkehren
-- Dashboard in der Seitenleiste anzeigen
+- Dashboard in Seitenleiste anzeigen
 
-Die Seitenleistenanzeige ist standardmäßig aktiv.
+## 7. Update auf beta.8
 
-## 7. Update auf 2.1.0-beta.8
-
-Vor dem Update empfiehlt sich für die kontrollierte Prüfung:
+Vor dem Update wird empfohlen:
 
 ```text
 NOAH-Steuerung aktiv = Aus
-Dynamische SOC-Steuerung aktiv = Aus
-Vorausschauende SOC-Freigabe aktiv = Aus
 ```
 
-`2.1.0-beta.8` übernimmt den Funktionsstand der vorherigen 2.1-Betas und
-repariert zusätzlich die Dashboard-Farbmigration. Bereits gespeicherte Farben
-in eindeutig erkannten NOAH-Standarddiagrammen werden beim Wechsel auf
-Template-Version 18 einmalig auf die dokumentierte Palette ausgerichtet.
-Zusätzliche oder benutzerdefinierte ApexCharts-Karten bleiben unverändert.
+Beta 8 ändert keine Optimizer- oder Controllerberechnung. Die Änderung betrifft
+die Migration des gespeicherten Dashboards.
 
-Nach dem Update Home Assistant vollständig neu starten und das NOAH-Dashboard
-neu öffnen.
+Nach Installation und Neustart sollte die Integration ein Dashboard mit
+Template-Version 18 speichern.
 
-### Update von 2.1.0-beta.7
+### Was wird bei der Migration geändert?
 
-Beim ersten Start mit Beta 8 wird die gespeicherte Dashboard-Template-Version
-von 17 auf 18 angehoben. Dadurch läuft die korrigierte Farb-Migration auch dann,
-wenn Beta 7 das Dashboard bereits auf Version 17 gespeichert hatte.
+Nur eindeutig erkannte NOAH-Standard-ApexCharts:
 
-Geändert werden ausschließlich erkannte generierte NOAH-Standardcharts.
+- PV-Prognose
+- älterer ApexCharts-SOC-Ladeplan
+- Energieplanung bis Sonnenuntergang
+- Leistung heute
+- Reglerverhalten
 
-### Update von 2.0.0
+Erkennung erfolgt über:
 
-Beta 8 enthält zusätzlich zum stabilen 2.0.0 unter anderem:
+1. bekannten Kartentitel
+2. passende Entity-Kombination
+
+Zusätzliche benutzerdefinierte ApexCharts bleiben unangetastet.
+
+### Reglerverhalten – erwartete Farben
+
+```text
+Regler-Soll                  #2196F3
+Ist-Ausgang                  #009B21
+Eigenverbrauch-Soll          #FF6A00
+Ladepriorität-Soll           #FFD800
+Nötige Ladeleistung          #00FFFF
+Dynamische Nachladeleistung  #B200FF
+```
+
+### Historische SOC-Karte
+
+```text
+Ist-SOC             #2196F3
+Dynamisches Soll    #009B21
+Ziel-SOC            #FF6A00
+Gespeicherter Plan  #FFD800
+```
+
+Der History-Card-Cache wird auf:
+
+```text
+v8
+```
+
+angehoben.
+
+## 8. Update von 2.0.0
+
+Zusätzlich zu den Beta-8-Farbkorrekturen enthält die 2.1-Reihe:
 
 - PV-Learning
-- `SOC-Ladeplan halten`
-- zeitaufgelöste Forecast.Solar-Leistungskurve
-- Forecast-geformten SOC-Ladeplan mit Tageslicht-Fallback
-- Forecast-Diagnosewerte und PV-Prognosekarte
-- historische SOC-Ladeplanansicht
-- persistente Forecast-/Plan-Snapshots
-- feste Serienfarben
-- Dashboard-Template-Version 18
+- SOC-Ladeplan halten
+- zeitaufgelösten Forecast.Solar-Ladeplan
+- Forecast-Diagnosekarte
+- historische Ladeplanansicht
+- Forecast-/Plan-Snapshots
 
-Die gelernte PV-Korrektur bleibt opt-in.
+Die gelernte PV-Korrektur bleibt standardmäßig aus.
 
-## 8. Dashboard und Migration
+## 9. Erste Prüfung
 
-Aktueller Stand:
+Nach Neustart zunächst:
 
 ```text
-Dashboard-Template-Version = 18
+Optimierer-Berechnung aktiv = Ein
+NOAH-Steuerung aktiv = Aus
+Betriebsart = Automatik
 ```
 
-Frühere 2.1-Betas erhöhten die Version schrittweise für PV-Learning,
-SOC-Halten, Forecast-Kurve und Historienkarte. `2.1.0-beta.8` erhöht die
-Template-Version auf **18** und korrigiert alte gespeicherte Serienfarben in
-eindeutig erkannten NOAH-Standarddiagrammen.
+Prüfen:
 
-Die Erkennung verwendet den bekannten Standard-Kartentitel und die erwartete
-Entity-Kombination. Zusätzliche beziehungsweise benutzerdefinierte
-ApexCharts-Karten werden nicht verändert.
+- Dashboard lädt ohne Fehler
+- Template-Migration wurde durchgeführt
+- Reglerverhalten hat die sechs definierten Farben
+- historische SOC-Karte nutzt Blau/Grün/Orange/Gelb
+- eigene zusätzliche ApexCharts wurden nicht verändert
+- PV-Prognose und Leistung heute verwenden die Standardpalette
 
-## 9. Erste Prüfung nach dem Update
+## 10. PV-Learning prüfen
 
-1. Unter **Einstellungen → Geräte & Dienste** prüfen, dass der Optimizer geladen ist.
-2. Unter **Werkzeuge → Zustände** die Quell-Entitäten kontrollieren.
-3. NOAH-Dashboard öffnen.
-4. Bei **Reglerverhalten** die sechs Serienfarben prüfen.
-5. Historischen SOC-Ladeplan öffnen und Blau/Grün/Orange/Gelb prüfen.
-6. Erst danach aktive Steuerung wieder einschalten.
-
-## 10. Erwartete Serienfarben
+Bei neuer Lernhistorie zunächst:
 
 ```text
-Blau    #2196F3
-Grün    #009B21
-Orange  #FF6A00
-Gelb    #FFD800
-Cyan    #00FFFF
-Violett #B200FF
+Gelernte PV-Korrektur verwenden = Aus
+PV-Learning bereit = Aus
 ```
 
-Reglerverhalten:
+Erst nach mindestens drei plausiblen Lerntagen die gelernte Korrektur
+aktivieren.
+
+## 11. Dynamischen SOC-Ladeplan prüfen
+
+Bei nativer Forecast.Solar-Quelle sollte:
 
 ```text
-Regler-Soll                   Blau
-Ist-Ausgang                   Grün
-Eigenverbrauch-Soll           Orange
-Ladepriorität-Soll            Gelb
-Erforderliche Ladeleistung    Cyan
-Dynamische Nachladeleistung   Violett
+Ladeplanbasis = Forecast.Solar-Kurve
 ```
 
-Historischer SOC-Ladeplan:
+angezeigt werden.
+
+Andernfalls ist:
 
 ```text
-Ist-SOC                       Blau
-Dynamisches Soll              Grün
-Ziel-SOC                      Orange
-Gespeicherter Plan            Gelb
+Ladeplanbasis = Tageslicht-Fallback
 ```
 
-## 11. Browser-/Frontend-Cache
+zulässig.
 
-Beta 8 registriert die gebündelte Historienkarte mit:
+## 12. SOC-Freigabe prüfen
+
+Die Funktion benötigt:
+
+- Automatik
+- dynamische SOC-Steuerung
+- eingeschaltete vorausschauende SOC-Freigabe
+- Tagbetrieb
+- positiven Netzbezug
+- Ist-SOC oberhalb der Freigabegrenze
+
+## 13. Stellgröße vor aktiver Steuerung testen
+
+Unter **Werkzeuge → Aktionen**:
+
+```yaml
+action: number.set_value
+target:
+  entity_id: number.dein_noah_system_output_power
+data:
+  value: 300
+```
+
+Danach prüfen, ob die Stellgröße den Wert übernimmt.
+
+## 14. Aktive Steuerung einschalten
+
+Erst nach plausibler Prüfung:
 
 ```text
-/noah_optimizer/noah-soc-history-card.js?v=8
+Optimierer-Berechnung aktiv = Ein
+NOAH-Steuerung aktiv = Ein
 ```
 
-Der Versionssprung von `v=7` auf `v=8` sorgt dafür, dass bereits geladener
-Frontend-Code nicht aus einem alten Browser-Cache weiterverwendet wird.
+Weitere Funktionen nach Bedarf aktivieren.
+
+## 15. Schutzmechanismen
+
+- Hysterese
+- Stellgrößenraster
+- Rate-Limit
+- Retry
+- Failsafe
+- persistente Warnung
+- Legacy-YAML-Sperre
+- sichere Reduktionen nach Load-Following-Modi
+
+## 16. Legacy-YAML-Optimizer
+
+Nicht gleichzeitig mit der HACS-Steuerung aktiv verwenden.
+
+Die HACS-Integration prüft weiterhin:
+
+```text
+input_boolean.noah_optimizer_enabled
+```
+
+## 17. Weiterführende Dokumentation
+
+- [Konfiguration](configuration.md)
+- [Fehlerbehebung](troubleshooting.md)
+- [HACS Beta / Pre-Release](hacs-beta.md)

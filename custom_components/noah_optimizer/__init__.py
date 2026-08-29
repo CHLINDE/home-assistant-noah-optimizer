@@ -59,17 +59,18 @@ async def async_setup_entry(
         hass,
         entry,
     )
-
     await coordinator.async_initialize()
     await coordinator.async_config_entry_first_refresh()
+
     controller = NoahOptimizerController(
         hass,
         coordinator,
     )
-
     coordinator.controller = controller
     entry.runtime_data = coordinator
+
     async_register_history_store(hass, entry.entry_id, coordinator.history)
+
     source_entities = [
         entry.data[CONF_GRID_POWER],
         entry.data[CONF_SOLAR_POWER],
@@ -141,6 +142,7 @@ async def async_unload_entry(
     entry: NoahOptimizerConfigEntry,
 ) -> bool:
     """Unload the Growatt NOAH Optimizer."""
+
     # Persist the latest PV-learning and plan-history state before a controlled
     # reload or Home Assistant shutdown.
     try:
@@ -156,10 +158,9 @@ async def async_unload_entry(
             PLATFORMS,
         )
     )
+
     if unload_ok:
-        remove_dashboard_panel(
-            hass
-        )
+        remove_dashboard_panel(hass)
         remove_history_card(hass)
         async_unregister_history_store(hass, entry.entry_id)
 
