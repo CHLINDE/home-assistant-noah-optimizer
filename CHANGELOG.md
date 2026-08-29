@@ -3,10 +3,10 @@
 ### Dashboard color consistency
 
 - Added explicit series colors to the generated German and English ApexCharts cards
-- Uses `#2196F3` / `#009B21` / `#F44336` consistently for actual SOC, dynamic target and final target SOC
-- Aligns the historical SOC card with the same palette and uses `#FFD800` for the saved plan
-- Dashboard template version increased from 15 to 16; migration only fills missing colors and preserves explicit user colors
-- History-card frontend cache version increased from `v=5` to `v=6`
+- Uses `#2196F3` / `#009B21` / `#FF6A00` consistently for actual SOC, dynamic target and final target SOC; the saved historical plan remains `#FFD800`
+- Aligns the historical SOC card to blue / green / orange / yellow and the controller-behavior chart to blue / green / orange / yellow / cyan / violet
+- Dashboard template version increased from 16 to 17 for final chart-color alignment; the previous NOAH default red target-SOC color is migrated to orange while arbitrary user colors remain untouched
+- History-card frontend cache version increased from `v=6` to `v=7`
 - Fixed the generated Python chart definitions so the new `color` values are valid dictionary entries
 
 ### Added

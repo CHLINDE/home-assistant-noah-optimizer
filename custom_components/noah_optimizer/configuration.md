@@ -1156,8 +1156,9 @@ denselben NOAH steuern.
 Ab `2.1.0-beta.3` zeigt das Dashboard zusätzlich eine Karte **PV-Prognose**
 mit Forecast.Solar-Leistung, wirksamer korrigierter Prognose und realer
 PV-Leistung. Der Aktualisierungszeitpunkt, der prognostizierte End-SOC und die
-Ladeplanbasis werden in den Planungsdetails angezeigt. Die Dashboard-
-Template-Version beträgt 14.
+Ladeplanbasis werden in den Planungsdetails angezeigt. Beta 3 führte dafür
+Dashboard-Template-Version 14 ein; der aktuelle `2.1.0-beta.4`-Stand verwendet
+nach Historienkarte und vollständiger Serienfarben-Migration **Template-Version 17**.
 
 
 Das automatische Dashboard verwendet für Power Flow Card Plus:
@@ -1268,11 +1269,13 @@ Für die SOC-Historie gilt:
 ```text
 Ist-SOC             #2196F3
 Dynamisches Soll    #009B21
-Ziel-SOC            #F44336
+Ziel-SOC            #FF6A00
 Gespeicherter Plan  #FFD800
 ```
 
-Die übrigen Standarddiagramme verwenden zusätzlich Orange `#FF6A00`, Cyan
-`#00FFFF` und Violett `#B200FF`. Bei der Migration auf Dashboard-Template-Version
-16 werden nur fehlende `color`-Eigenschaften ergänzt. Bereits manuell gesetzte
-Farben werden nicht überschrieben.
+Das Diagramm **Reglerverhalten** verwendet Blau `#2196F3`, Grün `#009B21`,
+Orange `#FF6A00`, Gelb `#FFD800`, Cyan `#00FFFF` und Violett `#B200FF`.
+Bei der Migration auf Dashboard-Template-Version 17 werden fehlende Farben
+ergänzt. Zusätzlich wird ausschließlich der frühere NOAH-Standard
+Ziel-SOC Rot `#F44336` auf Orange `#FF6A00` umgestellt; andere manuell
+gesetzte Farben werden nicht überschrieben.

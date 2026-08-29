@@ -13,7 +13,7 @@ from homeassistant.core import HomeAssistant
 from .const import DOMAIN
 
 HISTORY_CARD_STATIC_URL = f"/{DOMAIN}/noah-soc-history-card.js"
-HISTORY_CARD_VERSION = "6"
+HISTORY_CARD_VERSION = "7"
 HISTORY_CARD_URL = f"{HISTORY_CARD_STATIC_URL}?v={HISTORY_CARD_VERSION}"
 HISTORY_CARD_FILE = Path(__file__).with_name("frontend") / "noah-soc-history-card.js"
 

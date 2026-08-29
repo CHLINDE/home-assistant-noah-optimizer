@@ -1031,7 +1031,7 @@ First stable 2.x release:
 - Allows selecting a specific saved plan snapshot for a historical day
 - Ships the NOAH SOC history card with the integration
 - Introduces the history-card migration at dashboard template version 15
-- Increases the current dashboard template version to 16 for stable series colors
+- Increases the current dashboard template version to 17 for fully aligned series colors
 - Adds explicit standard chart colors while preserving already configured custom series colors
 
 ### 2.1.0-beta.3

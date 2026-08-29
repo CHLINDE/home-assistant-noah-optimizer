@@ -837,12 +837,14 @@ erhält. Für den historischen SOC-Ladeplan gilt insbesondere:
 
 - Ist-SOC: Blau `#2196F3`
 - Dynamisches Soll: Grün `#009B21`
-- Ziel-SOC: Rot `#F44336`
+- Ziel-SOC: Orange `#FF6A00`
 - Gespeicherter Plan: Gelb `#FFD800`
 
-Weitere Standarddiagramme verwenden dieselbe Palette aus Blau, Grün, Orange,
-Gelb, Cyan und Violett. Die Migration ergänzt Farben nur dort, wo noch keine
-explizite Farbe gesetzt ist. Eigene Farbanpassungen bleiben deshalb erhalten.
+Auch **Reglerverhalten** verwendet die feste Reihenfolge Blau, Grün, Orange,
+Gelb, Cyan und Violett. Der historische SOC-Ladeplan verwendet Blau, Grün,
+Orange und Gelb. Die Migration ergänzt fehlende Farben; beim Wechsel auf
+Template-Version 17 wird zusätzlich nur der frühere NOAH-Standard Rot für
+Ziel-SOC auf Orange umgestellt. Andere explizite Benutzerfarben bleiben erhalten.
 
 ### Dashboard-Inhalt
 

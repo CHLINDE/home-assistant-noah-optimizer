@@ -190,7 +190,7 @@ Automatikmodus. Neu gegenüber `2.0.0` sind unter anderem:
 - neue Forecast-Diagnosewerte und PV-Prognosekarte
 - historische SOC-Ladeplanansicht mit Datumsauswahl und Planstand-Auswahl
 - persistente Forecast-/Plan-Snapshots für 31 Tage
-- Dashboard-Template-Version 16
+- Dashboard-Template-Version 17
 
 Das Learning startet nach dem Neustart automatisch mit der Datensammlung. Die
 gelernte PV-Korrektur ist jedoch standardmäßig ausgeschaltet und kann
@@ -211,7 +211,7 @@ aus Beta 1 und ergänzt außerdem den oben beschriebenen Modus
 
 Damit gelten gegenüber Beta 14 zusätzlich die Änderungen aus
 **Update von 2.0.0**: neue PV-Learning-Entitäten, der Opt-in-Schalter, die
-Reset-Schaltfläche, den SOC-Halten-Modus, die zeitaufgelöste Forecast-Kurve, die historische Ladeplanansicht, feste Serienfarben und Dashboard-Template-Version 16.
+Reset-Schaltfläche, den SOC-Halten-Modus, die zeitaufgelöste Forecast-Kurve, die historische Ladeplanansicht, feste Serienfarben und Dashboard-Template-Version 17.
 Die gelernte PV-Korrektur verändert die Forecast-Berechnung weiterhin erst
 nach ausdrücklicher Aktivierung; der SOC-Halten-Modus ist davon unabhängig und
 gehört zur dynamischen SOC-Steuerung.
@@ -376,7 +376,7 @@ Das Dashboard wird **nicht vollständig ersetzt**. Eigene Anpassungen bleiben
 bestehen, soweit die bekannten Standardkarten eindeutig erkannt werden.
 
 Bei einer Neuinstallation wird direkt die vollständige aktuelle
-Dashboard-Vorlage mit Template-Version 16 erzeugt.
+Dashboard-Vorlage mit Template-Version 17 erzeugt.
 
 Für `2.1.0-beta.1` steigt die Dashboard-Template-Version von 11 auf 12. Die
 Migration ergänzt die PV-Learning-Diagnosewerte, den neuen Anwendungsschalter
