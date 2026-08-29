@@ -1,48 +1,77 @@
-## [2.1.0-beta.8] - 2026-08-29
+## [2.1.0-beta.8]
 
 ### Fixed
 
-- Corrected migration of stale explicit colors in already stored NOAH dashboards
-- Recognized generated standard ApexCharts now receive the current stable palette even when an older `color` value already exists
-- Fixed the remaining upgrade case where updated dashboard templates alone did not change the colors of an existing stored dashboard
+- Corrected migration of stale explicit series colors in already stored NOAH dashboards
+- Existing standard charts are no longer left with outdated colors merely because a `color` field already exists
+- Standard-chart recognition requires the known German or English card title and the expected NOAH entity set
+- User-created or additional ApexCharts are not modified by the template-v18 color migration
 
 ### Changed
 
 - Dashboard template storage version increased from 17 to 18
-- Standard charts are identified by known title and expected entity combination before colors are changed
-- Custom or additional ApexCharts cards are not modified by the v18 color migration
-- Bundled SOC history card frontend cache version increased from `v7` to `v8`
+- The strict template-v18 migration replaces the older broad series-color migration
+- Bundled SOC history-card frontend cache version increased to `v8`
 - Integration version updated to `2.1.0-beta.8`
 
 ### Standard palette
 
-- blue `#2196F3`
-- green `#009B21`
-- orange `#FF6A00`
-- yellow `#FFD800`
-- cyan `#00FFFF`
-- violet `#B200FF`
+- Blue `#2196F3`
+- Green `#009B21`
+- Orange `#FF6A00`
+- Yellow `#FFD800`
+- Cyan `#00FFFF`
+- Violet `#B200FF`
 
 ### Safety
 
-This release changes dashboard presentation and migration only. Optimizer
-calculations and active NOAH control behavior are unchanged.
+This release changes dashboard presentation and migration only.
+
+Optimizer calculations and active NOAH control behavior are unchanged.
 
 ---
 
 ## [2.1.0-beta.7]
 
-### Dashboard color consistency
+### Fixed
 
-- Completed the fixed series-color definitions in the generated dashboard templates
+- Completed the remaining standard-series color alignment
+- Corrected the controller-behavior chart palette
+- Corrected the historical SOC target color to orange
+
+### Changed
+
+- Dashboard template storage version increased to 17
 - Historical SOC presentation uses blue / green / orange / yellow
-- Controller behavior uses blue / green / orange / yellow / cyan / violet
-- Template version 17 aligned the final standard chart defaults
 
-### Known issue fixed by beta.8
+### Safety
 
-Existing stored dashboards could retain stale explicit colors because the
-migration preserved already present `color` entries too broadly.
+No optimizer-calculation or active-control logic changes.
+
+---
+
+## [2.1.0-beta.6]
+
+### Changed
+
+- Standardized explicit series colors in generated dashboard charts
+- Introduced a consistent NOAH dashboard palette
+
+### Safety
+
+No optimizer-calculation or active-control logic changes.
+
+---
+
+## [2.1.0-beta.5]
+
+### Changed
+
+- Prepared and aligned generated dashboard series colors
+
+### Safety
+
+No optimizer-calculation or active-control logic changes.
 
 ---
 
@@ -50,17 +79,17 @@ migration preserved already present `color` entries too broadly.
 
 ### Added
 
-- Date-selectable SOC schedule history card
-- Historical actual SOC, dynamic SOC target and configured target SOC
-- Persistent forecast/SOC-plan snapshots
-- Plan snapshot selection for past days
-- Bundled history-card frontend resource
+- Date-selectable historical SOC schedule card
+- Previous / next day navigation and direct date selection
+- Recorder history for actual SOC, dynamic SOC target, and configured target SOC
+- Persistent forecast / plan snapshots
+- Selectable historical plan snapshots
+- Rolling snapshot retention of up to 31 days
+- Bundled frontend history card
 
 ### Changed
 
-- Standard dynamic-SOC chart migrated to the bundled history card
-- Snapshot history limited to 31 rolling days
-- Stored snapshots remain diagnostic and do not affect active control
+- Stored snapshots are diagnostic only and never affect active control
 
 ---
 
@@ -69,15 +98,16 @@ migration preserved already present `color` entries too broadly.
 ### Added
 
 - Reuse of the complete time-resolved Forecast.Solar power curve already loaded by Home Assistant
-- PV forecast curve diagnostics
-- Effective daily forecast and forecast update timestamp
-- Forecast-shaped SOC schedule with daylight fallback
-- Dashboard forecast chart
+- Raw and effective forecast-curve diagnostics
+- Forecast update timestamp
+- Effective daily forecast
+- Forecast-shaped SOC schedule
+- Daylight fallback
 
 ### Changed
 
 - No additional Forecast.Solar API calls are made
-- Actual PV production does not retroactively reshape the plan
+- Expected household load remains a separate part of forecast margin and output control
 
 ---
 
@@ -89,8 +119,11 @@ migration preserved already present `color` entries too broadly.
 
 ### Fixed
 
-- Prevented the old forecast-margin path from selecting charge priority again after the dynamic schedule is already satisfied
-- SOC-hold target is PV-only and rounded downward
+- Prevented unnecessary charge priority after the dynamic SOC schedule is already satisfied
+
+### Changed
+
+- SOC hold uses current PV for household consumption without intentionally requesting battery discharge
 
 ---
 
@@ -99,15 +132,15 @@ migration preserved already present `color` entries too broadly.
 ### Added
 
 - Passive persistent PV learning
-- Median correction factor from up to seven valid days
+- Daily PV-production comparison against Forecast.Solar
+- Median learning factor from up to seven valid days
 - Minimum three valid days before application
-- Opt-in learned forecast correction
-- Reset button and diagnostics
+- Optional learned forecast correction
+- Learning diagnostics and reset
 
 ### Safety
 
-PV learning is passive by default and application of the learned factor is
-disabled by default.
+Applying the learned factor is disabled by default.
 
 ---
 
@@ -116,7 +149,12 @@ disabled by default.
 ### Release
 
 - First stable release of the 2.x integration
-- Promoted the tested Beta-14 feature set to stable
+- Promoted the tested `2.0.0-beta.14` feature set to stable `2.0.0`
+- No optimizer-calculation or active-control changes compared with Beta 14
+
+### Changed
+
+- Dashboard template version remains 11
 
 ---
 
@@ -125,20 +163,22 @@ disabled by default.
 ### Added
 
 - `pv_redirect` controller mode
-- dedicated translated controller-status enum sensor
-- dedicated night state for the SOC schedule
+- Dedicated `controller_status` enum sensor
+- Central German and English translations
+- Dedicated `night` schedule state
 
 ### Fixed
 
-- Reduced avoidable grid import while the battery charges although the SOC schedule is already met
+- Prevented avoidable grid import while the battery is charging above the dynamic SOC target
 - Replaced misleading night `ahead` status
-- Improved `waiting_for_retry` display text
+- Improved `waiting_for_retry` wording
+- PV-diversion targets round down safely
 
 ### Changed
 
-- PV diversion is capped by `min(grid import, battery charging power)`
-- load-following modes use the faster controller cadence
-- dashboard migration updated the status card
+- PV diversion limited to `min(grid import, battery charging power)`
+- Fast load-following applies to `soc_release` and `pv_redirect`
+- Dashboard template version increased to 11
 
 ---
 
@@ -147,13 +187,13 @@ disabled by default.
 ### Fixed
 
 - Faster predictive SOC-release response to changing household load
-- `rate_limited` only when a command is actually pending
+- `rate_limited` only for an actual pending command
 
 ### Changed
 
 - Controller evaluation every 15 seconds
-- SOC-release increases may be written every 30 seconds
-- Normal modes retain the two-minute interval
+- SOC-release increases every 30 seconds
+- Normal modes retain 120 seconds
 
 ---
 
@@ -162,7 +202,12 @@ disabled by default.
 ### Fixed
 
 - Corrected predictive SOC-release refill reserve
-- Corrected catch-up charging to target the future point of a rising schedule
+- Expected household demand is no longer deducted from the separate refill reserve
+- Corrected dynamic catch-up to target the future point of a rising SOC schedule
+
+### Changed
+
+- Dashboard template version remains 10
 
 ---
 
@@ -171,15 +216,21 @@ disabled by default.
 ### Added
 
 - Predictive SOC release
-- forecast-required minimum SOC
+- Separate opt-in switch
+- `soc_release` controller mode
+- Forecast-required minimum SOC
 - SOC release floor
-- releasable battery energy
+- Releasable battery energy
 - SOC release target
-- `soc_release` mode
+- Dashboard diagnostics
+
+### Changed
+
+- Dashboard template version increased to 10
 
 ### Safety
 
-Predictive SOC release is opt-in.
+Predictive SOC release is disabled by default.
 
 ---
 
@@ -187,8 +238,10 @@ Predictive SOC release is opt-in.
 
 ### Changed
 
-- Dynamic SOC target rebuilt as a real time-based charging schedule
-- Remaining forecast raises the schedule progressively
+- Reworked dynamic SOC target into a time-based charging schedule
+- Added progressive forecast pressure
+- Prevented poor forecast from forcing an immediate 100% target
+- Dashboard template version remains 9
 
 ---
 
@@ -196,8 +249,12 @@ Predictive SOC release is opt-in.
 
 ### Fixed
 
-- Repaired malformed controller-status Jinja migration from Beta 8
-- Existing migrated dashboards are repaired selectively
+- Fixed `TemplateSyntaxError: unexpected '}'`
+- Repaired dashboards already migrated by Beta 8
+
+### Changed
+
+- Dashboard template version increased to 9
 
 ---
 
@@ -207,11 +264,20 @@ Predictive SOC release is opt-in.
 
 - Dynamic SOC target
 - SOC deviation
-- schedule status
-- catch-up charging power
-- separate dynamic SOC switch
-- `soc_catchup` mode
-- dashboard SOC chart
+- Ahead / on-track / behind state
+- Dynamic catch-up charging power
+- Separate dynamic SOC switch
+- Configurable catch-up time
+- `soc_catchup` controller mode
+- Dynamic SOC dashboard chart
+
+### Changed
+
+- Dashboard template version set to 8
+
+### Safety
+
+Dynamic SOC control is disabled by default.
 
 ---
 
@@ -219,7 +285,9 @@ Predictive SOC release is opt-in.
 
 ### Fixed
 
-- Corrected battery energy-flow direction in the dashboard
+- Corrected battery energy-flow direction
+- Charging shown as flow into battery
+- Discharging shown as flow out of battery
 
 ---
 
@@ -229,7 +297,9 @@ Predictive SOC release is opt-in.
 
 - Integration-managed Lovelace dashboard
 - Dynamic entity resolution
-- Power-flow and diagnostics cards
+- German and English templates
+- Power-flow visualization
+- Charts, calibration, and diagnostics
 
 ---
 
@@ -238,11 +308,15 @@ Predictive SOC release is opt-in.
 ### Added
 
 - Optional active NOAH output control
-- command deadband
-- rate limiting
-- retry handling
-- failsafe
-- legacy-controller interlock
+- Separate active-control switch
+- Command interval and deadband
+- Retry handling
+- Failsafe
+- Legacy YAML interlock
+
+### Safety
+
+Active control is disabled by default.
 
 ---
 
@@ -253,13 +327,24 @@ Predictive SOC release is opt-in.
 - Added missing `select.py`
 - Fixed integration setup failure
 
+### Safety
+
+Observation-only.
+
 ---
 
 ## [2.0.0-beta.3]
 
 ### Added
 
-- Ported optimizer calculation logic to Python
+- Python implementation of the legacy optimizer calculations
+- Configurable parameters and operating mode
+- Forecast and energy-planning sensors
+- Calculated controller mode and output target
+
+### Safety
+
+Observation-only.
 
 ---
 
@@ -267,8 +352,12 @@ Predictive SOC release is opt-in.
 
 ### Fixed
 
-- Integration type changed to `device`
+- Changed integration type to `device`
 - Improved HACS update handling
+
+### Safety
+
+Observation-only.
 
 ---
 
@@ -278,6 +367,11 @@ Predictive SOC release is opt-in.
 
 - First HACS-compatible custom integration
 - Config Flow
-- source entity selection
-- unit normalization
-- observation-only diagnostics
+- Source entity selection
+- Unit normalization
+- Grid and battery diagnostics
+- German and English translations
+
+### Safety
+
+Observation-only.

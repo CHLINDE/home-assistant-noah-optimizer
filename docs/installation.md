@@ -1,11 +1,10 @@
 # Installation
 
-Diese Anleitung beschreibt Installation und Update des **Home Assistant Growatt
-NOAH Optimizers** für den Pre-Release `2.1.0-beta.8`.
+Diese Anleitung beschreibt Installation und Update des **Home Assistant
+Growatt NOAH Optimizers** für den stabilen Release `2.0.0` und den aktuellen
+Pre-Release `2.1.0-beta.8`.
 
 ## 1. Voraussetzungen
-
-Benötigt werden:
 
 - Home Assistant
 - HACS
@@ -16,49 +15,49 @@ Benötigt werden:
 - saldierter Netzleistungssensor
 - beschreibbare `number`-Entität für NOAH System Output Power
 
-Für das vollständige Dashboard zusätzlich:
+Dashboard zusätzlich:
 
 - Power Flow Card Plus
 - ApexCharts Card
 
-Die historische SOC-Ladeplankarte wird mit der Integration ausgeliefert.
+Die historische SOC-Karte wird mit der Integration ausgeliefert.
 
-## 2. Quell-Entitäten
+## 2. Benötigte Quell-Entitäten
 
-| Funktion | Entitätstyp | Einheit |
+| Funktion | Typ | Einheit |
 |---|---|---|
-| Saldierte Netzleistung | `sensor` | W oder kW |
-| NOAH Solar Power | `sensor` | W oder kW |
-| NOAH Output Power | `sensor` | W oder kW |
-| NOAH SOC | `sensor` | % |
-| NOAH Charging Power | `sensor` | W oder kW |
-| NOAH Discharge Power | `sensor` | W oder kW |
-| Forecast.Solar Restprognose heute | `sensor` | Wh oder kWh |
-| NOAH System Output Power | `number` | W oder kW |
+| Netzleistung | `sensor` | W oder kW |
+| Solar Power | `sensor` | W oder kW |
+| Output Power | `sensor` | W oder kW |
+| SOC | `sensor` | % |
+| Charging Power | `sensor` | W oder kW |
+| Discharge Power | `sensor` | W oder kW |
+| Restprognose heute | `sensor` | Wh oder kWh |
+| System Output Power | `number` | W oder kW |
 
-Für den zeitaufgelösten Forecast-Ladeplan sollte die Restprognose direkt von
-Forecast.Solar stammen. Bei Template-/Fremdsensoren wird automatisch der
-Tageslicht-Fallback verwendet.
-
-Erwartetes Netzvorzeichen:
+Netzvorzeichen:
 
 ```text
 positiv = Netzbezug
 negativ = Netzeinspeisung
 ```
 
-## 3. Dashboard-Abhängigkeiten
+## 3. Dashboardkarten
 
-In HACS installieren:
+Über HACS installieren:
 
 ```text
 Power Flow Card Plus
 ApexCharts Card
 ```
 
-Browser/App danach vollständig neu laden.
+Danach Frontend vollständig neu laden.
 
-## 4. Repository hinzufügen
+## 4. Repository
+
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=CHLINDE&repository=home-assistant-noah-optimizer&category=integration)
+
+Alternativ:
 
 ```text
 https://github.com/CHLINDE/home-assistant-noah-optimizer
@@ -72,65 +71,80 @@ Integration
 
 ## 5. Pre-Release installieren
 
-In HACS Vorabversionen aktivieren und auswählen:
+HACS-Vorabversionen aktivieren.
+
+Installieren:
 
 ```text
 2.1.0-beta.8
 ```
 
-Danach Home Assistant vollständig neu starten.
+Home Assistant vollständig neu starten.
 
 ## 6. Neue Installation
 
-Unter:
-
 **Einstellungen → Geräte & Dienste → Integration hinzufügen**
 
-nach:
+Suche:
 
 ```text
 Growatt NOAH Optimizer
 ```
 
-suchen und die acht Quellentitäten auswählen.
+Acht Quellentitäten wählen.
 
-Zusätzliche Setup-Optionen:
+Optionen:
 
 - Netzvorzeichen umkehren
 - Dashboard in Seitenleiste anzeigen
 
-## 7. Update auf beta.8
+## 7. Sichere Erstkonfiguration
 
-Vor dem Update wird empfohlen:
+```text
+Optimierer-Berechnung aktiv = Ein
+NOAH-Steuerung aktiv = Aus
+Dynamische SOC-Steuerung aktiv = Aus
+Vorausschauende SOC-Freigabe aktiv = Aus
+Gelernte PV-Korrektur verwenden = Aus
+Betriebsart = Automatik
+```
+
+## 8. Update auf 2.1.0-beta.8
+
+Vor dem Update:
 
 ```text
 NOAH-Steuerung aktiv = Aus
 ```
 
-Beta 8 ändert keine Optimizer- oder Controllerberechnung. Die Änderung betrifft
-die Migration des gespeicherten Dashboards.
+Dann Beta 8 installieren und neu starten.
 
-Nach Installation und Neustart sollte die Integration ein Dashboard mit
-Template-Version 18 speichern.
+Beta 8 enthält gegenüber dem stabilen 2.0.0 zusätzlich:
 
-### Was wird bei der Migration geändert?
+- PV-Learning
+- SOC-Ladeplan halten
+- zeitaufgelöste Forecast.Solar-Kurve
+- Forecast-Diagnose
+- historische SOC-Karte
+- Forecast-/Plan-Snapshots
+- feste Serienfarben
+- korrigierte Farbmigration
 
-Nur eindeutig erkannte NOAH-Standard-ApexCharts:
+## 9. Update von 2.1.0-beta.4 bis beta.7
 
-- PV-Prognose
-- älterer ApexCharts-SOC-Ladeplan
-- Energieplanung bis Sonnenuntergang
-- Leistung heute
-- Reglerverhalten
+Wichtigster Beta-8-Punkt:
 
-Erkennung erfolgt über:
+```text
+Dashboard-Template-Version 17 -> 18
+```
 
-1. bekannten Kartentitel
-2. passende Entity-Kombination
+Alte explizite Serienfarben in gespeicherten Standardcharts werden korrigiert.
 
-Zusätzliche benutzerdefinierte ApexCharts bleiben unangetastet.
+Eigene ApexCharts bleiben erhalten.
 
-### Reglerverhalten – erwartete Farben
+## 10. Farben prüfen
+
+Reglerverhalten:
 
 ```text
 Regler-Soll                  #2196F3
@@ -141,97 +155,110 @@ Nötige Ladeleistung          #00FFFF
 Dynamische Nachladeleistung  #B200FF
 ```
 
-### Historische SOC-Karte
+Historischer SOC:
 
 ```text
-Ist-SOC             #2196F3
-Dynamisches Soll    #009B21
-Ziel-SOC            #FF6A00
-Gespeicherter Plan  #FFD800
+Ist-SOC                      #2196F3
+Dynamisches SOC-Soll         #009B21
+Ziel-SOC                     #FF6A00
+Gespeicherter Plan           #FFD800
 ```
 
-Der History-Card-Cache wird auf:
+History-Card-Cache:
 
 ```text
 v8
 ```
 
-angehoben.
+## 11. Forecast.Solar prüfen
 
-## 8. Update von 2.0.0
-
-Zusätzlich zu den Beta-8-Farbkorrekturen enthält die 2.1-Reihe:
-
-- PV-Learning
-- SOC-Ladeplan halten
-- zeitaufgelösten Forecast.Solar-Ladeplan
-- Forecast-Diagnosekarte
-- historische Ladeplanansicht
-- Forecast-/Plan-Snapshots
-
-Die gelernte PV-Korrektur bleibt standardmäßig aus.
-
-## 9. Erste Prüfung
-
-Nach Neustart zunächst:
-
-```text
-Optimierer-Berechnung aktiv = Ein
-NOAH-Steuerung aktiv = Aus
-Betriebsart = Automatik
-```
+Bei nativer Quelle sollte die Ladeplanbasis auf die Forecast.Solar-Kurve
+hinweisen.
 
 Prüfen:
 
-- Dashboard lädt ohne Fehler
-- Template-Migration wurde durchgeführt
-- Reglerverhalten hat die sechs definierten Farben
-- historische SOC-Karte nutzt Blau/Grün/Orange/Gelb
-- eigene zusätzliche ApexCharts wurden nicht verändert
-- PV-Prognose und Leistung heute verwenden die Standardpalette
+- Forecast-Aktualisierung
+- rohe Forecast-Kurve
+- wirksame Forecast-Kurve
+- reale PV-Leistung
 
-## 10. PV-Learning prüfen
+Bei nicht auflösbarer Quelle ist der Tageslicht-Fallback korrekt.
 
-Bei neuer Lernhistorie zunächst:
+## 12. PV-Learning prüfen
+
+Zunächst Anwendung aus lassen.
+
+Beobachten:
+
+- Prognosereferenz
+- gemessene PV-Energie
+- Lerntage
+- Lernfaktor
+- Learning bereit
+
+Mindestens drei gültige Tage vor Anwendung.
+
+## 13. Historische SOC-Karte prüfen
+
+Testen:
+
+- Heute
+- vorheriger/nächster Tag
+- Datumsauswahl
+- gespeicherte Planstände
+
+## 14. Dynamischen SOC-Ladeplan prüfen
+
+Beobachten:
 
 ```text
-Gelernte PV-Korrektur verwenden = Aus
-PV-Learning bereit = Aus
+Dynamisches SOC-Soll
+SOC-Abweichung
+SOC-Ladeplan
+Dynamisch erforderliche Ladeleistung
 ```
 
-Erst nach mindestens drei plausiblen Lerntagen die gelernte Korrektur
-aktivieren.
-
-## 11. Dynamischen SOC-Ladeplan prüfen
-
-Bei nativer Forecast.Solar-Quelle sollte:
+Nachts:
 
 ```text
-Ladeplanbasis = Forecast.Solar-Kurve
+SOC-Ladeplan = Nachtbetrieb
 ```
 
-angezeigt werden.
+## 15. SOC-Halten prüfen
 
-Andernfalls ist:
+Bei erfülltem Plan kann der Reglermodus **SOC-Ladeplan halten** erscheinen.
 
-```text
-Ladeplanbasis = Tageslicht-Fallback
-```
+Keine absichtliche Akkuentladung.
 
-zulässig.
+## 16. SOC-Freigabe prüfen
 
-## 12. SOC-Freigabe prüfen
-
-Die Funktion benötigt:
+Voraussetzungen:
 
 - Automatik
 - dynamische SOC-Steuerung
-- eingeschaltete vorausschauende SOC-Freigabe
-- Tagbetrieb
-- positiven Netzbezug
-- Ist-SOC oberhalb der Freigabegrenze
+- SOC-Freigabe
+- Tag
+- Forecast
+- Ist-SOC über Freigabegrenze
+- positiver Netzbezug
 
-## 13. Stellgröße vor aktiver Steuerung testen
+## 17. PV-Umlenkung prüfen
+
+Geeignet:
+
+```text
+Ist-SOC >= dynamisches SOC-Soll
+Akkuladeleistung > 0
+Netzbezug > 0
+```
+
+Erwartet:
+
+```text
+Reglermodus = PV-Umlenkung
+```
+
+## 18. Stellgröße manuell testen
 
 Unter **Werkzeuge → Aktionen**:
 
@@ -243,42 +270,98 @@ data:
   value: 300
 ```
 
-Danach prüfen, ob die Stellgröße den Wert übernimmt.
-
-## 14. Aktive Steuerung einschalten
+## 19. Aktive Steuerung
 
 Erst nach plausibler Prüfung:
 
 ```text
-Optimierer-Berechnung aktiv = Ein
 NOAH-Steuerung aktiv = Ein
 ```
 
-Weitere Funktionen nach Bedarf aktivieren.
-
-## 15. Schutzmechanismen
+## 20. Schutzmechanismen
 
 - Hysterese
 - Stellgrößenraster
 - Rate-Limit
 - Retry
 - Failsafe
-- persistente Warnung
-- Legacy-YAML-Sperre
-- sichere Reduktionen nach Load-Following-Modi
+- Legacy-Sperre
+- schnelle sichere Reduzierungen
 
-## 16. Legacy-YAML-Optimizer
+## 21. Legacy-YAML
 
-Nicht gleichzeitig mit der HACS-Steuerung aktiv verwenden.
+Nicht gleichzeitig aktiv verwenden.
 
-Die HACS-Integration prüft weiterhin:
+## 22. Dashboard-Migrationsstände
 
 ```text
-input_boolean.noah_optimizer_enabled
+8   Dynamischer SOC
+9   Jinja-Reparatur
+10  SOC-Freigabe
+11  Nachtstatus / PV-Umlenkung / Controllerstatus
+12  PV-Learning
+13  SOC-Ladeplan halten
+14  Forecast.Solar-Kurve
+15  Historische SOC-Karte
+16  feste Serienfarben
+17  Farbangleichung
+18  Farbmigrationskorrektur
 ```
 
-## 17. Weiterführende Dokumentation
+## Feste Dashboard-Farbpalette
 
-- [Konfiguration](configuration.md)
-- [Fehlerbehebung](troubleshooting.md)
-- [HACS Beta / Pre-Release](hacs-beta.md)
+Die von der Integration erzeugten Standarddiagramme verwenden eine feste
+Farbpalette:
+
+```text
+Blau     #2196F3
+Grün     #009B21
+Orange   #FF6A00
+Gelb     #FFD800
+Cyan     #00FFFF
+Violett  #B200FF
+```
+
+### Reglerverhalten
+
+```text
+Regler-Soll                  #2196F3  Blau
+Ist-Ausgang                  #009B21  Grün
+Eigenverbrauch-Soll          #FF6A00  Orange
+Ladepriorität-Soll           #FFD800  Gelb
+Nötige Ladeleistung          #00FFFF  Cyan
+Dynamische Nachladeleistung  #B200FF  Violett
+```
+
+### Historischer SOC-Ladeplan
+
+```text
+Ist-SOC                      #2196F3  Blau
+Dynamisches SOC-Soll         #009B21  Grün
+Ziel-SOC                     #FF6A00  Orange
+Gespeicherter Ladeplan       #FFD800  Gelb
+```
+
+### Dashboard-Migration in 2.1.0-beta.8
+
+Beta 8 erhöht die Dashboard-Template-Version von `17` auf `18`.
+
+Die vorherigen Farbänderungen hatten die Dashboardvorlagen bereits korrigiert.
+In einem schon gespeicherten Lovelace-Dashboard konnten jedoch explizite alte
+`color`-Werte erhalten bleiben. Dadurch waren nach einem Update weiterhin
+falsche Farben sichtbar.
+
+Template v18 korrigiert deshalb vorhandene Farben nur auf eindeutig erkannten
+NOAH-Standard-ApexCharts. Für die Erkennung werden der bekannte deutsche oder
+englische Kartentitel und die erwartete Entity-Kombination geprüft. Bei der
+PV-Prognose werden zusätzlich die bekannten Data-Generatoren ausgewertet.
+
+Eigene oder zusätzlich angelegte ApexCharts werden nicht pauschal verändert.
+
+Die historische SOC-Karte verwendet bereits die aktuelle
+Blau/Grün/Orange/Gelb-Palette. Ihr Frontend-Cache wird mit Beta 8 auf `v8`
+angehoben.
+
+Die Änderung betrifft ausschließlich Dashboarddarstellung und
+Dashboardmigration. Optimizer-Berechnung und aktive NOAH-Regelung bleiben
+unverändert.

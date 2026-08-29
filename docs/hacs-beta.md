@@ -1,8 +1,6 @@
 # HACS Beta / Pre-Release
 
-## Current versions
-
-Stable:
+Stable release:
 
 ```text
 2.0.0
@@ -14,42 +12,71 @@ Current pre-release:
 2.1.0-beta.8
 ```
 
-## Install pre-releases
+## Direct HACS repository button
 
-Add the repository to HACS as an Integration and enable pre-release versions
-for this repository.
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=CHLINDE&repository=home-assistant-noah-optimizer&category=integration)
 
-After every integration update restart Home Assistant completely.
+Enable pre-release versions in HACS and restart Home Assistant after every
+integration update.
 
-## Beta 8 purpose
+## 2.1 beta overview
 
-Beta 8 is a dashboard-migration correction.
+### Beta 1
 
-It does not change optimizer calculations or active-control decisions.
+PV learning:
 
-### Problem
+- passive learning
+- median of up to seven valid days
+- minimum three days
+- optional application
+- disabled by default
 
-Earlier dashboard-color migrations updated templates, but existing stored
-dashboards could keep stale explicit series colors.
+### Beta 2
 
-### Solution
+SOC schedule hold:
 
-Dashboard template storage version is increased:
+- prevents unnecessary charge priority once the dynamic plan is satisfied
+- uses current PV for household demand
+- does not intentionally release battery energy
+
+### Beta 3
+
+Time-resolved Forecast.Solar:
+
+- reuses Home Assistant runtime forecast
+- no additional API calls
+- shapes dynamic SOC schedule
+- daylight fallback remains available
+
+### Beta 4
+
+Historical SOC schedule:
+
+- date selection
+- Recorder history
+- saved plan snapshots
+- rolling retention
+- bundled frontend card
+
+### Beta 5 to Beta 7
+
+Standardized dashboard-series palette.
+
+### Beta 8
+
+Corrects stale explicit colors in existing stored dashboards.
 
 ```text
-17 -> 18
+Dashboard template 17 -> 18
 ```
 
-The v18 migration updates explicit colors only on recognized generated NOAH
-standard ApexCharts.
+Recognition requires:
 
-Recognition uses:
-
-- known German/English title
+- known title
 - expected entity set
-- for the PV forecast card, known raw/effective forecast data generators
+- PV forecast additionally checks known data generators
 
-User-created/additional ApexCharts are left untouched.
+Custom ApexCharts remain untouched.
 
 ## Standard palette
 
@@ -82,113 +109,103 @@ Target SOC       Orange
 Saved plan       Yellow
 ```
 
-The bundled history-card resource cache version is increased to `v8`.
+History-card cache:
 
-## Automatic dashboard
+```text
+v8
+```
 
-The integration creates and owns the `NOAH Optimizer` Lovelace dashboard.
+## Dynamic SOC
 
-Entity IDs are resolved from Home Assistant's entity registry.
+Fallback:
 
-Initial language:
+```text
+p = elapsed daylight / daylight duration
+```
 
-- German -> `dashboard_de.yaml`
-- other languages -> `dashboard_en.yaml`
+```text
+time target
+= minimum SOC + p × (target SOC - minimum SOC)
+```
+
+Native Forecast.Solar source uses the time-resolved curve.
+
+## Predictive SOC release
+
+Separate refill reserve:
+
+```text
+effective remaining forecast - additional energy reserve
+```
+
+Expected household energy is intentionally not deducted here.
+
+## PV diversion
+
+```text
+diversion power
+= min(grid import, battery charging power)
+```
+
+## Controller cadence
+
+```text
+evaluation                              15 s
+normal command interval                120 s
+soc_release/pv_redirect increases       30 s
+```
+
+## Controller status
+
+Typical raw states:
+
+```text
+disabled
+optimizer_disabled
+legacy_controller_active
+critical_data_missing
+actuator_unavailable
+target_unavailable
+rate_limited
+waiting_for_retry
+in_sync
+command_sent
+command_failed
+failsafe
+```
 
 ## Dashboard migration history
 
 ```text
 8   Dynamic SOC
-9   Beta-8 Jinja repair
+9   Jinja repair
 10  Predictive SOC release
-11  Night state / PV diversion / controller status
+11  Night / PV diversion / controller status
 12  PV learning
 13  SOC schedule hold
 14  Forecast.Solar curve
-15  Bundled SOC history card
-16  Explicit standard colors
+15  SOC history card
+16  Standard series colors
 17  Final color alignment
-18  Correct stale explicit colors on recognized standard charts
+18  Stored-color migration fix
 ```
 
-Migrations are selective. A stored dashboard is not replaced wholesale.
+## Upgrade test
 
-## History card
-
-The date-selectable SOC history card is bundled with the integration.
-
-Home Assistant dependencies:
-
-- frontend
-- history
-- http
-- websocket_api
-- lovelace
-
-The card uses Recorder history for actual historical states.
-
-Saved forecast/plan snapshots are diagnostic only.
-
-## PV learning
-
-PV learning:
-
-- runs passively
-- stores learning history
-- uses a median of up to seven valid days
-- requires at least three valid days before application
-- is opt-in for forecast correction
-
-## Forecast curve
-
-When the configured remaining-forecast sensor belongs directly to
-Forecast.Solar, the optimizer reuses Forecast.Solar runtime data.
-
-No additional Forecast.Solar API calls are made.
-
-Fallback:
-
-```text
-daylight_fallback
-```
-
-## Active control
-
-Active control remains opt-in.
-
-Controller safeguards include:
-
-- deadband
-- command interval
-- retry
-- failsafe
-- legacy YAML interlock
-
-Predictive SOC release is also separately opt-in.
-
-## Upgrade test for beta.8
-
-After restart verify:
+After Beta 8 restart:
 
 1. Dashboard loads.
-2. Controller-behavior colors match the standard palette.
-3. Historical SOC card uses blue/green/orange/yellow.
-4. Other standard charts use consistent colors.
-5. A user-created ApexCharts card is not changed.
-6. Optimizer/controller behavior is otherwise identical to beta.7.
+2. Controller behavior uses six standard colors.
+3. Historical SOC uses blue/green/orange/yellow.
+4. Other standard charts are consistent.
+5. Custom ApexCharts are unchanged.
+6. Optimizer behavior is unchanged.
 
 ## Rollback
 
-If a beta must be rolled back, install the previous release through HACS and
-restart Home Assistant.
-
-The dashboard storage version may already have been migrated. The v18
-migration only changes recognized standard series colors and does not add
-active-control state.
+Install the previous release through HACS and restart.
 
 ## Legacy YAML
 
-Do not actively control the same NOAH from both the legacy YAML optimizer and
-the HACS integration.
-
-The integration checks the legacy helper and blocks conflicting writes.
+Never control the same NOAH simultaneously from legacy YAML and the HACS
+integration.

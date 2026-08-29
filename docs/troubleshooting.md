@@ -1,32 +1,45 @@
 # Fehlerbehebung
 
-## 1. Integration lädt nicht
+Dieses Dokument bezieht sich auf die HACS-Integration **Growatt NOAH
+Optimizer**, insbesondere `2.1.0-beta.8`.
+
+## 1. Integration wird nicht geladen
+
+Unter **Einstellungen → System → Protokolle** nach:
+
+```text
+noah_optimizer
+```
+
+suchen.
 
 Prüfen:
 
-- HACS-Version installiert
 - Home Assistant neu gestartet
-- Protokoll nach `noah_optimizer` durchsuchen
+- `manifest.json` auf `2.1.0-beta.8`
+- Quell-Entitäten vorhanden
+- keine Python-Fehler
 
-## 2. Quellwert ist nicht verfügbar
+## 2. Datenstatus ist nicht OK
 
-Unter **Werkzeuge → Zustände** die konfigurierte Entity prüfen.
+Unter **Werkzeuge → Zustände** prüfen.
 
-Unterstützte Leistungseinheiten:
+Kritisch:
 
-```text
-W
-kW
-```
+- Netzleistung
+- Solar Power
+- Output Power
+- SOC
 
-Unterstützte Energieeinheiten:
+Nicht dauerhaft `unknown` oder `unavailable`.
 
-```text
-Wh
-kWh
-```
+## 3. Stellgröße nicht verfügbar
 
-## 3. Netzleistung hat falsches Vorzeichen
+System Output Power muss eine beschreibbare `number`-Entität sein.
+
+Unter **Werkzeuge → Aktionen** mit `number.set_value` testen.
+
+## 4. Netzvorzeichen falsch
 
 Erwartet:
 
@@ -35,237 +48,242 @@ positiv = Netzbezug
 negativ = Einspeisung
 ```
 
-Falls umgekehrt, Setup-Option **Netzvorzeichen umkehren** verwenden.
+## 5. Batteriefluss falsch
 
-## 4. Forecast.Solar-Kurve fehlt
+```text
+consumption = Entladeleistung
+production  = Ladeleistung
+```
+
+## 6. Dynamisches SOC-Soll unavailable
 
 Prüfen:
 
-- Restprognose-Entity stammt direkt von Forecast.Solar
-- Forecast.Solar ist geladen
-- Sensor ist verfügbar
+- Restprognose
+- Einheit
+- `sun.sun`
+- Ziel-SOC
+- Mindest-SOC
+- Akkukapazität
 
-Bei Template-/Fremdsensoren ist der Tageslicht-Fallback beabsichtigt.
+## 7. Ladeplanbasis Tageslicht-Fallback
 
-## 5. PV-Learning bleibt nicht bereit
+Kann korrekt sein. Native Kurve nur bei sicher auflösbarer Forecast.Solar-
+Quelle.
 
-Mindestens drei gültige Lerntage sind erforderlich.
+## 8. PV-Learning nicht bereit
 
-Ungültig können unter anderem sein:
+Mindestens drei gültige Lerntage.
 
-- zu später Start
-- unzureichende Tagesabdeckung
-- große Messlücke
+Mögliche ungültige Tage:
+
+- große Messlücken
 - fehlende Prognosereferenz
+- unvollständiger Lerntag
+- unplausible Messwerte
 
-## 6. Gelernter Faktor verändert nichts
+## 9. Lernfaktor wirkt nicht
 
 Prüfen:
 
 ```text
-Gelernte PV-Korrektur verwenden = Ein
 PV-Learning bereit = Ein
+Gelernte PV-Korrektur verwenden = Ein
 ```
 
-Solange einer der Punkte nicht erfüllt ist, bleibt der Basissicherheitsfaktor
-maßgeblich.
+## 10. Hinter Ladeplan
 
-## 7. SOC-Ladeplan zeigt nachts Vor Ladeplan
+```text
+Ist-SOC < dynamisches SOC-Soll - 2 %-Punkte
+```
 
-Ab Beta 14 muss der Status nachts:
+Ein aktiver Eingriff erfolgt nur bei dynamischer SOC-Steuerung in Automatik.
+
+## 11. Nachts Vor Ladeplan
+
+Ab Beta 14 nicht vorgesehen.
+
+Erwartet:
 
 ```text
 Nachtbetrieb
 ```
 
-lauten.
-
-Prüfen:
-
-- aktuelle Version installiert
-- Home Assistant neu gestartet
-- `sun.sun` verfügbar
-
-## 8. Dynamische SOC-Steuerung greift nicht ein
-
-SOC-Nachladung benötigt unter anderem:
-
-- Automatik
-- Forecast verfügbar
-- Tag
-- SOC über Mindest-SOC
-- SOC unter Ziel-SOC
-- mehr als 2 Prozentpunkte Rückstand
-
-## 9. SOC-Nachladung wirkt zu stark
+## 12. SOC-Nachladung zu stark
 
 SOC-Nachholzeit erhöhen.
 
-Beispiel:
+## 13. SOC-Nachladung zu schwach
+
+Prüfen:
+
+- Hinter Ladeplan
+- dynamische Ladeleistung > 0
+- ausreichend PV
+- Ausgangsgrenzen
+
+## 14. SOC-Halten erscheint nicht
+
+Benötigt erfüllten Plan in Automatik mit dynamischer SOC-Steuerung.
+
+## 15. Unnötige Ladepriorität trotz erfülltem Plan
+
+Ab 2.1.0-beta.2 sollte `soc_hold` dies verhindern.
+
+Version, Ist-SOC, dynamisches Soll und Reglermodus prüfen.
+
+## 16. SOC-Freigabe erscheint nicht
+
+Prüfen:
 
 ```text
-2,0 h -> 3,0 h
+Automatik
+Dynamische SOC-Steuerung = Ein
+Vorausschauende SOC-Freigabe = Ein
+Tag
+Forecast verfügbar
+Ist-SOC > Freigabegrenze
+Netzbezug > 0
 ```
 
-## 10. SOC-Nachladung wirkt zu schwach
+## 17. Prognosebasierter Mindest-SOC sehr hoch
 
-SOC-Nachholzeit reduzieren und prüfen:
+Für die Freigabe:
 
-- `SOC-Ladeplan = Hinter Ladeplan`
-- dynamisch erforderliche Ladeleistung > 0
-- ausreichend PV vorhanden
+```text
+PV-Energie für Wiederaufladung
+= wirksame Restprognose - zusätzliche Energiereserve
+```
 
-## 11. SOC-Ladeplan halten erscheint nicht
+Der erwartete Hausenergiebedarf wird hier nicht abgezogen.
 
-Benötigt:
-
-- Automatik
-- dynamische SOC-Steuerung aktiv
-- Plan erfüllt
-- keine höher priorisierte SOC-Nachladung
-- keine aktive SOC-Freigabe/PV-Umlenkung mit höherer Priorität
-
-## 12. PV-Umlenkung erscheint nicht
+## 18. PV-Umlenkung erscheint nicht
 
 Benötigt:
 
 - Automatik
 - dynamische SOC-Steuerung
-- Ist-SOC mindestens am dynamischen Soll
+- Tag
+- Forecast
+- Ist-SOC mindestens am Soll
 - Akkuladeleistung > 0
 - Netzbezug > 0
+- keine priorisierte SOC-Nachladung
 
-Der sichere zusätzliche Sollwert ist begrenzt auf:
+## 19. Akku wird nicht zusätzlich entladen
 
-```text
-min(Netzbezug, Akkuladeleistung)
-```
+PV-Umlenkung soll keine zusätzliche Akkuentladung erzeugen.
 
-## 13. Akku wird trotz Netzbezug nicht entladen
+Dafür ist SOC-Freigabe zuständig.
 
-Für absichtliche Batterieentladung ist nicht PV-Umlenkung, sondern die
-vorausschauende SOC-Freigabe zuständig.
-
-Prüfen:
-
-- SOC-Freigabe aktiv
-- dynamische SOC-Steuerung aktiv
-- Freigabegrenze < Ist-SOC
-- freigebare Akkuenergie > 0
-- positiver Netzbezug
-
-## 14. Optimizer berechnet, steuert aber nicht
-
-Prüfen:
+## 20. Optimizer berechnet, steuert aber nicht
 
 ```text
 Optimierer-Berechnung aktiv = Ein
 NOAH-Steuerung aktiv = Ein
 ```
 
-Controllerstatus beachten.
-
-## 15. Typische Controllerstatus
-
-### disabled
+## 21. controller_status disabled
 
 Aktive Steuerung aus.
 
-### optimizer_disabled
+## 22. optimizer_disabled
 
 Berechnung aus.
 
-### legacy_controller_active
+## 23. legacy_controller_active
 
-Legacy-YAML-Optimizer blockiert HACS-Schreibzugriff.
+Legacy-YAML noch aktiv.
 
-### critical_data_missing
+## 24. critical_data_missing
 
 Kritischer Messwert fehlt.
 
-### actuator_unavailable
+## 25. actuator_unavailable
 
 Stellgröße nicht verfügbar.
 
-### rate_limited
+## 26. rate_limited
 
-Ein tatsächlich erforderlicher Stellbefehl wartet auf den zulässigen
-Mindestabstand.
+Befehl erforderlich, aber Mindestabstand noch nicht erreicht.
 
-### waiting_for_retry
+## 27. waiting_for_retry
 
-Ein Sollwert wurde geschrieben, aber noch nicht innerhalb der Hysterese von der
-Stellgröße bestätigt.
+Anzeige:
 
-### in_sync
+```text
+Warte auf Stellwertübernahme
+```
 
-Sollwert und Stellgröße liegen innerhalb der Hysterese.
+Sollwert wurde geschrieben, aber noch nicht bestätigt.
 
-### command_failed
+## 28. in_sync
+
+Sollwert und Stellgröße innerhalb Hysterese.
+
+## 29. command_failed
 
 `number.set_value` fehlgeschlagen.
 
-### failsafe
+## 30. failsafe
 
 Kritische Daten fehlten zu lange.
 
-## 16. Dashboard erscheint nicht
+## 31. Dashboard erscheint nicht
 
-Protokoll nach:
+Nach:
 
 ```text
 Could not create the NOAH Optimizer dashboard
 ```
 
-durchsuchen.
+suchen.
 
-Auch prüfen, ob `/noah-optimizer` bereits anderweitig verwendet wird.
+## 32. Power Flow Card Plus fehlt
 
-## 17. Custom element fehlt
+HACS installieren und Frontend neu laden.
 
-Für externe Dashboardkarten müssen installiert sein:
+## 33. ApexCharts Card fehlt
 
-```text
-Power Flow Card Plus
-ApexCharts Card
-```
+HACS installieren und Frontend neu laden.
 
-Danach Frontend neu laden.
-
-## 18. Historische SOC-Karte zeigt Configuration error
+## 34. Historische SOC-Karte Configuration error
 
 Prüfen:
 
-- Integration aktuell
-- Home Assistant neu gestartet
-- Lovelace-Ressource für `noah-soc-history-card.js` vorhanden
-- Browser/App neu geladen
+- Beta 8
+- Neustart
+- Lovelace-Ressource
+- Browser/App neu laden
+- Cache `?v=8`
 
-Beta 8 verwendet den Cache-Parameter:
+## 35. Historische Daten fehlen
 
-```text
-?v=8
-```
+Recorder-Konfiguration prüfen.
 
-## 19. Farben bleiben nach Beta 7 falsch
+## 36. Vergangener Tag weicht von heutiger Berechnung ab
 
-Das ist der Fehler, den `2.1.0-beta.8` behebt.
+Beabsichtigt. Historie zeigt tatsächliche damalige Zustände.
 
-Ursache:
+## 37. Farben nach Beta 7 weiterhin falsch
 
-Frühere Migrationen konnten vorhandene `color`-Einträge pauschal erhalten.
-Deshalb blieb bei einem bereits gespeicherten Dashboard die alte Farbe stehen,
-obwohl die neue Vorlage korrekt war.
+Genau dieser Upgrade-Fall wird durch `2.1.0-beta.8` behoben.
+
+Ursache: alte explizite `color`-Werte im gespeicherten Dashboard.
 
 Lösung:
 
-1. `2.1.0-beta.8` installieren.
-2. Home Assistant vollständig neu starten.
-3. Dashboard neu öffnen.
+1. Beta 8 installieren.
+2. Home Assistant neu starten.
+3. Dashboard öffnen.
 
-Die Dashboard-Template-Version muss danach auf 18 migriert worden sein.
+Template-Version:
 
-## 20. Reglerverhalten hat weiterhin falsche Farben
+```text
+18
+```
+
+## 38. Reglerverhalten falsche Farben
 
 Erwartet:
 
@@ -278,140 +296,163 @@ Nötige Ladeleistung          #00FFFF
 Dynamische Nachladeleistung  #B200FF
 ```
 
-Wenn das Diagramm stark manuell verändert wurde, kann die sichere Erkennung
-absichtlich ausbleiben. Die Migration verlangt sowohl den Standardtitel als
-auch die erwartete Entity-Kombination.
-
-## 21. Eigene ApexCharts wurden nicht umgefärbt
-
-Das ist beabsichtigt.
-
-Template v18 korrigiert ausschließlich eindeutig erkannte NOAH-Standardcharts.
-
-## 22. Historische SOC-Farben
+## 39. Historischer SOC falsche Farben
 
 Erwartet:
 
 ```text
-Ist-SOC             #2196F3
-Dynamisches Soll    #009B21
-Ziel-SOC            #FF6A00
-Gespeicherter Plan  #FFD800
+Ist-SOC                      #2196F3
+Dynamisches SOC-Soll         #009B21
+Ziel-SOC                     #FF6A00
+Gespeicherter Plan           #FFD800
 ```
 
-Wenn eine alte Darstellung sichtbar bleibt:
+## 40. Eigenes ApexCharts wird nicht umgefärbt
 
-- Browser hart neu laden
-- Home-Assistant-App vollständig schließen/öffnen
-- prüfen, ob Ressource `?v=8` geladen wird
+Beabsichtigt.
 
-## 23. Migration läuft nach jedem Neustart erneut
+Template v18 ändert nur eindeutig erkannte Standardcharts.
 
-Bei mindestens einem erkannten Standardchart wird Template v18 auch dann
-persistiert, wenn die Farben bereits korrekt waren.
+## 41. Eigenes ApexCharts wurde unerwartet geändert
 
-Falls ein extrem stark angepasstes Dashboard keinen Standardchart mehr sicher
-erkennen lässt, wird bewusst nichts pauschal überschrieben.
+Mit aktuellem Beta-8-Fix darf die alte breite v17-Farbmigration nicht mehr
+vorgeschaltet sein.
 
-## 24. Beta-8/Beta-9 Jinja-Fehler aus der 2.0-Reihe
+Prüfen:
 
-Ältere Installationen können den historischen Fehler:
+- aktuelle `dashboard_migration_v18.py`
+- Version `2.1.0-beta.8`
+- Neustart
+
+## 42. Migration läuft immer wieder
+
+Gespeicherte Template-Version prüfen.
+
+Bei stark verändertem Dashboard kann eine sichere Erkennung bewusst
+ausbleiben.
+
+## 43. Historischer Beta-8-Jinja-Fehler
 
 ```text
 TemplateSyntaxError: unexpected '}'
 ```
 
-enthalten.
+wird durch die ältere Template-9-Migration repariert.
 
-Die bestehenden älteren Migrationen bleiben weiterhin aktiv und reparieren
-diesen bekannten Zustand.
+## 44. Frontend zeigt alte JS-Version
 
-## 25. Failsafe
+Cache:
 
-Bei dauerhaft fehlenden kritischen Daten:
+```text
+?v=8
+```
 
-- Warnung wird erzeugt
-- wenn möglich 0 W angefordert
-- nach Wiederkehr der Daten wird der Zustand zurückgesetzt
+Browser/App vollständig neu laden.
 
-## 26. Legacy-YAML und HACS gleichzeitig aktiv
+## 45. Plan-Snapshots fehlen
+
+Snapshots werden dedupliziert und nur bei relevanten Planänderungen gespeichert.
+
+## 46. Failsafe
+
+Bei dauerhaft fehlenden Daten:
+
+- Warnung
+- wenn möglich 0 W
+- Rücksetzen nach Datenrückkehr
+
+## 47. Legacy-YAML und HACS gleichzeitig
 
 Nicht zulässig.
 
-Vor aktiver HACS-Steuerung:
+## 48. SOC-Freigabe reagiert zu träge
 
 ```text
-input_boolean.noah_optimizer_enabled = Aus
+Controller-Auswertung = 15 s
+Erhöhungen            = 30 s
+Normal                = 120 s
 ```
 
-setzen.
+## 49. Kurzzeitige Einspeisung
 
-## 27. SOC-Freigabe reagiert zu träge
-
-Während SOC-Freigabe wird der Controller häufiger bewertet als im normalen
-Regelpfad.
-
-Typisch:
-
-```text
-Controller-Auswertung: 15 s
-Erhöhung:              30 s Mindestabstand
-Normal:               120 s Mindestabstand
-```
-
-Reduzierungen dürfen aus Sicherheitsgründen schneller erfolgen.
-
-## 28. Kurzzeitige Einspeisung bei SOC-Freigabe
-
-Kleine Abweichungen können durch:
+Möglich durch:
 
 - Messverzögerung
 - MQTT-Verzögerung
-- Lastsprünge
 - Stellgrößenraster
+- Lastsprünge
 - NOAH-Übernahmezeit
 
-entstehen.
+## 50. Abend-SOC wird nicht erreicht
 
-## 29. Forecast-/Plan-Historie fehlt
+Die Prognose ist keine Garantie. Reale PV und Last können abweichen.
 
-Snapshots werden nur bei inhaltlich geänderten Plänen geschrieben und
-dedupliziert.
+## 51. Welche Version?
 
-Retention:
-
-```text
-31 Tage
-max. 48 Planstände pro Tag
-```
-
-## 30. Vergangener Tag sieht anders als heutige Neuberechnung aus
-
-Beabsichtigt.
-
-Die historische Karte verwendet Recorder-Zustände, die tatsächlich am
-gewählten Tag aufgezeichnet wurden. Ein vergangener Tag wird nicht mit heutigen
-Parametern neu berechnet.
-
-## 31. Welche Version ist tatsächlich installiert?
-
-In HACS und in:
-
-```text
-custom_components/noah_optimizer/manifest.json
-```
-
-prüfen.
-
-Für diesen Fix muss stehen:
+HACS und `manifest.json` prüfen:
 
 ```text
 2.1.0-beta.8
 ```
 
-## 32. Was ändert Beta 8 an der Regelung?
+## 52. Was ändert Beta 8 an der Regelung?
 
-Nichts.
+Nichts. Beta 8 korrigiert Dashboard-Farbmigration und Frontend-Cache.
 
-Beta 8 korrigiert Dashboard-Migration, Darstellung und Frontend-Cache. Die
-Optimizer- und aktive Controllerlogik bleibt unverändert.
+## Feste Dashboard-Farbpalette
+
+Die von der Integration erzeugten Standarddiagramme verwenden eine feste
+Farbpalette:
+
+```text
+Blau     #2196F3
+Grün     #009B21
+Orange   #FF6A00
+Gelb     #FFD800
+Cyan     #00FFFF
+Violett  #B200FF
+```
+
+### Reglerverhalten
+
+```text
+Regler-Soll                  #2196F3  Blau
+Ist-Ausgang                  #009B21  Grün
+Eigenverbrauch-Soll          #FF6A00  Orange
+Ladepriorität-Soll           #FFD800  Gelb
+Nötige Ladeleistung          #00FFFF  Cyan
+Dynamische Nachladeleistung  #B200FF  Violett
+```
+
+### Historischer SOC-Ladeplan
+
+```text
+Ist-SOC                      #2196F3  Blau
+Dynamisches SOC-Soll         #009B21  Grün
+Ziel-SOC                     #FF6A00  Orange
+Gespeicherter Ladeplan       #FFD800  Gelb
+```
+
+### Dashboard-Migration in 2.1.0-beta.8
+
+Beta 8 erhöht die Dashboard-Template-Version von `17` auf `18`.
+
+Die vorherigen Farbänderungen hatten die Dashboardvorlagen bereits korrigiert.
+In einem schon gespeicherten Lovelace-Dashboard konnten jedoch explizite alte
+`color`-Werte erhalten bleiben. Dadurch waren nach einem Update weiterhin
+falsche Farben sichtbar.
+
+Template v18 korrigiert deshalb vorhandene Farben nur auf eindeutig erkannten
+NOAH-Standard-ApexCharts. Für die Erkennung werden der bekannte deutsche oder
+englische Kartentitel und die erwartete Entity-Kombination geprüft. Bei der
+PV-Prognose werden zusätzlich die bekannten Data-Generatoren ausgewertet.
+
+Eigene oder zusätzlich angelegte ApexCharts werden nicht pauschal verändert.
+
+Die historische SOC-Karte verwendet bereits die aktuelle
+Blau/Grün/Orange/Gelb-Palette. Ihr Frontend-Cache wird mit Beta 8 auf `v8`
+angehoben.
+
+Die Änderung betrifft ausschließlich Dashboarddarstellung und
+Dashboardmigration. Optimizer-Berechnung und aktive NOAH-Regelung bleiben
+unverändert.
