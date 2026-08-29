@@ -185,7 +185,7 @@ Falls weiterhin `Vor Ladeplan` erscheint, prüfen:
 - beim aktuellen Pre-Release tatsächlich `2.1.0-beta.4` installiert
 - Home Assistant nach dem Update vollständig neu gestartet
 - `sun.sun` verfügbar
-- Dashboard-Template-Version 15 wurde übernommen
+- Dashboard-Template-Version 16 wurde übernommen
 - bei stark angepasster Reglerstatus-Karte den Rohzustand des Sensors unter
   **Werkzeuge → Zustände** prüfen
 
@@ -854,7 +854,7 @@ Assistants History/Recorder für Ist-SOC, dynamisches Soll und Ziel-SOC.
 Prüfen:
 
 - tatsächlich `2.1.0-beta.4` installiert und Home Assistant neu gestartet
-- Dashboard-Template-Version 15 wurde übernommen
+- Dashboard-Template-Version 16 wurde übernommen
 - die Integrationen `frontend` und `history` sind geladen
 - Recorder enthält für den gewählten Tag Zustände der drei SOC-Entitäten
 - der gewählte Tag liegt innerhalb der Aufbewahrungszeit des Recorders
@@ -896,7 +896,22 @@ erscheint:
 1. Home Assistant neu starten.
 2. Browserseite vollständig neu laden (`Strg+F5`).
 3. Unter **Einstellungen → Dashboards → Ressourcen** prüfen, ob eine Ressource
-   mit `/noah_optimizer/noah-soc-history-card.js?v=5` vorhanden ist.
+   mit `/noah_optimizer/noah-soc-history-card.js?v=6` vorhanden ist.
 
 Im YAML-Ressourcenmodus verwendet die Integration weiterhin die
 Frontend-Injektion als Kompatibilitäts-Fallback.
+
+## Diagrammfarben stimmen nach dem Update nicht
+
+Der aktuelle `2.1.0-beta.4`-Stand verwendet Dashboard-Template-Version 16 und
+feste Serienfarben. Prüfen:
+
+1. Home Assistant nach dem Update vollständig neu starten.
+2. Browser/App vollständig neu laden; im Browser gegebenenfalls `Strg+F5`.
+3. Bei der historischen SOC-Karte unter **Einstellungen → Dashboards → Ressourcen**
+   die Ressource `/noah_optimizer/noah-soc-history-card.js?v=6` prüfen.
+4. Bereits manuell gesetzte `color`-Werte werden von der Migration bewusst nicht
+   überschrieben.
+
+Standardfarben der SOC-Historie: Ist-SOC `#2196F3`, dynamisches Soll `#009B21`,
+Ziel-SOC `#F44336`, gespeicherter Plan `#FFD800`.

@@ -32,7 +32,7 @@ DASHBOARD_ICON = "mdi:home-battery"
 
 DASHBOARD_STORAGE_VERSION = 1
 DASHBOARD_STORAGE_KEY = f"{DOMAIN}.dashboard"
-DASHBOARD_TEMPLATE_VERSION = 15
+DASHBOARD_TEMPLATE_VERSION = 16
 
 DASHBOARD_TEMPLATE_DE = Path(__file__).with_name("dashboard_de.yaml")
 DASHBOARD_TEMPLATE_EN = Path(__file__).with_name("dashboard_en.yaml")
@@ -500,7 +500,7 @@ def _forecast_curve_chart(
             {
                 "entity": replacements["__FORECAST_CURVE__"],
                 "name": labels["forecast_raw"],
-                "color": color: "#2196F3",
+                "color": "#2196F3",
                 "yaxis_id": "power",
                 "type": "line",
                 "stroke_width": 2,
@@ -512,7 +512,7 @@ def _forecast_curve_chart(
             {
                 "entity": replacements["__FORECAST_CURVE__"],
                 "name": labels["forecast_effective"],
-                "color": color: "#009B21",
+                "color": "#009B21",
                 "yaxis_id": "power",
                 "type": "line",
                 "stroke_width": 2,
@@ -524,7 +524,7 @@ def _forecast_curve_chart(
             {
                 "entity": replacements["__SOLAR_POWER__"],
                 "name": labels["forecast_actual"],
-                "color": color: "#F44336",
+                "color": "#FF6A00",
                 "yaxis_id": "power",
                 "type": "line",
                 "stroke_width": 2,
@@ -596,7 +596,7 @@ def _dynamic_soc_chart(
             {
                 "entity": replacements["__SOC__"],
                 "name": labels["actual_soc"],
-                "color": color: "#2196F3",
+                "color": "#2196F3",
                 "yaxis_id": "soc",
                 "type": "line",
                 "stroke_width": 2,
@@ -605,7 +605,7 @@ def _dynamic_soc_chart(
             {
                 "entity": replacements["__DYNAMIC_SOC_TARGET__"],
                 "name": labels["target_soc"],
-                "color": color: "#009B21",
+                "color": "#009B21",
                 "yaxis_id": "soc",
                 "type": "line",
                 "curve": "stepline",
@@ -980,6 +980,117 @@ def _patch_status_markdown(
     return content, changed
 
 
+
+def _apply_standard_series_colors(
+    config: dict[str, Any],
+    replacements: dict[str, str],
+) -> bool:
+    """Add the stable NOAH series palette to standard ApexCharts cards.
+
+    Existing explicit colors are preserved so user customizations are not
+    overwritten by the template-v16 migration.
+    """
+    changed = False
+
+    for card in _iter_dicts(config):
+        if card.get("type") != "custom:apexcharts-card":
+            continue
+
+        series = card.get("series")
+        if not isinstance(series, list):
+            continue
+
+        entity_ids = {
+            item.get("entity")
+            for item in series
+            if isinstance(item, dict) and isinstance(item.get("entity"), str)
+        }
+
+        colors: dict[str, str] | None = None
+        mode: str | None = None
+
+        if replacements["__FORECAST_CURVE__"] in entity_ids:
+            mode = "forecast_curve"
+        elif {
+            replacements["__SOC__"],
+            replacements["__DYNAMIC_SOC_TARGET__"],
+            replacements["__TARGET_SOC__"],
+        }.issubset(entity_ids):
+            colors = {
+                replacements["__SOC__"]: "#2196F3",
+                replacements["__DYNAMIC_SOC_TARGET__"]: "#009B21",
+                replacements["__TARGET_SOC__"]: "#F44336",
+            }
+        elif {
+            replacements["__EFFECTIVE_FORECAST__"],
+            replacements["__CHARGE_NEED__"],
+            replacements["__EXPECTED_LOAD_ENERGY__"],
+            replacements["__FORECAST_MARGIN__"],
+        }.issubset(entity_ids):
+            colors = {
+                replacements["__EFFECTIVE_FORECAST__"]: "#2196F3",
+                replacements["__CHARGE_NEED__"]: "#009B21",
+                replacements["__EXPECTED_LOAD_ENERGY__"]: "#FF6A00",
+                replacements["__FORECAST_MARGIN__"]: "#FFD800",
+            }
+        elif {
+            replacements["__SOLAR_POWER__"],
+            replacements["__OUTPUT_POWER__"],
+            replacements["__GRID_IMPORT__"],
+            replacements["__GRID_EXPORT__"],
+            replacements["__BATTERY_POWER__"],
+            replacements["__SOC__"],
+        }.issubset(entity_ids):
+            colors = {
+                replacements["__SOLAR_POWER__"]: "#2196F3",
+                replacements["__OUTPUT_POWER__"]: "#009B21",
+                replacements["__GRID_IMPORT__"]: "#FF6A00",
+                replacements["__GRID_EXPORT__"]: "#FFD800",
+                replacements["__BATTERY_POWER__"]: "#00FFFF",
+                replacements["__SOC__"]: "#B200FF",
+            }
+        elif {
+            replacements["__OUTPUT_TARGET__"],
+            replacements["__OUTPUT_POWER__"],
+            replacements["__SELF_CONSUMPTION_TARGET__"],
+            replacements["__CHARGE_PRIORITY_TARGET__"],
+            replacements["__REQUIRED_CHARGE_POWER__"],
+            replacements["__DYNAMIC_REQUIRED_CHARGE_POWER__"],
+        }.issubset(entity_ids):
+            colors = {
+                replacements["__OUTPUT_TARGET__"]: "#2196F3",
+                replacements["__OUTPUT_POWER__"]: "#009B21",
+                replacements["__SELF_CONSUMPTION_TARGET__"]: "#FF6A00",
+                replacements["__CHARGE_PRIORITY_TARGET__"]: "#FFD800",
+                replacements["__REQUIRED_CHARGE_POWER__"]: "#00FFFF",
+                replacements["__DYNAMIC_REQUIRED_CHARGE_POWER__"]: "#B200FF",
+            }
+
+        for item in series:
+            if not isinstance(item, dict) or "color" in item:
+                continue
+
+            entity_id = item.get("entity")
+            color = None
+
+            if mode == "forecast_curve":
+                if entity_id == replacements["__FORECAST_CURVE__"]:
+                    generator = item.get("data_generator")
+                    if isinstance(generator, str) and "raw_power" in generator:
+                        color = "#2196F3"
+                    elif isinstance(generator, str) and "effective_power" in generator:
+                        color = "#009B21"
+                elif entity_id == replacements["__SOLAR_POWER__"]:
+                    color = "#FF6A00"
+            elif colors is not None and isinstance(entity_id, str):
+                color = colors.get(entity_id)
+
+            if color is not None:
+                item["color"] = color
+                changed = True
+
+    return changed
+
 def _migrate_dashboard_to_beta11(
     hass: HomeAssistant,
     config: dict[str, Any],
@@ -1299,6 +1410,11 @@ def _migrate_dashboard_to_beta11(
                         break
                     if replaced:
                         break
+
+    # Template v16: assign stable colors to standard chart series. Existing
+    # explicit colors are kept so user-customized cards are not overwritten.
+    if _apply_standard_series_colors(migrated, replacements):
+        changed = True
 
     return migrated, changed
 

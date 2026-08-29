@@ -1257,3 +1257,22 @@ Die Daten liegen in Home Assistants `.storage` und werden beim Entfernen alter
 Tage rollierend bereinigt. Die Snapshot-Historie wird nicht für die Regelung
 verwendet; sie dient ausschließlich der späteren Nachvollziehbarkeit.
 
+## Feste Dashboard-Serienfarben
+
+Ab dem aktuellen `2.1.0-beta.4`-Stand verwendet das erzeugte Dashboard eine
+feste Serienpalette. Dadurch bleiben Kurven auch nach Dashboard-Migrationen und
+ApexCharts-Änderungen visuell eindeutig.
+
+Für die SOC-Historie gilt:
+
+```text
+Ist-SOC             #2196F3
+Dynamisches Soll    #009B21
+Ziel-SOC            #F44336
+Gespeicherter Plan  #FFD800
+```
+
+Die übrigen Standarddiagramme verwenden zusätzlich Orange `#FF6A00`, Cyan
+`#00FFFF` und Violett `#B200FF`. Bei der Migration auf Dashboard-Template-Version
+16 werden nur fehlende `color`-Eigenschaften ergänzt. Bereits manuell gesetzte
+Farben werden nicht überschrieben.

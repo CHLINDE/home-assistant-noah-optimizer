@@ -1030,7 +1030,9 @@ First stable 2.x release:
 - Stores persistent forecast/SOC-plan snapshots for 31 rolling days
 - Allows selecting a specific saved plan snapshot for a historical day
 - Ships the NOAH SOC history card with the integration
-- Increases dashboard template version from 14 to 15
+- Introduces the history-card migration at dashboard template version 15
+- Increases the current dashboard template version to 16 for stable series colors
+- Adds explicit standard chart colors while preserving already configured custom series colors
 
 ### 2.1.0-beta.3
 
