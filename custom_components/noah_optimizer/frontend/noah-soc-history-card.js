@@ -123,10 +123,10 @@ class NoahSocHistoryCard extends HTMLElement {
         .grid { stroke: var(--divider-color); stroke-width:1; stroke-dasharray:4 4; }
         .axis-label { fill: var(--secondary-text-color); font-size: 12px; }
         .line { fill:none; vector-effect:non-scaling-stroke; }
-        .actual { stroke: var(--primary-color); stroke-width:2.5; }
-        .dynamic { stroke: var(--info-color, #03a9f4); stroke-width:3; }
-        .target { stroke: var(--error-color, #db4437); stroke-width:1.5; stroke-dasharray:6 4; }
-        .saved { stroke: var(--warning-color, #ff9800); stroke-width:2.5; stroke-dasharray:8 5; }
+        .actual { stroke: #2196F3; stroke-width:2.5; }
+        .dynamic { stroke: #009B21; stroke-width:3; }
+        .target { stroke: #F44336; stroke-width:1.5; stroke-dasharray:6 4; }
+        .saved { stroke: #FFD800; stroke-width:2.5; stroke-dasharray:8 5; }
         .legend { display:flex; gap:16px; flex-wrap:wrap; justify-content:center; margin-top:6px; font-size:12px; }
         .legend span { display:inline-flex; align-items:center; gap:5px; }
         .dot { width:10px; height:10px; border-radius:50%; display:inline-block; }
@@ -371,10 +371,10 @@ class NoahSocHistoryCard extends HTMLElement {
     chart.innerHTML = svg;
 
     const legendItems = [];
-    if (actual.length) legendItems.push(this._legend("var(--primary-color)", labels.actualSoc));
-    if (dynamic.length) legendItems.push(this._legend("var(--info-color, #03a9f4)", labels.dynamicTarget));
-    if (target.length) legendItems.push(this._legend("var(--error-color, #db4437)", labels.targetSoc));
-    if (saved.length) legendItems.push(this._legend("var(--warning-color, #ff9800)", labels.savedPlan));
+    if (actual.length) legendItems.push(this._legend("#2196F3", labels.actualSoc));
+    if (dynamic.length) legendItems.push(this._legend("#009B21", labels.dynamicTarget));
+    if (target.length) legendItems.push(this._legend("#F44336", labels.targetSoc));
+    if (saved.length) legendItems.push(this._legend("#FFD800", labels.savedPlan));
     legend.innerHTML = legendItems.join("");
     this._renderMeta(meta, snapshot, labels);
   }

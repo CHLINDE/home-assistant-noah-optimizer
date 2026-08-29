@@ -1,5 +1,14 @@
 ## [2.1.0-beta.4] - 2026-08-26
 
+### Dashboard color consistency
+
+- Added explicit series colors to the generated German and English ApexCharts cards
+- Uses `#2196F3` / `#009B21` / `#F44336` consistently for actual SOC, dynamic target and final target SOC
+- Aligns the historical SOC card with the same palette and uses `#FFD800` for the saved plan
+- Dashboard template version increased from 15 to 16; migration only fills missing colors and preserves explicit user colors
+- History-card frontend cache version increased from `v=5` to `v=6`
+- Fixed the generated Python chart definitions so the new `color` values are valid dictionary entries
+
 ### Added
 
 - Added a bundled date-selectable SOC schedule history card with previous/next day controls, direct date selection and a Today shortcut

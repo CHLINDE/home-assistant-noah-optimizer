@@ -805,10 +805,12 @@ gezielt migriert.
 
 ### Dashboard-Migration in 2.1.0-beta.4
 
-`2.1.0-beta.4` erhöht die Dashboard-Template-Version von 14 auf 15. Die
-bekannte Standardkarte **Dynamischer SOC-Ladeplan** wird gezielt durch die
-neue datumsabhängige Historienkarte ersetzt. Eigene ApexCharts-Karten mit
-abweichendem Titel bleiben unverändert.
+`2.1.0-beta.4` ersetzt mit Template-Version 15 zunächst die bekannte
+Standardkarte **Dynamischer SOC-Ladeplan** gezielt durch die neue
+datumsabhängige Historienkarte. Die anschließende Serienfarben-Migration erhöht
+die aktuelle Dashboard-Template-Version auf 16 und ergänzt bei Standardkarten
+feste, reproduzierbare Farben. Bereits explizit gesetzte Farben in
+benutzerangepassten Karten werden nicht überschrieben.
 
 ### Energiefluss
 
@@ -826,6 +828,21 @@ production  = Ladeleistung
 
 Damit zeigt die Card Ladeleistung als Energiefluss **in** den Akku und
 Entladeleistung als Energiefluss **aus** dem Akku.
+
+### Feste Serienfarben ab 2.1.0-beta.4
+
+Die Standarddiagramme verwenden feste Farben, damit eine Serie nach Updates oder
+beim Hinzufügen weiterer Serien nicht automatisch eine andere ApexCharts-Farbe
+erhält. Für den historischen SOC-Ladeplan gilt insbesondere:
+
+- Ist-SOC: Blau `#2196F3`
+- Dynamisches Soll: Grün `#009B21`
+- Ziel-SOC: Rot `#F44336`
+- Gespeicherter Plan: Gelb `#FFD800`
+
+Weitere Standarddiagramme verwenden dieselbe Palette aus Blau, Grün, Orange,
+Gelb, Cyan und Violett. Die Migration ergänzt Farben nur dort, wo noch keine
+explizite Farbe gesetzt ist. Eigene Farbanpassungen bleiben deshalb erhalten.
 
 ### Dashboard-Inhalt
 
@@ -1028,7 +1045,7 @@ Erster stabiler Release der 2.x-Reihe:
 - Auswahl eines konkreten gespeicherten Planstands eines vergangenen Tages
 - Snapshot-Metadaten mit Forecast-Aktualisierungszeit, wirksamer Tagesprognose und prognostiziertem End-SOC
 - mitgelieferte `noah-soc-history-card` ohne zusätzliche HACS-Frontendinstallation
-- Dashboard-Template-Version von 14 auf 15 erhöht; das Standard-SOC-Diagramm wird gezielt auf die historische Karte migriert
+- Dashboard-Template-Version zunächst von 14 auf 15 für die Historienkarte und anschließend auf 16 für feste Serienfarben erhöht
 
 ### 2.1.0-beta.3
 
