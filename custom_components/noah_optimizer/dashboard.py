@@ -500,6 +500,7 @@ def _forecast_curve_chart(
             {
                 "entity": replacements["__FORECAST_CURVE__"],
                 "name": labels["forecast_raw"],
+                "color": color: "#2196F3",
                 "yaxis_id": "power",
                 "type": "line",
                 "stroke_width": 2,
@@ -511,6 +512,7 @@ def _forecast_curve_chart(
             {
                 "entity": replacements["__FORECAST_CURVE__"],
                 "name": labels["forecast_effective"],
+                "color": color: "#009B21",
                 "yaxis_id": "power",
                 "type": "line",
                 "stroke_width": 2,
@@ -522,6 +524,7 @@ def _forecast_curve_chart(
             {
                 "entity": replacements["__SOLAR_POWER__"],
                 "name": labels["forecast_actual"],
+                "color": color: "#F44336",
                 "yaxis_id": "power",
                 "type": "line",
                 "stroke_width": 2,
@@ -593,6 +596,7 @@ def _dynamic_soc_chart(
             {
                 "entity": replacements["__SOC__"],
                 "name": labels["actual_soc"],
+                "color": color: "#2196F3",
                 "yaxis_id": "soc",
                 "type": "line",
                 "stroke_width": 2,
@@ -601,6 +605,7 @@ def _dynamic_soc_chart(
             {
                 "entity": replacements["__DYNAMIC_SOC_TARGET__"],
                 "name": labels["target_soc"],
+                "color": color: "#009B21",
                 "yaxis_id": "soc",
                 "type": "line",
                 "curve": "stepline",
@@ -610,6 +615,7 @@ def _dynamic_soc_chart(
             {
                 "entity": replacements["__TARGET_SOC__"],
                 "name": labels["final_target_soc"],
+                "color": "#F44336",
                 "yaxis_id": "soc",
                 "type": "line",
                 "curve": "stepline",
