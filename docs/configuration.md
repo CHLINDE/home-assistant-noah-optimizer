@@ -1157,7 +1157,7 @@ Ab `2.1.0-beta.3` zeigt das Dashboard zusätzlich eine Karte **PV-Prognose**
 mit Forecast.Solar-Leistung, wirksamer korrigierter Prognose und realer
 PV-Leistung. Der Aktualisierungszeitpunkt, der prognostizierte End-SOC und die
 Ladeplanbasis werden in den Planungsdetails angezeigt. Die Dashboard-
-Template-Version beträgt 14.
+Template-Version ist 16.
 
 
 Das automatische Dashboard verwendet für Power Flow Card Plus:
