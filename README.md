@@ -807,10 +807,11 @@ gezielt migriert.
 
 `2.1.0-beta.4` ersetzt mit Template-Version 15 zunächst die bekannte
 Standardkarte **Dynamischer SOC-Ladeplan** gezielt durch die neue
-datumsabhängige Historienkarte. Die anschließende Serienfarben-Migration erhöht
-die aktuelle Dashboard-Template-Version auf 16 und ergänzt bei Standardkarten
-feste, reproduzierbare Farben. Bereits explizit gesetzte Farben in
-benutzerangepassten Karten werden nicht überschrieben.
+datumsabhängige Historienkarte. Die Serienfarben-Migration erhöhte die
+Dashboard-Template-Version zunächst auf 16; die abschließende Angleichung von
+Reglerverhalten und historischem SOC-Ladeplan erhöht sie auf **17**. Bereits
+explizit gesetzte Benutzerfarben bleiben erhalten; lediglich der frühere
+NOAH-Standard Rot für Ziel-SOC wird gezielt auf Orange migriert.
 
 ### Energiefluss
 
@@ -837,12 +838,14 @@ erhält. Für den historischen SOC-Ladeplan gilt insbesondere:
 
 - Ist-SOC: Blau `#2196F3`
 - Dynamisches Soll: Grün `#009B21`
-- Ziel-SOC: Rot `#F44336`
+- Ziel-SOC: Orange `#FF6A00`
 - Gespeicherter Plan: Gelb `#FFD800`
 
-Weitere Standarddiagramme verwenden dieselbe Palette aus Blau, Grün, Orange,
-Gelb, Cyan und Violett. Die Migration ergänzt Farben nur dort, wo noch keine
-explizite Farbe gesetzt ist. Eigene Farbanpassungen bleiben deshalb erhalten.
+Auch **Reglerverhalten** verwendet die feste Reihenfolge Blau, Grün, Orange,
+Gelb, Cyan und Violett. Der historische SOC-Ladeplan verwendet Blau, Grün,
+Orange und Gelb. Die Migration ergänzt fehlende Farben; beim Wechsel auf
+Template-Version 17 wird zusätzlich nur der frühere NOAH-Standard Rot für
+Ziel-SOC auf Orange umgestellt. Andere explizite Benutzerfarben bleiben erhalten.
 
 ### Dashboard-Inhalt
 
@@ -1045,7 +1048,7 @@ Erster stabiler Release der 2.x-Reihe:
 - Auswahl eines konkreten gespeicherten Planstands eines vergangenen Tages
 - Snapshot-Metadaten mit Forecast-Aktualisierungszeit, wirksamer Tagesprognose und prognostiziertem End-SOC
 - mitgelieferte `noah-soc-history-card` ohne zusätzliche HACS-Frontendinstallation
-- Dashboard-Template-Version zunächst von 14 auf 15 für die Historienkarte und anschließend auf 16 für feste Serienfarben erhöht
+- Dashboard-Template-Version von 14 auf 15 für die Historienkarte, anschließend auf 16 für feste Serienfarben und abschließend auf 17 für die vollständige Farbangleichung erhöht
 
 ### 2.1.0-beta.3
 

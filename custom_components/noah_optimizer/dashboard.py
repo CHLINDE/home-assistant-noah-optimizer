@@ -32,7 +32,7 @@ DASHBOARD_ICON = "mdi:home-battery"
 
 DASHBOARD_STORAGE_VERSION = 1
 DASHBOARD_STORAGE_KEY = f"{DOMAIN}.dashboard"
-DASHBOARD_TEMPLATE_VERSION = 16
+DASHBOARD_TEMPLATE_VERSION = 17
 
 DASHBOARD_TEMPLATE_DE = Path(__file__).with_name("dashboard_de.yaml")
 DASHBOARD_TEMPLATE_EN = Path(__file__).with_name("dashboard_en.yaml")
@@ -615,7 +615,7 @@ def _dynamic_soc_chart(
             {
                 "entity": replacements["__TARGET_SOC__"],
                 "name": labels["final_target_soc"],
-                "color": "#F44336",
+                "color": "#FF6A00",
                 "yaxis_id": "soc",
                 "type": "line",
                 "curve": "stepline",
@@ -988,7 +988,7 @@ def _apply_standard_series_colors(
     """Add the stable NOAH series palette to standard ApexCharts cards.
 
     Existing explicit colors are preserved so user customizations are not
-    overwritten by the template-v16 migration.
+    overwritten by the template-v17 migration.
     """
     changed = False
 
@@ -1019,7 +1019,7 @@ def _apply_standard_series_colors(
             colors = {
                 replacements["__SOC__"]: "#2196F3",
                 replacements["__DYNAMIC_SOC_TARGET__"]: "#009B21",
-                replacements["__TARGET_SOC__"]: "#F44336",
+                replacements["__TARGET_SOC__"]: "#FF6A00",
             }
         elif {
             replacements["__EFFECTIVE_FORECAST__"],
@@ -1067,10 +1067,32 @@ def _apply_standard_series_colors(
             }
 
         for item in series:
-            if not isinstance(item, dict) or "color" in item:
+            if not isinstance(item, dict):
                 continue
 
             entity_id = item.get("entity")
+
+            # Template v16 used red for the final target SOC in the SOC
+            # schedule. Template v17 aligns all four history/schedule series
+            # with the common sequence blue, green, orange, yellow. Only the
+            # previous NOAH default is replaced; arbitrary user colors remain
+            # untouched.
+            if (
+                entity_id == replacements["__TARGET_SOC__"]
+                and item.get("color") == "#F44336"
+                and {
+                    replacements["__SOC__"],
+                    replacements["__DYNAMIC_SOC_TARGET__"],
+                    replacements["__TARGET_SOC__"],
+                }.issubset(entity_ids)
+            ):
+                item["color"] = "#FF6A00"
+                changed = True
+                continue
+
+            if "color" in item:
+                continue
+
             color = None
 
             if mode == "forecast_curve":
@@ -1411,7 +1433,7 @@ def _migrate_dashboard_to_beta11(
                     if replaced:
                         break
 
-    # Template v16: assign stable colors to standard chart series. Existing
+    # Template v17: assign and align stable colors for standard chart series. Existing
     # explicit colors are kept so user-customized cards are not overwritten.
     if _apply_standard_series_colors(migrated, replacements):
         changed = True

@@ -125,7 +125,7 @@ class NoahSocHistoryCard extends HTMLElement {
         .line { fill:none; vector-effect:non-scaling-stroke; }
         .actual { stroke: #2196F3; stroke-width:2.5; }
         .dynamic { stroke: #009B21; stroke-width:3; }
-        .target { stroke: #F44336; stroke-width:1.5; stroke-dasharray:6 4; }
+        .target { stroke: #FF6A00; stroke-width:1.5; stroke-dasharray:6 4; }
         .saved { stroke: #FFD800; stroke-width:2.5; stroke-dasharray:8 5; }
         .legend { display:flex; gap:16px; flex-wrap:wrap; justify-content:center; margin-top:6px; font-size:12px; }
         .legend span { display:inline-flex; align-items:center; gap:5px; }
@@ -373,7 +373,7 @@ class NoahSocHistoryCard extends HTMLElement {
     const legendItems = [];
     if (actual.length) legendItems.push(this._legend("#2196F3", labels.actualSoc));
     if (dynamic.length) legendItems.push(this._legend("#009B21", labels.dynamicTarget));
-    if (target.length) legendItems.push(this._legend("#F44336", labels.targetSoc));
+    if (target.length) legendItems.push(this._legend("#FF6A00", labels.targetSoc));
     if (saved.length) legendItems.push(this._legend("#FFD800", labels.savedPlan));
     legend.innerHTML = legendItems.join("");
     this._renderMeta(meta, snapshot, labels);
