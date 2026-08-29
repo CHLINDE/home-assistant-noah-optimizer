@@ -272,13 +272,37 @@ Tagesfaktor
 = gemessene PV-Energie / PV-Prognosereferenz
 ```
 
-Regeln:
+Die letzten maximal sieben gültigen Tagesverhältnisse werden persistent
+gespeichert. Ihr Median ergibt den PV-Lernfaktor.
 
-- maximal sieben gültige Tage
-- Median
-- mindestens drei gültige Tage vor Anwendung
-- Ausreißerbegrenzung
-- große Messlücken können einen Tag ungültig machen
+Die im aktuellen Code verwendeten Gültigkeitskriterien sind:
+
+```text
+Lernfenster:                    7 gültige Tage
+Mindestens erforderlich:        3 gültige Tage
+Lernfaktor pro Tag:             0,50 ... 1,50
+Mindest-Prognosereferenz:       0,25 kWh
+Mindestbeobachtungszeit:        2 Stunden Tagesbetrieb
+Mindest-Tageslichtfortschritt:  85 %
+Maximale Tages-Messlücke:       10 Minuten
+```
+
+Ein erster deutlich zu spät begonnener Teil-Tag wird nicht gelernt. Ein neuer
+Lerntag ist nur dann von Anfang an berechtigt, wenn die Beobachtung nachts oder
+spätestens bei 15 % des Tageslichtfensters beginnt.
+
+Die Prognosereferenz wird möglichst früh am Tag gebildet. Eine verfügbare
+Restprognose kann vor Sonnenaufgang übernommen werden. Nach Sonnenaufgang wird
+die Referenz nur innerhalb der ersten 20 % des Tageslichtfensters erfasst; der
+bis dahin bereits gemessene PV-Ertrag wird zur Restprognose addiert.
+
+Eine Messlücke von mehr als zehn Minuten, die die Tagesbeobachtung berührt,
+verwirft den gesamten Lerntag, statt die fehlende PV-Produktion als Nullertrag
+zu behandeln.
+
+Das Learning läuft passiv. Der Faktor beeinflusst die Regelung erst, wenn
+**Gelernte PV-Korrektur verwenden** eingeschaltet ist und mindestens drei
+gültige Lerntage vorliegen.
 
 ### Wirksamer Prognosefaktor
 
@@ -298,67 +322,154 @@ wirksamer Prognosefaktor
 
 ## 8. Wichtige Parameter
 
+Die folgenden Standardwerte und Einstellbereiche entsprechen den aktuell in
+`number.py` und `const.py` definierten Werten.
+
 ### Nutzbare Akkukapazität
 
-Nutzbare Gesamtkapazität der angeschlossenen NOAH-Speicher.
+```text
+Standard:  2,048 kWh
+Bereich:   0,500 ... 16,000 kWh
+Schritt:   0,001 kWh
+```
 
-### Ziel-SOC
+Gesamte nutzbare Kapazität der angeschlossenen NOAH-Speicher.
 
-Gewünschter SOC am Tagesende.
+### Ziel-SOC bei Sonnenuntergang
+
+```text
+Standard:  95 %
+Bereich:   50 ... 100 %
+Schritt:   1 %
+```
 
 ### Mindest-SOC
 
+```text
+Standard:  10 %
+Bereich:   0 ... 30 %
+Schritt:   1 %
+```
+
 Untergrenze und Startpunkt des Tagesplans.
 
-### Ladewirkungsgrad
+### Angenommener Ladewirkungsgrad
 
-Umrechnung von PV-Energie in speicherbare Batterieenergie.
+```text
+Standard:  0,90
+Bereich:   0,70 ... 1,00
+Schritt:   0,01
+```
 
 ### Prognose-Sicherheitsfaktor
+
+```text
+Standard:  0,80
+Bereich:   0,30 ... 1,20
+Schritt:   0,01
+```
+
+Ohne angewendetes PV-Learning:
+
+```text
+wirksame Restprognose
+= Restprognose × Prognose-Sicherheitsfaktor
+```
 
 Beispiel:
 
 ```text
-Restprognose  5,0 kWh
-Faktor        0,80
-wirksam       4,0 kWh
+Restprognose:                5,0 kWh
+Prognose-Sicherheitsfaktor:  0,80
+Wirksame Restprognose:       4,0 kWh
 ```
 
 ### Zusätzliche Energiereserve
 
-Sicherheitsreserve.
+```text
+Standard:  0,25 kWh
+Bereich:   0,00 ... 3,00 kWh
+Schritt:   0,05 kWh
+```
+
+### Freigabemarge
+
+```text
+Standard:  0,50 kWh
+Bereich:   0,05 ... 3,00 kWh
+Schritt:   0,05 kWh
+```
 
 ### Erwartete mittlere Hauslast
 
-Verwendung in Prognosemarge und Energieplanung.
+```text
+Standard:  250 W
+Bereich:   0 ... 1500 W
+Schritt:   10 W
+```
 
 ### Gewünschter Rest-Netzbezug
 
-Kleiner positiver Zielbezug.
+```text
+Standard:  50 W
+Bereich:   0 ... 250 W
+Schritt:   10 W
+```
 
 ### Maximale Ausgangsleistung
 
-Obergrenze der Stellgröße.
+```text
+Standard:  800 W
+Bereich:   0 ... 800 W
+Schritt:   10 W
+```
 
 ### Maximale Ausgangsleistung nachts
 
-Separate Nachtgrenze.
+```text
+Standard:  400 W
+Bereich:   0 ... 800 W
+Schritt:   10 W
+```
 
 ### Manuelle Ausgangsleistung
 
-Sollwert im Modus Manuell.
+```text
+Standard:  200 W
+Bereich:   0 ... 800 W
+Schritt:   10 W
+```
 
 ### Stellgrößenraster
 
-Diskrete Schrittweite.
+```text
+Standard:  50 W
+Bereich:   10 ... 200 W
+Schritt:   10 W
+```
 
 ### Schalt-Hysterese
 
-Verhindert unnötige Stellbefehle.
+```text
+Standard:  50 W
+Bereich:   10 ... 250 W
+Schritt:   10 W
+```
+
+In den Lastfolgemodi **SOC-Freigabe** und **PV-Umlenkung** wird intern höchstens
+eine Deadband von 25 W verwendet. Ist die konfigurierte Hysterese kleiner,
+bleibt der kleinere konfigurierte Wert maßgeblich.
 
 ### SOC-Nachholzeit
 
-Zeitfenster für das Aufholen eines SOC-Rückstands.
+```text
+Standard:  2,0 h
+Bereich:   0,5 ... 6,0 h
+Schritt:   0,5 h
+```
+
+Ein kleinerer Wert reagiert aggressiver auf einen SOC-Rückstand. Ein größerer
+Wert verteilt die Nachladung über einen längeren Zeitraum.
 
 ## 9. Diagnosewerte
 
@@ -411,28 +522,28 @@ failsafe
 
 ## 11. Befehlsintervalle
 
-Normal:
+Die aktive Regelung wird unabhängig vom normalen Stellintervall alle 15
+Sekunden ausgewertet.
 
 ```text
-120 s
+Controller-Auswertung:                  15 s
+Normale Stellbefehle:                  120 s Mindestabstand
+SOC-Freigabe / PV-Umlenkung:            30 s Mindestabstand
+Deadband in Lastfolgemodi:          max. 25 W
+Retry bei nicht übernommenem Soll:      20 min
 ```
 
-SOC-Freigabe / PV-Umlenkung:
-
-```text
-15 s Auswertung
-30 s Mindestabstand für erforderliche Erhöhungen
-```
-
-Sicherheitsrelevante Reduzierungen können schneller erfolgen.
+Sicherheitsrelevante Sollwertreduzierungen nach **SOC-Freigabe**,
+**PV-Umlenkung** oder beim Wechsel in **SOC-Ladeplan halten** können die normale
+Wartezeit umgehen.
 
 ## 12. Failsafe
 
-Fehlen kritische Daten länger:
+Fehlen kritische Daten mindestens zehn Minuten:
 
-- persistente Warnung
-- wenn möglich 0 W
-- Rücksetzen nach Datenrückkehr
+- persistente Home-Assistant-Warnung
+- wenn die Stellgröße erreichbar ist, Anforderung von `0 W`
+- Rücksetzen des Failsafe-Zustands und Schließen der Warnung nach Datenrückkehr
 
 ## 13. Legacy-Sperre
 
