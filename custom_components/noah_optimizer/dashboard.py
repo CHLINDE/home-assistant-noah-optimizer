@@ -988,7 +988,7 @@ def _apply_standard_series_colors(
     """Add the stable NOAH series palette to standard ApexCharts cards.
 
     Existing explicit colors are preserved so user customizations are not
-    overwritten by the template-v16 migration.
+    overwritten by the template-v17 migration.
     """
     changed = False
 
@@ -1433,7 +1433,7 @@ def _migrate_dashboard_to_beta11(
                     if replaced:
                         break
 
-    # Template v16: assign stable colors to standard chart series. Existing
+    # Template v17: assign and align stable colors for standard chart series. Existing
     # explicit colors are kept so user-customized cards are not overwritten.
     if _apply_standard_series_colors(migrated, replacements):
         changed = True

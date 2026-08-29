@@ -394,9 +394,11 @@ Planungsdetails.
 
 Für `2.1.0-beta.4` wird die Standardkarte **Dynamischer SOC-Ladeplan** mit
 Template-Version 15 zunächst gezielt durch die neue datumsabhängige
-Historienkarte ersetzt. Die aktuelle Serienfarben-Migration erhöht die
-Template-Version anschließend auf 16. Standarddiagramme erhalten feste Farben,
-während bereits explizit gesetzte Benutzerfarben erhalten bleiben.
+Historienkarte ersetzt. Die Serienfarben-Migration erhöhte die Template-Version
+zunächst auf 16; die abschließende Farbangleichung von **Reglerverhalten** und
+historischem SOC-Ladeplan erhöht sie auf **17**. Andere explizit gesetzte
+Benutzerfarben bleiben erhalten; lediglich der frühere NOAH-Standard Rot für
+Ziel-SOC wird gezielt auf Orange migriert.
 
 ## 9. Erste Prüfung nach dem Update
 
