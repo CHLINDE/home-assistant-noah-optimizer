@@ -31,7 +31,7 @@ from .control import (
     NoahOptimizerController,
 )
 from .coordinator import NoahOptimizerCoordinator
-from .dashboard import (
+from .dashboard_migration_v18 import (
     async_ensure_dashboard,
     remove_dashboard_panel,
 )
@@ -62,7 +62,6 @@ async def async_setup_entry(
 
     await coordinator.async_initialize()
     await coordinator.async_config_entry_first_refresh()
-
     controller = NoahOptimizerController(
         hass,
         coordinator,
@@ -71,7 +70,6 @@ async def async_setup_entry(
     coordinator.controller = controller
     entry.runtime_data = coordinator
     async_register_history_store(hass, entry.entry_id, coordinator.history)
-
     source_entities = [
         entry.data[CONF_GRID_POWER],
         entry.data[CONF_SOLAR_POWER],
@@ -98,7 +96,6 @@ async def async_setup_entry(
             _async_source_state_changed,
         )
     )
-
     entry.async_on_unload(
         async_track_time_interval(
             hass,
@@ -131,7 +128,6 @@ async def async_setup_entry(
             hass,
             entry,
         )
-
     except Exception:  # noqa: BLE001
         _LOGGER.exception(
             "Could not create the NOAH Optimizer dashboard"
@@ -145,7 +141,6 @@ async def async_unload_entry(
     entry: NoahOptimizerConfigEntry,
 ) -> bool:
     """Unload the Growatt NOAH Optimizer."""
-
     # Persist the latest PV-learning and plan-history state before a controlled
     # reload or Home Assistant shutdown.
     try:
@@ -161,7 +156,6 @@ async def async_unload_entry(
             PLATFORMS,
         )
     )
-
     if unload_ok:
         remove_dashboard_panel(
             hass
