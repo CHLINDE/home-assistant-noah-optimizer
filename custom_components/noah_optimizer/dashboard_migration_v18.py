@@ -1,10 +1,10 @@
-"""Dashboard template-v18 color migration for the NOAH Optimizer.
+"""Dashboard template-v19 color migration for the NOAH Optimizer.
 
 The existing dashboard implementation remains the single source for dashboard
 creation and all older migrations. This module installs the stricter template
-v18 series-color migration and then delegates to dashboard.py.
+v19 series-color migration and then delegates to dashboard.py.
 
-Template v18 replaces stale explicit series colors only on recognized generated
+Template v19 replaces stale explicit series colors only on recognized generated
 NOAH standard charts. User-created/custom ApexCharts cards are not modified.
 """
 
@@ -14,11 +14,11 @@ from typing import Any
 
 from . import dashboard as _dashboard
 
-DASHBOARD_TEMPLATE_VERSION = 18
-_PATCH_MARKER = "_noah_template_v18_color_patch_installed"
+DASHBOARD_TEMPLATE_VERSION = 19
+_PATCH_MARKER = "_noah_template_v19_color_patch_installed"
 
 
-def _apply_standard_series_colors_v18(
+def _apply_standard_series_colors_v19(
     config: dict[str, Any],
     replacements: dict[str, str],
 ) -> bool:
@@ -29,7 +29,7 @@ def _apply_standard_series_colors_v18(
     be corrected without overwriting unrelated/user-created ApexCharts cards.
 
     Returning ``True`` for a recognized standard chart also ensures that the
-    storage version can be persisted as template v18 even when its colors were
+    storage version can be persisted as template v19 even when its colors were
     already correct.
     """
     changed = False
@@ -137,25 +137,32 @@ def _apply_standard_series_colors_v18(
                 replacements["__SOC__"]: "#B200FF",
             }
 
-        elif (
-            title in {"Reglerverhalten", "Controller behavior"}
-            and {
+        elif title in {"Reglerverhalten", "Controller behavior"}:
+            # Existing dashboards can contain either the older five-series
+            # controller chart or the current six-series variant. The dynamic
+            # required charge-power series was added later, so requiring it
+            # would prevent the color migration from recognizing older stored
+            # dashboards.
+            core_entities = {
                 replacements["__OUTPUT_TARGET__"],
                 replacements["__OUTPUT_POWER__"],
                 replacements["__SELF_CONSUMPTION_TARGET__"],
                 replacements["__CHARGE_PRIORITY_TARGET__"],
                 replacements["__REQUIRED_CHARGE_POWER__"],
-                replacements["__DYNAMIC_REQUIRED_CHARGE_POWER__"],
-            }.issubset(entity_ids)
-        ):
-            colors = {
-                replacements["__OUTPUT_TARGET__"]: "#2196F3",
-                replacements["__OUTPUT_POWER__"]: "#009B21",
-                replacements["__SELF_CONSUMPTION_TARGET__"]: "#FF6A00",
-                replacements["__CHARGE_PRIORITY_TARGET__"]: "#FFD800",
-                replacements["__REQUIRED_CHARGE_POWER__"]: "#00FFFF",
-                replacements["__DYNAMIC_REQUIRED_CHARGE_POWER__"]: "#B200FF",
             }
+            if core_entities.issubset(entity_ids):
+                colors = {
+                    replacements["__OUTPUT_TARGET__"]: "#2196F3",
+                    replacements["__OUTPUT_POWER__"]: "#009B21",
+                    replacements["__SELF_CONSUMPTION_TARGET__"]: "#FF6A00",
+                    replacements["__CHARGE_PRIORITY_TARGET__"]: "#FFD800",
+                    replacements["__REQUIRED_CHARGE_POWER__"]: "#00FFFF",
+                }
+                dynamic_required = replacements[
+                    "__DYNAMIC_REQUIRED_CHARGE_POWER__"
+                ]
+                if dynamic_required in entity_ids:
+                    colors[dynamic_required] = "#B200FF"
 
         if not forecast_curve and colors is None:
             continue
@@ -195,8 +202,8 @@ def _apply_standard_series_colors_v18(
     return changed or recognized_standard_chart
 
 
-def _install_template_v18_migration() -> None:
-    """Extend dashboard.py with the strict v18 color migration exactly once."""
+def _install_template_v19_migration() -> None:
+    """Extend dashboard.py with the strict v19 color migration exactly once."""
     _dashboard.DASHBOARD_TEMPLATE_VERSION = DASHBOARD_TEMPLATE_VERSION
 
     if getattr(_dashboard, _PATCH_MARKER, False):
@@ -208,20 +215,20 @@ def _install_template_v18_migration() -> None:
     # add colors to a user-created ApexCharts card that happens to use the same
     # NOAH entities.
     #
-    # The v18 implementation covers all generated NOAH standard ApexCharts but
+    # The v19 implementation covers all generated NOAH standard ApexCharts but
     # additionally requires the known German/English title. Replacing the old
     # color migration therefore fixes stale colors while preserving custom
     # charts.
     _dashboard._apply_standard_series_colors = (
-        _apply_standard_series_colors_v18
+        _apply_standard_series_colors_v19
     )
 
     setattr(_dashboard, _PATCH_MARKER, True)
 
 
-_install_template_v18_migration()
+_install_template_v19_migration()
 
 # Keep dashboard.py as the central implementation. Its async_ensure_dashboard()
-# now sees DASHBOARD_TEMPLATE_VERSION == 18 and the strict v18 color migration.
+# now sees DASHBOARD_TEMPLATE_VERSION == 19 and the strict v19 color migration.
 async_ensure_dashboard = _dashboard.async_ensure_dashboard
 remove_dashboard_panel = _dashboard.remove_dashboard_panel

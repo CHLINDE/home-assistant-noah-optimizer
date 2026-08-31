@@ -2,7 +2,7 @@
 
 Diese Anleitung beschreibt Installation und Update des **Home Assistant
 Growatt NOAH Optimizers** für den stabilen Release `2.0.0` und den aktuellen
-Pre-Release `2.1.0-beta.8`.
+Pre-Release `2.1.0-beta.9`.
 
 ## 1. Voraussetzungen
 
@@ -76,7 +76,7 @@ HACS-Vorabversionen aktivieren.
 Installieren:
 
 ```text
-2.1.0-beta.8
+2.1.0-beta.9
 ```
 
 Home Assistant vollständig neu starten.
@@ -109,7 +109,7 @@ Gelernte PV-Korrektur verwenden = Aus
 Betriebsart = Automatik
 ```
 
-## 8. Update auf 2.1.0-beta.8
+## 8. Update von 2.0.0 auf 2.1.0-beta.9
 
 Vor dem Update:
 
@@ -117,9 +117,9 @@ Vor dem Update:
 NOAH-Steuerung aktiv = Aus
 ```
 
-Dann Beta 8 installieren und neu starten.
+Dann Beta 9 installieren und neu starten.
 
-Beta 8 enthält gegenüber dem stabilen 2.0.0 zusätzlich:
+Beta 9 enthält gegenüber dem stabilen 2.0.0 zusätzlich:
 
 - PV-Learning
 - SOC-Ladeplan halten
@@ -129,6 +129,7 @@ Beta 8 enthält gegenüber dem stabilen 2.0.0 zusätzlich:
 - Forecast-/Plan-Snapshots
 - feste Serienfarben
 - korrigierte Farbmigration
+- erneute Reglerverhalten-Migration für ältere 5-Serien-Charts
 
 ## 9. Update von 2.1.0-beta.4 bis beta.7
 
@@ -142,7 +143,24 @@ Alte explizite Serienfarben in gespeicherten Standardcharts werden korrigiert.
 
 Eigene ApexCharts bleiben erhalten.
 
-## 10. Farben prüfen
+## 10. Update von 2.1.0-beta.8 auf beta.9
+
+Beta 9 korrigiert speziell **Reglerverhalten** bei älteren gespeicherten
+5-Serien-Charts.
+
+Wichtig:
+
+```text
+Dashboard-Template-Version 18 -> 19
+```
+
+Der Versionssprung ist erforderlich, damit die Farbmigration bei einer bereits
+mit Beta 8 auf Template 18 gespeicherten Installation erneut läuft.
+
+Nach Installation Home Assistant vollständig neu starten und anschließend das
+Dashboard neu öffnen.
+
+## 11. Farben prüfen
 
 Reglerverhalten:
 
@@ -170,7 +188,7 @@ History-Card-Cache:
 v8
 ```
 
-## 11. Forecast.Solar prüfen
+## 12. Forecast.Solar prüfen
 
 Bei nativer Quelle sollte die Ladeplanbasis auf die Forecast.Solar-Kurve
 hinweisen.
@@ -184,7 +202,7 @@ Prüfen:
 
 Bei nicht auflösbarer Quelle ist der Tageslicht-Fallback korrekt.
 
-## 12. PV-Learning prüfen
+## 13. PV-Learning prüfen
 
 Zunächst Anwendung aus lassen.
 
@@ -198,7 +216,7 @@ Beobachten:
 
 Mindestens drei gültige Tage vor Anwendung.
 
-## 13. Historische SOC-Karte prüfen
+## 14. Historische SOC-Karte prüfen
 
 Testen:
 
@@ -207,7 +225,7 @@ Testen:
 - Datumsauswahl
 - gespeicherte Planstände
 
-## 14. Dynamischen SOC-Ladeplan prüfen
+## 15. Dynamischen SOC-Ladeplan prüfen
 
 Beobachten:
 
@@ -224,13 +242,13 @@ Nachts:
 SOC-Ladeplan = Nachtbetrieb
 ```
 
-## 15. SOC-Halten prüfen
+## 16. SOC-Halten prüfen
 
 Bei erfülltem Plan kann der Reglermodus **SOC-Ladeplan halten** erscheinen.
 
 Keine absichtliche Akkuentladung.
 
-## 16. SOC-Freigabe prüfen
+## 17. SOC-Freigabe prüfen
 
 Voraussetzungen:
 
@@ -242,7 +260,7 @@ Voraussetzungen:
 - Ist-SOC über Freigabegrenze
 - positiver Netzbezug
 
-## 17. PV-Umlenkung prüfen
+## 18. PV-Umlenkung prüfen
 
 Geeignet:
 
@@ -258,7 +276,7 @@ Erwartet:
 Reglermodus = PV-Umlenkung
 ```
 
-## 18. Stellgröße manuell testen
+## 19. Stellgröße manuell testen
 
 Unter **Werkzeuge → Aktionen**:
 
@@ -270,7 +288,7 @@ data:
   value: 300
 ```
 
-## 19. Aktive Steuerung
+## 20. Aktive Steuerung
 
 Erst nach plausibler Prüfung:
 
@@ -278,7 +296,7 @@ Erst nach plausibler Prüfung:
 NOAH-Steuerung aktiv = Ein
 ```
 
-## 20. Schutzmechanismen
+## 21. Schutzmechanismen
 
 - Hysterese
 - Stellgrößenraster
@@ -288,11 +306,11 @@ NOAH-Steuerung aktiv = Ein
 - Legacy-Sperre
 - schnelle sichere Reduzierungen
 
-## 21. Legacy-YAML
+## 22. Legacy-YAML
 
 Nicht gleichzeitig aktiv verwenden.
 
-## 22. Dashboard-Migrationsstände
+## 23. Dashboard-Migrationsstände
 
 ```text
 8   Dynamischer SOC
@@ -306,6 +324,7 @@ Nicht gleichzeitig aktiv verwenden.
 16  feste Serienfarben
 17  Farbangleichung
 18  Farbmigrationskorrektur
+19  Reglerverhalten 5-/6-Serien-Migration
 ```
 
 ## Feste Dashboard-Farbpalette
