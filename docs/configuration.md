@@ -2,7 +2,7 @@
 
 Dieses Dokument beschreibt die HACS-Integration **Growatt NOAH Optimizer**
 für den stabilen Release `2.0.0` und den aktuellen Pre-Release
-`2.1.0-beta.8`.
+`2.1.0-beta.9`.
 
 Die tatsächlichen Entity-IDs können durch Bereichsnamen oder manuelle
 Umbenennungen abweichen. Die Integration und das automatische Dashboard lösen
@@ -640,6 +640,26 @@ Die Änderung betrifft ausschließlich Dashboarddarstellung und
 Dashboardmigration. Optimizer-Berechnung und aktive NOAH-Regelung bleiben
 unverändert.
 
+### Ergänzung in 2.1.0-beta.9
+
+Die Template-Version steigt von `18` auf `19`, damit die Korrektur auch auf
+Installationen ausgeführt wird, die Beta 8 bereits erfolgreich auf Version 18
+gespeichert haben.
+
+Für **Reglerverhalten** gelten fünf Kernserien als Standardchart:
+
+```text
+Regler-Soll
+Ist-Ausgang
+Eigenverbrauch-Soll
+Ladepriorität-Soll
+Nötige Ladeleistung
+```
+
+Die sechste Serie **Dynamische Nachladeleistung** ist optional. Damit werden
+sowohl ältere gespeicherte 5-Serien-Charts als auch die aktuelle
+6-Serien-Variante korrekt migriert.
+
 
 ## 16. Dashboard-Migrationshistorie
 
@@ -655,6 +675,7 @@ unverändert.
 16  feste Serienfarben
 17  abschließende Farbangleichung
 18  Korrektur alter expliziter Farben
+19  Reglerverhalten: 5-/6-Serien-Migration
 ```
 
 ## 17. Sicherheit

@@ -9,7 +9,7 @@ Stable release:
 Current pre-release:
 
 ```text
-2.1.0-beta.8
+2.1.0-beta.9
 ```
 
 ## Direct HACS repository button
@@ -77,6 +77,23 @@ Recognition requires:
 - PV forecast additionally checks known data generators
 
 Custom ApexCharts remain untouched.
+
+### Beta 9 - controller-behavior legacy chart migration
+
+Beta 9 fixes the remaining stored-dashboard case for `Controller behavior`.
+Older generated dashboards can contain the five-series version of this chart,
+while newer dashboards contain a sixth dynamic catch-up series.
+
+Beta 8 required all six series and therefore did not recognize the older
+stored card. Beta 9 treats the five core series as sufficient and applies the
+Violet color only when the optional sixth series exists.
+
+```text
+Dashboard template 18 -> 19
+```
+
+The version bump forces the corrected migration to run on installations that
+have already stored template version 18.
 
 ## Standard palette
 
@@ -188,11 +205,12 @@ failsafe
 16  Standard series colors
 17  Final color alignment
 18  Stored-color migration fix
+19  Controller behavior 5-/6-series migration
 ```
 
 ## Upgrade test
 
-After Beta 8 restart:
+After Beta 9 restart:
 
 1. Dashboard loads.
 2. Controller behavior uses six standard colors.

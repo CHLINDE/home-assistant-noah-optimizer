@@ -1,3 +1,35 @@
+## [2.1.0-beta.9]
+
+### Fixed
+
+- Fixed the remaining controller-behavior color migration for existing dashboards using the older five-series chart variant
+- `Reglerverhalten` / `Controller behavior` is now recognized with the five core series; the later dynamic catch-up series is optional
+- Existing Beta-8 installations are migrated again so stale controller-chart colors are actually corrected
+
+### Changed
+
+- Dashboard template storage version increased from 18 to 19
+- Integration version updated to `2.1.0-beta.9`
+- The current six-series controller chart remains fully supported
+- Custom ApexCharts protection based on known title and expected NOAH series remains in place
+
+### Controller behavior palette
+
+- Controller target: blue `#2196F3`
+- Actual output: green `#009B21`
+- Self-consumption target: orange `#FF6A00`
+- Charge-priority target: yellow `#FFD800`
+- Required charging power: cyan `#00FFFF`
+- Dynamic catch-up charging power, when present: violet `#B200FF`
+
+### Safety
+
+This release changes dashboard migration and documentation only.
+
+Optimizer calculations and active NOAH control behavior are unchanged.
+
+---
+
 ## [2.1.0-beta.8]
 
 ### Fixed

@@ -1,7 +1,7 @@
 # Fehlerbehebung
 
 Dieses Dokument bezieht sich auf die HACS-Integration **Growatt NOAH
-Optimizer**, insbesondere `2.1.0-beta.8`.
+Optimizer**, insbesondere `2.1.0-beta.9`.
 
 ## 1. Integration wird nicht geladen
 
@@ -16,7 +16,7 @@ suchen.
 Prüfen:
 
 - Home Assistant neu gestartet
-- `manifest.json` auf `2.1.0-beta.8`
+- `manifest.json` auf `2.1.0-beta.9`
 - Quell-Entitäten vorhanden
 - keine Python-Fehler
 
@@ -296,7 +296,33 @@ Nötige Ladeleistung          #00FFFF
 Dynamische Nachladeleistung  #B200FF
 ```
 
-## 39. Historischer SOC falsche Farben
+## 39. Reglerverhalten bleibt nach Beta 8 falsch
+
+Das kann bei einem bereits gespeicherten älteren **5-Serien-Chart** auftreten.
+Beta 8 erkannte `Reglerverhalten` nur, wenn auch die später ergänzte Serie
+**Dynamische Nachladeleistung** vorhanden war.
+
+Beta 9 behebt diesen Fall und erhöht die Dashboard-Template-Version auf 19.
+Dadurch wird die Migration auch dann erneut ausgeführt, wenn Template 18 schon
+gespeichert war.
+
+Erwartete Farben der fünf Kernserien:
+
+```text
+Regler-Soll                  #2196F3
+Ist-Ausgang                  #009B21
+Eigenverbrauch-Soll          #FF6A00
+Ladepriorität-Soll           #FFD800
+Nötige Ladeleistung          #00FFFF
+```
+
+Ist die sechste Serie vorhanden:
+
+```text
+Dynamische Nachladeleistung  #B200FF
+```
+
+## 40. Historischer SOC falsche Farben
 
 Erwartet:
 
@@ -307,31 +333,31 @@ Ziel-SOC                     #FF6A00
 Gespeicherter Plan           #FFD800
 ```
 
-## 40. Eigenes ApexCharts wird nicht umgefärbt
+## 41. Eigenes ApexCharts wird nicht umgefärbt
 
 Beabsichtigt.
 
-Template v18 ändert nur eindeutig erkannte Standardcharts.
+Template v19 ändert nur eindeutig erkannte Standardcharts.
 
-## 41. Eigenes ApexCharts wurde unerwartet geändert
+## 42. Eigenes ApexCharts wurde unerwartet geändert
 
-Mit aktuellem Beta-8-Fix darf die alte breite v17-Farbmigration nicht mehr
+Mit aktuellem Beta-9-Fix darf die alte breite v17-Farbmigration nicht mehr
 vorgeschaltet sein.
 
 Prüfen:
 
 - aktuelle `dashboard_migration_v18.py`
-- Version `2.1.0-beta.8`
+- Version `2.1.0-beta.9`
 - Neustart
 
-## 42. Migration läuft immer wieder
+## 43. Migration läuft immer wieder
 
 Gespeicherte Template-Version prüfen.
 
 Bei stark verändertem Dashboard kann eine sichere Erkennung bewusst
 ausbleiben.
 
-## 43. Historischer Beta-8-Jinja-Fehler
+## 44. Historischer Beta-8-Jinja-Fehler
 
 ```text
 TemplateSyntaxError: unexpected '}'
@@ -339,7 +365,7 @@ TemplateSyntaxError: unexpected '}'
 
 wird durch die ältere Template-9-Migration repariert.
 
-## 44. Frontend zeigt alte JS-Version
+## 45. Frontend zeigt alte JS-Version
 
 Cache:
 
@@ -349,11 +375,11 @@ Cache:
 
 Browser/App vollständig neu laden.
 
-## 45. Plan-Snapshots fehlen
+## 46. Plan-Snapshots fehlen
 
 Snapshots werden dedupliziert und nur bei relevanten Planänderungen gespeichert.
 
-## 46. Failsafe
+## 47. Failsafe
 
 Bei dauerhaft fehlenden Daten:
 
@@ -361,11 +387,11 @@ Bei dauerhaft fehlenden Daten:
 - wenn möglich 0 W
 - Rücksetzen nach Datenrückkehr
 
-## 47. Legacy-YAML und HACS gleichzeitig
+## 48. Legacy-YAML und HACS gleichzeitig
 
 Nicht zulässig.
 
-## 48. SOC-Freigabe reagiert zu träge
+## 49. SOC-Freigabe reagiert zu träge
 
 ```text
 Controller-Auswertung = 15 s
@@ -373,7 +399,7 @@ Erhöhungen            = 30 s
 Normal                = 120 s
 ```
 
-## 49. Kurzzeitige Einspeisung
+## 50. Kurzzeitige Einspeisung
 
 Möglich durch:
 
@@ -383,21 +409,21 @@ Möglich durch:
 - Lastsprünge
 - NOAH-Übernahmezeit
 
-## 50. Abend-SOC wird nicht erreicht
+## 51. Abend-SOC wird nicht erreicht
 
 Die Prognose ist keine Garantie. Reale PV und Last können abweichen.
 
-## 51. Welche Version?
+## 52. Welche Version?
 
 HACS und `manifest.json` prüfen:
 
 ```text
-2.1.0-beta.8
+2.1.0-beta.9
 ```
 
-## 52. Was ändert Beta 8 an der Regelung?
+## 53. Was ändert Beta 9 an der Regelung?
 
-Nichts. Beta 8 korrigiert Dashboard-Farbmigration und Frontend-Cache.
+Nichts. Beta 9 korrigiert die verbleibende Reglerverhalten-Farbmigration. Optimizer- und Controllerlogik bleiben unverändert.
 
 ## Feste Dashboard-Farbpalette
 

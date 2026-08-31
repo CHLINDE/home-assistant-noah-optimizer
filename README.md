@@ -4,7 +4,7 @@ Prognosebasierte Steuerung der Ausgangsleistung eines Growatt NOAH 2000
 über Home Assistant und Noah-MQTT.
 
 > **Status:** Stabiler Release `2.0.0`. Aktueller Pre-Release:
-> `2.1.0-beta.8`.
+> `2.1.0-beta.9`.
 >
 > Die aktive Steuerung kann die NOAH-Ausgangsleistung verändern. Vor der
 > Aktivierung sollten Quellwerte, Netzvorzeichen und Stellgröße geprüft werden.
@@ -38,7 +38,7 @@ Aktuelle stabile Version:
 Aktueller Pre-Release:
 
 ```text
-2.1.0-beta.8
+2.1.0-beta.9
 ```
 
 ### 2.1.0-beta.1 – PV-Learning
@@ -156,6 +156,20 @@ enthielt.
 Die Dashboard-Template-Version steigt auf 18. Eigene ApexCharts bleiben
 unangetastet, sofern sie nicht eindeutig als NOAH-Standardchart erkannt werden.
 
+### 2.1.0-beta.9 – Reglerverhalten-Migration
+
+Beta 9 behebt den verbleibenden Upgrade-Fall beim Diagramm
+**Reglerverhalten**. Bereits gespeicherte Dashboards können noch die ältere
+5-Serien-Variante des Charts enthalten. Beta 8 verlangte für die Erkennung
+bereits die später ergänzte sechste Serie und übersprang diese älteren Karten.
+
+Die Migration akzeptiert jetzt sowohl die alte 5-Serien- als auch die aktuelle
+6-Serien-Variante. Damit die Korrektur auch bei bereits auf Template 18
+migrierten Installationen erneut ausgeführt wird, steigt die
+Dashboard-Template-Version auf **19**.
+
+Optimizer-Berechnung und aktive NOAH-Regelung bleiben unverändert.
+
 ## Voraussetzungen
 
 - Home Assistant
@@ -200,7 +214,7 @@ Typ:
 Integration
 ```
 
-Für `2.1.0-beta.8` müssen in HACS Vorabversionen für dieses Repository
+Für `2.1.0-beta.9` müssen in HACS Vorabversionen für dieses Repository
 angezeigt werden.
 
 Nach Installation oder Update Home Assistant vollständig neu starten.
@@ -642,6 +656,18 @@ Die Änderung betrifft ausschließlich Dashboarddarstellung und
 Dashboardmigration. Optimizer-Berechnung und aktive NOAH-Regelung bleiben
 unverändert.
 
+### Dashboard-Migration in 2.1.0-beta.9
+
+Beta 9 erhöht die Dashboard-Template-Version von `18` auf `19`.
+
+Beim Standardchart **Reglerverhalten** werden jetzt sowohl bereits gespeicherte
+5-Serien-Karten als auch die aktuelle 6-Serien-Variante erkannt. Die fünf
+Kernserien erhalten immer die definierte Palette; die optionale dynamische
+Nachladeleistung erhält Violett, wenn sie im Chart vorhanden ist.
+
+Eigene ApexCharts werden weiterhin nur dann verändert, wenn Titel und
+NOAH-Kernserien eindeutig dem Standardchart entsprechen.
+
 
 ## Dashboard-Migrationshistorie
 
@@ -657,6 +683,7 @@ unverändert.
 16  feste Serienfarben
 17  abschließende Farbangleichung
 18  Korrektur alter expliziter Farben
+19  Reglerverhalten: alte 5-Serien-Variante migrieren
 ```
 
 Migrationen sind gezielt. Das komplette Dashboard wird nicht pauschal ersetzt.
@@ -693,6 +720,13 @@ Prüfen:
 Danach aktive Steuerung wieder freigeben.
 
 ## Versionshistorie
+
+### 2.1.0-beta.9
+
+- Template-Version 19
+- Reglerverhalten erkennt alte 5-Serien- und aktuelle 6-Serien-Variante
+- bestehende falsche Farben werden nach Beta 8 erneut migriert
+- keine Änderung der Regelalgorithmen
 
 ### 2.1.0-beta.8
 
