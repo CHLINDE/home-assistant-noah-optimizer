@@ -1,7 +1,7 @@
 # Konfiguration
 
 Dieses Dokument beschreibt die HACS-Integration **Growatt NOAH Optimizer**
-für den aktuellen Pre-Release `2.1.0-beta.10`.
+für den aktuellen Pre-Release `2.1.0-beta.11`.
 
 `2.1.0-beta.1` ergänzt auf Basis des stabilen Stands `2.0.0` passives,
 persistentes PV-Learning. `2.1.0-beta.2` korrigiert zusätzlich die Automatik
@@ -1292,8 +1292,10 @@ Als offline beziehungsweise nicht sicher erreichbar gelten:
 - `Connectivity = off`
 - `unknown` oder `unavailable`
 - eine zuvor erkannte Connectivity-Entität ist verschwunden
-- ein weiterhin als `on` angezeigter Connectivity-Zustand wurde länger als
-  drei Minuten nicht mehr gemeldet
+
+Ab Beta 11 gilt `Connectivity = on` als online. Die in Beta 10 verwendete
+3-Minuten-Prüfung über `last_reported` wurde entfernt, weil Home Assistant
+identische MQTT-Payloads nicht zwingend als neuen Entity-State schreibt.
 
 Während dieses Zustands werden keine normalen Stellbefehle und auch kein
 0-W-Failsafe-Befehl gesendet. Home Assistant erzeugt einmalig die persistente
@@ -1305,8 +1307,9 @@ letzten gecachten PV-Leistungswert als fiktive weitere Produktion zu
 integrieren. Nach Wiederverbindung wird die Messlücke von der bestehenden
 PV-Learning-Logik normal bewertet.
 
-Nach einem frischen Online-Status wird die Benachrichtigung automatisch
-entfernt, die aktuellen Quellwerte werden neu eingelesen und die bestehende
-Regelung fortgesetzt.
+Nach `Connectivity = on` wird die Benachrichtigung automatisch entfernt,
+die aktuellen Quellwerte werden neu eingelesen und die bestehende Regelung
+fortgesetzt. Eine zusätzliche Wiederfreigabeprüfung über
+`System Output Power.last_reported` findet ab Beta 11 nicht mehr statt.
 
-Beta 10 benötigt keine neue Dashboard-Template-Version.
+Beta 11 benötigt keine neue Dashboard-Template-Version.

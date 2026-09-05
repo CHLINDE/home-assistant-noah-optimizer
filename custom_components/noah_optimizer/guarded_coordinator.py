@@ -1,4 +1,4 @@
-"""Coordinator wrapper that blocks stale NOAH source updates."""
+"""Coordinator wrapper that blocks NOAH source updates while offline."""
 
 from __future__ import annotations
 

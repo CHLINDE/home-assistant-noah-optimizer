@@ -1,7 +1,7 @@
 # Installation
 
 Diese Anleitung beschreibt die Installation und das Update des **Home
-Assistant Growatt NOAH Optimizers** für den aktuellen Pre-Release `2.1.0-beta.10`.
+Assistant Growatt NOAH Optimizers** für den aktuellen Pre-Release `2.1.0-beta.11`.
 
 Für neue Installationen wird die HACS-Integration empfohlen.
 
@@ -102,16 +102,16 @@ Typ:
 Integration
 ```
 
-## 5. Version 2.1.0-beta.10 installieren
+## 5. Version 2.1.0-beta.11 installieren
 
 Zu installierende Version:
 
 ```text
-2.1.0-beta.10
+2.1.0-beta.11
 ```
 
 In HACS müssen für dieses Repository Vorabversionen angezeigt beziehungsweise
-berücksichtigt werden. Danach `2.1.0-beta.10` auswählen und installieren.
+berücksichtigt werden. Danach `2.1.0-beta.11` auswählen und installieren.
 
 Nach der Installation Home Assistant vollständig neu starten.
 
@@ -713,3 +713,17 @@ Erwartet:
 Ein unveränderter `on`-Connectivity-Zustand gilt nach drei Minuten ohne neue
 Meldung ebenfalls als veraltet. Beta 10 benötigt keine neue
 Dashboard-Template-Version.
+
+## 21. Update von 2.1.0-beta.10 auf beta.11
+
+Beta 11 behebt die falsche Offline-Erkennung bei einem korrekt verbundenen
+NOAH. Die in Beta 10 verwendeten `last_reported`-Zeitstempelprüfungen werden
+entfernt.
+
+Nach Installation und vollständigem Home-Assistant-Neustart muss bei
+`Connectivity = Verbunden` / `on` der Optimizer normal verfügbar bleiben.
+Ein echter `off`-/`unknown`-/`unavailable`-Connectivity-Zustand blockiert
+weiterhin Stellbefehle, Failsafe-Schreibbefehle und die Verarbeitung gecachter
+Noah-MQTT-Messwerte.
+
+Keine Dashboard-Migration erforderlich.

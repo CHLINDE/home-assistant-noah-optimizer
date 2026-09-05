@@ -9,7 +9,7 @@ Stable release:
 Current pre-release:
 
 ```text
-2.1.0-beta.10
+2.1.0-beta.11
 ```
 
 ## Direct HACS repository button
@@ -95,6 +95,33 @@ Dashboard template 18 -> 19
 The version bump forces the corrected migration to run on installations that
 have already stored template version 18.
 
+### Beta 11 - Connectivity timestamp fix
+
+Beta 11 fixes a false-offline condition introduced by Beta 10.
+
+Home Assistant MQTT entities do not necessarily write a new entity state for
+an unchanged MQTT payload or numeric value. Therefore `last_reported` cannot be
+used as a reliable MQTT-message freshness timestamp.
+
+Beta 11 removes:
+
+- the three-minute `Connectivity.last_reported` timeout
+- the reconnect barrier based on `System Output Power.last_reported`
+
+The actual Connectivity entity state is authoritative:
+
+```text
+on          = online
+off         = offline
+unknown     = unavailable
+unavailable = unavailable
+```
+
+All command, failsafe, coordinator and PV-learning protections from Beta 10
+remain active for genuine offline states.
+
+No dashboard-template migration is required for Beta 11.
+
 ### Beta 10 - NOAH offline detection
 
 Beta 10 evaluates the Noah-MQTT `Connectivity` binary sensor belonging to the
@@ -115,6 +142,8 @@ After a fresh online report, the notification is removed automatically and the
 normal controller resumes with newly read source values.
 
 No dashboard-template migration is required for Beta 10.
+
+> Beta 11 removes Beta 10's timestamp-based stale/reconnect checks because Home Assistant MQTT entities do not reliably refresh `last_reported` for unchanged values.
 
 ## Standard palette
 

@@ -1,3 +1,35 @@
+## [2.1.0-beta.11]
+
+### Fixed
+
+- Fixed false NOAH-offline detection while the Noah-MQTT `Connectivity`
+  binary sensor remains correctly `on`
+- Removed the three-minute `last_reported` stale check
+- Removed the post-reconnect `System Output Power.last_reported` freshness
+  barrier
+- Home Assistant MQTT entities may not write a new state for an unchanged
+  payload/value, so entity `last_reported` is not a reliable MQTT-message
+  freshness signal
+
+### Safety
+
+- Explicit `Connectivity = off`, `unknown`, `unavailable`, or a disappeared
+  previously discovered connectivity entity still blocks active control
+- Normal output commands remain blocked while offline
+- The missing-data `0 W` failsafe command remains blocked while offline
+- All coordinator update paths remain protected
+- Cached Noah-MQTT PV values remain excluded from PV learning while offline
+- The persistent offline notification remains active for real offline states
+
+### Changed
+
+- Integration version updated to `2.1.0-beta.11`
+- Online recovery now follows the actual Connectivity entity state instead of
+  Home Assistant state timestamps
+- No dashboard-template migration is required
+
+---
+
 ## [2.1.0-beta.10]
 
 ### Added

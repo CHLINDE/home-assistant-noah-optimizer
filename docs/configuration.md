@@ -2,7 +2,7 @@
 
 Dieses Dokument beschreibt die HACS-Integration **Growatt NOAH Optimizer**
 für den stabilen Release `2.0.0` und den aktuellen Pre-Release
-`2.1.0-beta.10`.
+`2.1.0-beta.11`.
 
 Die tatsächlichen Entity-IDs können durch Bereichsnamen oder manuelle
 Umbenennungen abweichen. Die Integration und das automatische Dashboard lösen
@@ -531,7 +531,7 @@ command_failed
 failsafe
 ```
 
-Während eines erkannten NOAH-Offline-Zustands verwendet Beta 10 bewusst den
+Während eines erkannten NOAH-Offline-Zustands verwendet Beta 11 weiterhin den
 bereits vorhandenen Status `actuator_unavailable`. Die eindeutige Diagnose
 **NOAH offline** steht in der persistenten Home-Assistant-Benachrichtigung.
 
@@ -577,8 +577,10 @@ Als offline bzw. nicht sicher erreichbar gelten:
 - `unknown`
 - `unavailable`
 - eine zuvor erkannte Connectivity-Entität ist verschwunden
-- ein weiterhin als `on` angezeigter Connectivity-Zustand wurde länger als
-  drei Minuten nicht mehr gemeldet
+
+`Connectivity = on` gilt als online. Beta 11 entfernt die in Beta 10
+verwendete 3-Minuten-Prüfung über `last_reported`, weil Home Assistant
+identische MQTT-Payloads nicht zwingend als neuen Entity-State schreibt.
 
 Während Offline:
 
@@ -589,9 +591,10 @@ Während Offline:
 - persistente Benachrichtigung **NOAH Optimizer: NOAH offline**
 - Daten-/Controllerstatus `actuator_unavailable`
 
-Nach einem frischen Online-Status wird die Benachrichtigung entfernt. Danach
-werden die aktuellen Quellwerte neu eingelesen und der normale Controller
-fortgesetzt.
+Nach `Connectivity = on` wird die Benachrichtigung entfernt. Danach werden
+die aktuellen Quellwerte neu eingelesen und der normale Controller
+fortgesetzt. Eine zusätzliche `System Output Power.last_reported`-Prüfung
+findet ab Beta 11 nicht mehr statt.
 
 Falls noch nie ein Connectivity-Sensor gefunden wurde, arbeitet die Integration
 aus Kompatibilitätsgründen mit dem bisherigen Verhalten weiter und schreibt

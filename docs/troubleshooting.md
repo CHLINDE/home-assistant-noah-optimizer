@@ -1,7 +1,7 @@
 # Fehlerbehebung
 
 Dieses Dokument bezieht sich auf die HACS-Integration **Growatt NOAH
-Optimizer**, insbesondere `2.1.0-beta.10`.
+Optimizer**, insbesondere `2.1.0-beta.11`.
 
 ## 1. Integration wird nicht geladen
 
@@ -16,7 +16,7 @@ suchen.
 Prüfen:
 
 - Home Assistant neu gestartet
-- `manifest.json` auf `2.1.0-beta.10`
+- `manifest.json` auf `2.1.0-beta.11`
 - Quell-Entitäten vorhanden
 - keine Python-Fehler
 
@@ -360,7 +360,7 @@ vorgeschaltet sein.
 Prüfen:
 
 - aktuelle `dashboard_migration_v18.py`
-- Version `2.1.0-beta.10`
+- Version `2.1.0-beta.11`
 - Neustart
 
 ## 43. Migration läuft immer wieder
@@ -433,13 +433,35 @@ Die Prognose ist keine Garantie. Reale PV und Last können abweichen.
 HACS und `manifest.json` prüfen:
 
 ```text
-2.1.0-beta.10
+2.1.0-beta.11
 ```
 
 ## 53. Was ändert Beta 9 an der Regelung?
 
 Nichts. Beta 9 korrigiert die verbleibende Reglerverhalten-Farbmigration.
 Optimizer- und Controllerlogik bleiben unverändert.
+
+## Beta-10-Fehler: „Stellgröße nicht verfügbar“ trotz Connectivity = Verbunden
+
+Wenn der NOAH normal arbeitet und Noah-MQTT `Connectivity = Verbunden` / `on`
+meldet, der Optimizer aber nach einigen Minuten trotzdem auf
+**Stellgröße nicht verfügbar** wechselt, betrifft die Installation den in
+`2.1.0-beta.11` behobenen Zeitstempelfehler.
+
+Beta 10 verwendete `last_reported` als MQTT-Freshness-Indikator. Bei einem
+unveränderten MQTT-Zustand beziehungsweise Number-Wert muss Home Assistant aber
+keinen neuen Entity-State schreiben. Dadurch konnte der Zeitstempel altern,
+obwohl weiterhin aktuelle MQTT-Daten vorlagen.
+
+Lösung:
+
+```text
+2.1.0-beta.11 oder neuer installieren
+Home Assistant vollständig neu starten
+```
+
+Beta 11 verwendet für die Offline-Entscheidung ausschließlich den tatsächlichen
+Connectivity-Zustand.
 
 ## 54. Home Assistant meldet „NOAH Optimizer: NOAH offline“
 
@@ -457,11 +479,21 @@ Während dieser Meldung blockiert der Optimizer sämtliche Stellbefehle.
 
 ## 55. Connectivity ist `on`, aber der Optimizer meldet offline
 
-Beta 10 behandelt einen Connectivity-Zustand zusätzlich als veraltet, wenn er
-länger als drei Minuten nicht neu gemeldet wurde.
+Unter `2.1.0-beta.10` kann dies durch die fehlerhafte
+`last_reported`-Zeitstempelprüfung verursacht werden. Ein unveränderter
+MQTT-Connectivity-Zustand muss in Home Assistant nicht bei jedem identischen
+Payload erneut geschrieben werden.
 
-Das weist typischerweise auf ein Problem mit Noah-MQTT oder dessen
-Datenaktualisierung hin. Noah-MQTT prüfen bzw. neu starten.
+Ab `2.1.0-beta.11` gilt `Connectivity = on` als online und wird nicht mehr
+allein aufgrund eines alten `last_reported`-Zeitstempels als offline
+behandelt.
+
+Wenn dieses Verhalten noch auftritt:
+
+1. Prüfen, ob tatsächlich `2.1.0-beta.11` oder neuer installiert ist.
+2. Home Assistant vollständig neu starten.
+3. Den Rohzustand des Noah-MQTT-Connectivity-Sensors unter
+   **Werkzeuge → Zustände** prüfen.
 
 ## 56. Connectivity-Sensor fehlt
 

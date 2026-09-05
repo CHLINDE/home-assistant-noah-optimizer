@@ -17,7 +17,7 @@ Zusätzlich prüfen:
 
 - HACS-Installation vollständig
 - Home Assistant nach dem Update neu gestartet
-- `manifest.json` auf `2.0.0` (stabil) oder `2.1.0-beta.10` (aktueller Pre-Release)
+- `manifest.json` auf `2.0.0` (stabil) oder `2.1.0-beta.11` (aktueller Pre-Release)
 - alle Quell-Entitäten vorhanden
 - keine Python-Fehler im Protokoll
 
@@ -56,9 +56,9 @@ Unter **Werkzeuge → Aktionen** mit `number.set_value` testen.
 Ein `sensor.*_output_power` ist nur ein Messwert und keine Stellgröße.
 
 Ab `2.1.0-beta.10` wird derselbe Status außerdem bewusst verwendet, wenn der
-NOAH über Noah-MQTT als offline beziehungsweise nicht mehr aktuell erkannt
-wurde. In diesem Fall erscheint zusätzlich die persistente Benachrichtigung
-**NOAH Optimizer: NOAH offline**.
+NOAH-Connectivity-Sensor `off`, `unknown` oder `unavailable` meldet oder eine
+zuvor erkannte Connectivity-Entität verschwindet. In diesem Fall erscheint
+zusätzlich die persistente Benachrichtigung **NOAH Optimizer: NOAH offline**.
 
 ## 4. Netzbezug und Einspeisung sind vertauscht
 
@@ -944,11 +944,16 @@ Während dieser Meldung blockiert der Optimizer sämtliche Stellbefehle.
 
 ## 37. Connectivity ist `on`, aber der Optimizer meldet offline
 
-`2.1.0-beta.10` behandelt einen Connectivity-Zustand zusätzlich als veraltet,
-wenn er länger als drei Minuten nicht neu gemeldet wurde.
+Unter `2.1.0-beta.10` kann dies durch die fehlerhafte
+`last_reported`-Zeitstempelprüfung verursacht werden. Ein unveränderter
+MQTT-Connectivity-Zustand muss in Home Assistant nicht bei jedem identischen
+Payload erneut geschrieben werden.
 
-Das weist typischerweise auf ein Problem mit Noah-MQTT oder dessen
-Datenaktualisierung hin. Noah-MQTT prüfen beziehungsweise neu starten.
+Ab `2.1.0-beta.11` wird `Connectivity = on` nicht mehr allein aufgrund eines
+alten `last_reported`-Zeitstempels als offline behandelt.
+
+Bei Beta 10 daher auf Beta 11 oder neuer aktualisieren und Home Assistant
+vollständig neu starten.
 
 ## 38. Connectivity-Sensor fehlt
 
