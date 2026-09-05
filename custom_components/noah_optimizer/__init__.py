@@ -31,6 +31,7 @@ from .control import (
     NoahOptimizerController,
 )
 from .coordinator import NoahOptimizerCoordinator
+from .guarded_coordinator import NoahOfflineAwareCoordinator
 from .dashboard_migration_v18 import (
     async_ensure_dashboard,
     remove_dashboard_panel,
@@ -56,12 +57,11 @@ async def async_setup_entry(
 ) -> bool:
     """Set up the Growatt NOAH Optimizer."""
 
-    coordinator = NoahOptimizerCoordinator(
+    coordinator = NoahOfflineAwareCoordinator(
         hass,
         entry,
     )
     await coordinator.async_initialize()
-    await coordinator.async_config_entry_first_refresh()
 
     base_controller = NoahOptimizerController(
         hass,
@@ -74,8 +74,17 @@ async def async_setup_entry(
     )
     await controller.async_prepare()
 
+    # Install the connectivity gate before the very first coordinator refresh.
+    # This protects startup, scheduled DataUpdateCoordinator refreshes, option
+    # changes and reset actions from consuming retained Noah-MQTT values.
+    coordinator.set_source_update_guard(
+        controller.source_updates_allowed
+    )
+
     coordinator.controller = controller
     entry.runtime_data = coordinator
+
+    await coordinator.async_config_entry_first_refresh()
 
     async_register_history_store(hass, entry.entry_id, coordinator.history)
 

@@ -16,6 +16,9 @@
   Noah-MQTT values
 - Source-state changes now check NOAH connectivity before source values are
   consumed
+- Every coordinator refresh path now passes through the same connectivity gate,
+  including the built-in scheduled refresh, startup refresh, option changes and
+  PV-learning reset actions
 - Prevented retained PV-power values from being integrated by PV learning as
   fictitious PV production during a NOAH outage
 

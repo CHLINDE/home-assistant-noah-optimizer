@@ -85,6 +85,16 @@ class NoahOfflineGuard:
 
         return self._connectivity_entity_id
 
+    def source_updates_allowed(self) -> bool:
+        """Return whether Noah-MQTT source values may be consumed.
+
+        The coordinator calls this synchronously before every update path,
+        including its own scheduled refreshes and option-triggered refreshes.
+        Missing connectivity support keeps the existing compatibility mode.
+        """
+        online, _reason = self._read_connectivity(dt_util.utcnow())
+        return online is not False
+
     async def async_prepare(self) -> None:
         """Resolve the connectivity entity during setup."""
 

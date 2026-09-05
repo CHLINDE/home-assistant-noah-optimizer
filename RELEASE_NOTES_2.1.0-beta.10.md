@@ -38,3 +38,24 @@ The corrected implementation checks connectivity **before** consuming source
 states and pauses coordinator/PV-learning refreshes while offline. Source-state
 events and periodic controller ticks use the same guard lock.
 
+### Final review correction
+
+The previous guard covered source-state callbacks and the 15-second controller
+tick, but the `DataUpdateCoordinator` still had its own scheduled refresh path.
+That independent refresh, as well as option/reset-triggered refreshes, could
+still consume retained Noah-MQTT values while the physical NOAH was offline.
+
+Beta 10 now uses a guarded coordinator wrapper. The connectivity check runs
+before **every** coordinator data update, including:
+
+- initial config-entry refresh
+- Home Assistant's scheduled coordinator refresh
+- source-state refreshes
+- controller-triggered refreshes
+- option changes
+- PV-learning reset refreshes
+
+When the NOAH is offline, the last snapshot is retained only for display
+context, but it is marked unavailable for control, the output target is cleared,
+and no cached source values are reprocessed or integrated into PV learning.
+
