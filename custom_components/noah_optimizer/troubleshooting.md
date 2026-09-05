@@ -56,9 +56,9 @@ Unter **Werkzeuge → Aktionen** mit `number.set_value` testen.
 Ein `sensor.*_output_power` ist nur ein Messwert und keine Stellgröße.
 
 Ab `2.1.0-beta.10` wird derselbe Status außerdem bewusst verwendet, wenn der
-NOAH über Noah-MQTT als offline beziehungsweise nicht mehr aktuell erkannt
-wurde. In diesem Fall erscheint zusätzlich die persistente Benachrichtigung
-**NOAH Optimizer: NOAH offline**.
+NOAH-Connectivity-Sensor `off`, `unknown` oder `unavailable` meldet oder eine
+zuvor erkannte Connectivity-Entität verschwindet. In diesem Fall erscheint
+zusätzlich die persistente Benachrichtigung **NOAH Optimizer: NOAH offline**.
 
 ## 4. Netzbezug und Einspeisung sind vertauscht
 

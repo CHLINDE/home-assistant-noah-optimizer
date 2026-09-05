@@ -26,7 +26,7 @@ Prognosebasierte Steuerung der Ausgangsleistung eines Growatt NOAH 2000
 - Regelzustand, Prognose und Energiefluss im Dashboard darstellen
 - historische SOC-Ladepläne und gespeicherte Forecast-Stände nachvollziehen
 - konsistente Farben in allen NOAH-Standarddiagrammen verwenden
-- einen offline beziehungsweise nicht mehr aktuell gemeldeten NOAH erkennen
+- einen von Noah-MQTT als offline oder nicht verfügbar gemeldeten NOAH erkennen
 - Stellbefehle und PV-Learning gegen gecachte Offline-Daten absichern
 - bei NOAH-Offline-Zustand eine persistente Home-Assistant-Benachrichtigung anzeigen
 
@@ -608,7 +608,7 @@ Schutzmechanismen:
 - persistente Home-Assistant-Warnung
 - Sperre gegen gleichzeitige Legacy-YAML-Steuerung
 - NOAH-Connectivity-Guard
-- Stale-Data-Erkennung
+- Schutz vor gecachten Noah-MQTT-Werten während eines Offline-Zustands
 - Sperre normaler und Failsafe-Stellbefehle bei erkanntem Offline-Zustand
 - Pause der Quellwertübernahme und PV-Lernintegration während Offline
 

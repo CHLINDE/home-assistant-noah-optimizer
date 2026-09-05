@@ -361,7 +361,7 @@ NOAH-Steuerung aktiv = Ein
 - Legacy-Sperre
 - schnelle sichere Reduzierungen
 - NOAH-Connectivity-Guard
-- Stale-Data-Erkennung
+- Schutz vor gecachten Noah-MQTT-Werten während Offline
 - Sperre von Normal- und Failsafe-Stellbefehlen bei Offline
 
 ## 23. Legacy-YAML
@@ -385,7 +385,7 @@ Nicht gleichzeitig aktiv verwenden.
 19  Reglerverhalten 5-/6-Serien-Migration
 ```
 
-Beta 10 benötigt keine weitere Dashboard-Migration.
+Beta 11 benötigt keine weitere Dashboard-Migration.
 
 ## Feste Dashboard-Farbpalette
 

@@ -479,11 +479,21 @@ Während dieser Meldung blockiert der Optimizer sämtliche Stellbefehle.
 
 ## 55. Connectivity ist `on`, aber der Optimizer meldet offline
 
-Beta 10 behandelt einen Connectivity-Zustand zusätzlich als veraltet, wenn er
-länger als drei Minuten nicht neu gemeldet wurde.
+Unter `2.1.0-beta.10` kann dies durch die fehlerhafte
+`last_reported`-Zeitstempelprüfung verursacht werden. Ein unveränderter
+MQTT-Connectivity-Zustand muss in Home Assistant nicht bei jedem identischen
+Payload erneut geschrieben werden.
 
-Das weist typischerweise auf ein Problem mit Noah-MQTT oder dessen
-Datenaktualisierung hin. Noah-MQTT prüfen bzw. neu starten.
+Ab `2.1.0-beta.11` gilt `Connectivity = on` als online und wird nicht mehr
+allein aufgrund eines alten `last_reported`-Zeitstempels als offline
+behandelt.
+
+Wenn dieses Verhalten noch auftritt:
+
+1. Prüfen, ob tatsächlich `2.1.0-beta.11` oder neuer installiert ist.
+2. Home Assistant vollständig neu starten.
+3. Den Rohzustand des Noah-MQTT-Connectivity-Sensors unter
+   **Werkzeuge → Zustände** prüfen.
 
 ## 56. Connectivity-Sensor fehlt
 

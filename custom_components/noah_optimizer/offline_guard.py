@@ -218,19 +218,17 @@ class NoahOfflineGuard:
         if language.startswith("de"):
             return (
                 "NOAH Optimizer: NOAH offline",
-                "Der Growatt NOAH ist offline oder der Noah-MQTT-"
-                "Verbindungsstatus wird nicht mehr aktualisiert. "
-                "Es werden keine Stellbefehle an den NOAH gesendet. "
-                "Bitte die IoT-/WLAN-Verbindung des NOAH "
-                "(IoT-Taste/LED) und Noah-MQTT prüfen.",
+                "Der Growatt NOAH wird von Noah-MQTT als offline oder "
+                "nicht verfügbar gemeldet. Es werden keine Stellbefehle "
+                "an den NOAH gesendet. Bitte die IoT-/WLAN-Verbindung "
+                "des NOAH (IoT-Taste/LED) und Noah-MQTT prüfen.",
             )
 
         return (
             "NOAH Optimizer: NOAH offline",
-            "The Growatt NOAH is offline or the Noah-MQTT connectivity "
-            "status is no longer being updated. No output commands are "
-            "sent to the NOAH. Check the NOAH IoT/Wi-Fi connection and "
-            "Noah-MQTT.",
+            "Noah-MQTT reports the Growatt NOAH as offline or unavailable. "
+            "No output commands are sent to the NOAH. Check the NOAH "
+            "IoT/Wi-Fi connection and Noah-MQTT.",
         )
 
     async def _async_create_offline_notification(self) -> None:
