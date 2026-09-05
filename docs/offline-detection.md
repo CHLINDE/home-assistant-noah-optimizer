@@ -68,15 +68,20 @@ wird einmalig eine Warnung in das Home-Assistant-Protokoll geschrieben.
 Für die vollständige Offline-Erkennung wird eine aktuelle Noah-MQTT-Version
 empfohlen.
 
-## Cached measurements and PV learning
+## Gecachte Messwerte und PV-Learning
 
-While the NOAH is offline the coordinator is deliberately **not refreshed**
-from Noah-MQTT source entities. Noah-MQTT may retain the last PV power and SOC
-values even though the physical device is unreachable.
+Während der NOAH offline ist, wird der Coordinator bewusst **nicht** erneut
+aus den Noah-MQTT-Quellentitäten aktualisiert. Noah-MQTT kann die zuletzt
+bekannten Werte für PV-Leistung und SOC weiterhin anzeigen, obwohl das
+physische Gerät nicht erreichbar ist.
 
-This is important for PV learning: PV energy is integrated over elapsed time.
-Repeatedly feeding a retained PV-power value into the learner would create
-fictitious PV production. After connectivity returns, the skipped interval is
-handled as a normal measurement gap; a long daytime outage therefore invalidates
-that learning day instead of corrupting the learned factor.
+Das ist besonders für das PV-Learning wichtig: Die PV-Energie wird aus der
+Leistung über die vergangene Zeit integriert. Würde ein gecachter letzter
+PV-Leistungswert während der Offline-Zeit wiederholt verarbeitet, entstünde
+fiktive PV-Produktion.
+
+Nach Wiederherstellung der Verbindung wird die ausgelassene Zeit von der
+bestehenden Lernlogik als normale Messlücke behandelt. Eine längere
+Tageslücke verwirft den Lerntag dadurch korrekt, anstatt den Lernfaktor mit
+falscher PV-Energie zu verfälschen.
 
