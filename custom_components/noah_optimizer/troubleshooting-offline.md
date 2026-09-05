@@ -47,3 +47,22 @@ nicht als reale weitere Produktion integriert werden.
 Nach der Wiederverbindung wird die Messlücke vom PV-Learning bewertet. Eine
 lange Tageslücke verwirft den Lerntag gemäß der bestehenden Lernlogik.
 
+## NOAH ist wieder online, die Warnung bleibt aber kurz bestehen
+
+Das kann nach `2.1.0-beta.10` beabsichtigt sein.
+
+`Connectivity` und **System Output Power** werden von Noah-MQTT über
+unterschiedliche MQTT-State-Topics veröffentlicht. Nach einem erkannten
+Offline-Zustand wartet der Optimizer daher zusätzlich auf eine frische Meldung
+von **System Output Power**, bevor die aktive Regelung wieder freigegeben wird.
+
+Bei der Noah-MQTT-Standardkonfiguration werden Parameterdaten regelmäßig
+abgefragt; die Wiederfreigabe kann deshalb etwas später erfolgen als die reine
+Connectivity-Anzeige.
+
+Bleibt die Warnung dauerhaft bestehen:
+
+1. Prüfen, ob **System Output Power** in Home Assistant wieder aktualisiert wird.
+2. Noah-MQTT-Protokoll auf Fehler beim Parameterabruf prüfen.
+3. Erst danach Noah-MQTT beziehungsweise die Integration neu laden.
+

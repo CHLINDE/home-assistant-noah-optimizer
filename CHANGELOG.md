@@ -19,6 +19,9 @@
 - Every coordinator refresh path now passes through the same connectivity gate,
   including the built-in scheduled refresh, startup refresh, option changes and
   PV-learning reset actions
+- Recovery now waits for a fresh `System Output Power` report after
+  `Connectivity` returns online; the actuator state is published by Noah-MQTT
+  on a separate parameter-state topic and may otherwise still be cached
 - Prevented retained PV-power values from being integrated by PV learning as
   fictitious PV production during a NOAH outage
 

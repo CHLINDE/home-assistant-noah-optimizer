@@ -38,11 +38,26 @@ offline ist.
 
 ## Wiederverbindung
 
-Sobald Noah-MQTT wieder einen frischen `online`-Status meldet:
+Ein frischer `online`-Status allein reicht nach einem erkannten Offline-Zustand
+noch nicht zum Wiederanlauf der aktiven Regelung.
+
+Noah-MQTT veröffentlicht `Connectivity` und die normalen Gerätemesswerte über
+den Geräte-Status-Topic. **System Output Power** wird dagegen über einen
+separaten Parameter-Status-Topic gemeldet. Deshalb kann dessen Home-Assistant-
+Zustand nach einer Wiederverbindung noch der alte gecachte Stellwert sein.
+
+Nach einem Offline-Zustand wartet der Optimizer deshalb zusätzlich auf eine
+neue Meldung von **System Output Power**, die mindestens so aktuell ist wie die
+erste wiederhergestellte Connectivity-Meldung.
+
+Erst danach:
 
 - wird die Offline-Benachrichtigung automatisch entfernt,
 - werden die aktuellen Werte erneut eingelesen und
 - die unveränderte bestehende Regellogik darf wieder Stellbefehle senden.
+
+Damit kann `Controller: Synchron` nach einer Wiederverbindung nicht allein auf
+einem alten gecachten Stellwert beruhen.
 
 ## Kompatibilität
 

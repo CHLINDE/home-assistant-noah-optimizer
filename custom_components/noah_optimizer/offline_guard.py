@@ -61,6 +61,13 @@ class NoahOfflineGuard:
         self._offline_notified = False
         self._first_online_cleanup_done = False
 
+        # The actuator setpoint is published by Noah-MQTT on a different MQTT
+        # topic from the normal device status / Connectivity entity. After an
+        # outage, a fresh Connectivity=on alone is therefore not sufficient to
+        # prove that the cached System Output Power value is current.
+        self._recovery_requires_fresh_actuator = False
+        self._recovery_online_reported_at: datetime | None = None
+
     @property
     def status(self) -> str:
         """Return the delegated controller status."""
@@ -91,8 +98,13 @@ class NoahOfflineGuard:
         The coordinator calls this synchronously before every update path,
         including its own scheduled refreshes and option-triggered refreshes.
         Missing connectivity support keeps the existing compatibility mode.
+
+        After a detected outage, source updates remain blocked until the
+        separately published System Output Power state has been reported again.
+        This prevents the controller from resuming against a cached actuator
+        setpoint immediately after Connectivity changes back to ``on``.
         """
-        online, _reason = self._read_connectivity(dt_util.utcnow())
+        online, _reason = self._read_guard_state(dt_util.utcnow())
         return online is not False
 
     async def async_prepare(self) -> None:
@@ -168,6 +180,77 @@ class NoahOfflineGuard:
 
         value = getattr(state, "last_reported", None)
         return value if isinstance(value, datetime) else None
+
+    def _actuator_last_reported(self) -> datetime | None:
+        """Return the last report time of System Output Power."""
+
+        entity_id = self.coordinator.entry.data.get(
+            CONF_SYSTEM_OUTPUT_POWER
+        )
+        if not entity_id:
+            return None
+
+        state = self.hass.states.get(entity_id)
+        if state is None:
+            return None
+
+        return self._state_last_reported(state)
+
+    def _connectivity_last_reported(self) -> datetime | None:
+        """Return the last report time of the resolved Connectivity entity."""
+
+        entity_id = self._connectivity_entity_id
+        if entity_id is None:
+            return None
+
+        state = self.hass.states.get(entity_id)
+        if state is None:
+            return None
+
+        return self._state_last_reported(state)
+
+    def _read_guard_state(
+        self,
+        now: datetime,
+    ) -> tuple[bool | None, str]:
+        """Return online state including post-outage actuator freshness.
+
+        The normal Noah-MQTT status values and Connectivity share the device
+        status topic, but System Output Power is published on the separate
+        parameter-state topic. After an outage, wait for a parameter-state
+        report that is at least as new as the first recovered Connectivity
+        report before source data or active control may resume.
+        """
+
+        online, reason = self._read_connectivity(now)
+
+        if online is False:
+            self._recovery_requires_fresh_actuator = True
+            self._recovery_online_reported_at = None
+            return False, reason
+
+        if online is not True:
+            return online, reason
+
+        if not self._recovery_requires_fresh_actuator:
+            return True, reason
+
+        if self._recovery_online_reported_at is None:
+            self._recovery_online_reported_at = (
+                self._connectivity_last_reported() or now
+            )
+
+        actuator_reported_at = self._actuator_last_reported()
+        if (
+            actuator_reported_at is None
+            or actuator_reported_at
+            < self._recovery_online_reported_at
+        ):
+            return False, "awaiting_fresh_actuator"
+
+        self._recovery_requires_fresh_actuator = False
+        self._recovery_online_reported_at = None
+        return True, "online"
 
     def _read_connectivity(
         self,
@@ -358,7 +441,7 @@ class NoahOfflineGuard:
         """
 
         async with self._lock:
-            online, reason = self._read_connectivity(dt_util.utcnow())
+            online, reason = self._read_guard_state(dt_util.utcnow())
 
             if online is False:
                 await self._async_enter_offline(reason)
@@ -382,7 +465,7 @@ class NoahOfflineGuard:
         """Block or delegate a normal controller tick."""
 
         async with self._lock:
-            online, reason = self._read_connectivity(dt_util.utcnow())
+            online, reason = self._read_guard_state(dt_util.utcnow())
 
             if online is False:
                 # Do not refresh the coordinator here. Cached Noah-MQTT values
@@ -409,3 +492,5 @@ class NoahOfflineGuard:
         self._offline = False
         self._offline_reason = None
         self._offline_notified = False
+        self._recovery_requires_fresh_actuator = False
+        self._recovery_online_reported_at = None

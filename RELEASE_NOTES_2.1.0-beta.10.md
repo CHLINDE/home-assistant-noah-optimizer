@@ -59,3 +59,23 @@ When the NOAH is offline, the last snapshot is retained only for display
 context, but it is marked unavailable for control, the output target is cleared,
 and no cached source values are reprocessed or integrated into PV learning.
 
+### Reconnect safety correction
+
+Noah-MQTT publishes the normal device status and `Connectivity` on the device
+status topic, while `System Output Power` is published on the separate
+parameter-state topic. Therefore a fresh `Connectivity=on` report does not by
+itself prove that the actuator setpoint in Home Assistant has also been
+refreshed.
+
+After an offline episode, Beta 10 now keeps the guard active until
+`System Output Power` has received a new report at or after the first recovered
+Connectivity report. Until that happens:
+
+- the offline notification remains visible
+- `Datenstatus` / controller status remain unavailable
+- source values are not reprocessed
+- no active or failsafe output command is sent
+
+This prevents a stale parameter-state value from making the controller appear
+synchronized or from resuming control too early after reconnection.
+
