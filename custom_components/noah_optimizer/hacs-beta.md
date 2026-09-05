@@ -2,7 +2,7 @@
 
 Stable release: `2.0.0`
 
-Current pre-release: `2.1.0-beta.10`
+Current pre-release: `2.1.0-beta.11`
 
 The `2.1.0-beta.1` pre-release adds passive, persistent PV learning. Applying
 the learned correction is opt-in and disabled by default. `2.1.0-beta.2` keeps
@@ -13,6 +13,21 @@ dynamic SOC schedule from the time-resolved forecast without making extra
 Forecast.Solar API calls.
 `2.1.0-beta.4` adds date-selectable SOC schedule history and persistent
 forecast/plan snapshots for reviewing older days and individual plan versions.
+
+## 2.1.0-beta.11 – Connectivity timestamp fix
+
+Beta 11 fixes the false-offline condition caused by using Home Assistant
+`last_reported` timestamps as MQTT-message freshness indicators.
+
+Unchanged MQTT payloads and Number values do not necessarily force Home
+Assistant to write a new entity state. Beta 11 therefore removes both the
+three-minute Connectivity timestamp timeout and the post-reconnect
+`System Output Power.last_reported` barrier.
+
+The actual Connectivity state is now authoritative. All Beta-10 protections
+for genuine offline states remain active.
+
+No dashboard-template migration is required.
 
 ## 2.1.0-beta.10 – NOAH offline detection
 
@@ -1091,7 +1106,7 @@ First stable 2.x release:
 
 ## Current limitations 
 
-The current `2.1.0-beta.10` pre-release does not yet include:
+The current `2.1.0-beta.11` pre-release does not yet include:
 
 - learned household load
 - multiple independent NOAH systems

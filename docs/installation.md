@@ -2,7 +2,7 @@
 
 Diese Anleitung beschreibt Installation und Update des **Home Assistant
 Growatt NOAH Optimizers** für den stabilen Release `2.0.0` und den aktuellen
-Pre-Release `2.1.0-beta.10`.
+Pre-Release `2.1.0-beta.11`.
 
 ## 1. Voraussetzungen
 
@@ -80,7 +80,7 @@ HACS-Vorabversionen aktivieren.
 Installieren:
 
 ```text
-2.1.0-beta.10
+2.1.0-beta.11
 ```
 
 Home Assistant vollständig neu starten.
@@ -113,7 +113,7 @@ Gelernte PV-Korrektur verwenden = Aus
 Betriebsart = Automatik
 ```
 
-## 8. Update von 2.0.0 auf 2.1.0-beta.10
+## 8. Update von 2.0.0 auf 2.1.0-beta.11
 
 Vor dem Update:
 
@@ -121,9 +121,9 @@ Vor dem Update:
 NOAH-Steuerung aktiv = Aus
 ```
 
-Dann Beta 10 installieren und neu starten.
+Dann Beta 11 installieren und neu starten.
 
-Beta 10 enthält gegenüber dem stabilen 2.0.0 zusätzlich:
+Beta 11 enthält gegenüber dem stabilen 2.0.0 zusätzlich:
 
 - PV-Learning
 - SOC-Ladeplan halten
@@ -138,6 +138,27 @@ Beta 10 enthält gegenüber dem stabilen 2.0.0 zusätzlich:
 - persistente Home-Assistant-Benachrichtigung bei Offline
 - Sperre aller NOAH-Stellbefehle während Offline
 - Schutz des PV-Learnings vor gecachten Offline-Messwerten
+
+## Update von 2.1.0-beta.10 auf beta.11
+
+Beta 11 korrigiert die Online-/Offline-Erkennung aus Beta 10.
+
+Wenn das Dashboard trotz `Connectivity = on` nach einigen Minuten
+**Stellgröße nicht verfügbar** anzeigt, ist dies der in Beta 11 behobene
+`last_reported`-Fehler.
+
+Nach dem Update:
+
+1. Home Assistant vollständig neu starten.
+2. Beim Noah-MQTT-Gerät prüfen, dass `Connectivity = Verbunden` / `on` ist.
+3. Der NOAH Optimizer muss bei normal laufendem NOAH wieder einen verfügbaren
+   Ausgangssollwert anzeigen.
+4. Für einen echten Offline-Test die IoT-Verbindung des NOAH unterbrechen und
+   prüfen, ob die persistente Offline-Benachrichtigung erscheint.
+5. Nach Wiederherstellung von `Connectivity = on` muss die Sperre wieder
+   aufgehoben werden.
+
+Beta 11 benötigt keine Dashboard-Migration.
 
 ## 9. Update von 2.1.0-beta.4 bis beta.7
 

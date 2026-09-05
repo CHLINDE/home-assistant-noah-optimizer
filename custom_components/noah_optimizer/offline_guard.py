@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timedelta
+from datetime import datetime
 import logging
 
 from homeassistant.const import (
@@ -12,7 +12,7 @@ from homeassistant.const import (
     STATE_UNAVAILABLE,
     STATE_UNKNOWN,
 )
-from homeassistant.core import HomeAssistant, State
+from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import entity_registry as er
 from homeassistant.util import dt as dt_util
@@ -27,11 +27,6 @@ from .const import (
 from .control import NoahOptimizerController
 
 _LOGGER = logging.getLogger(__name__)
-
-# Noah-MQTT publishes the general device state regularly. If an "online"
-# connectivity state itself stops being reported, cached measurement values
-# must no longer be treated as live NOAH data.
-NOAH_CONNECTIVITY_STALE_AFTER = timedelta(minutes=3)
 
 NOAH_OFFLINE_NOTIFICATION_ID = "noah_optimizer_noah_offline"
 
@@ -61,12 +56,6 @@ class NoahOfflineGuard:
         self._offline_notified = False
         self._first_online_cleanup_done = False
 
-        # The actuator setpoint is published by Noah-MQTT on a different MQTT
-        # topic from the normal device status / Connectivity entity. After an
-        # outage, a fresh Connectivity=on alone is therefore not sufficient to
-        # prove that the cached System Output Power value is current.
-        self._recovery_requires_fresh_actuator = False
-        self._recovery_online_reported_at: datetime | None = None
 
     @property
     def status(self) -> str:
@@ -99,12 +88,12 @@ class NoahOfflineGuard:
         including its own scheduled refreshes and option-triggered refreshes.
         Missing connectivity support keeps the existing compatibility mode.
 
-        After a detected outage, source updates remain blocked until the
-        separately published System Output Power state has been reported again.
-        This prevents the controller from resuming against a cached actuator
-        setpoint immediately after Connectivity changes back to ``on``.
+        Only the actual Connectivity entity state is evaluated here. MQTT
+        entities do not necessarily write a new Home Assistant state when the
+        same payload/value is received again, so ``last_reported`` must not be
+        used as an MQTT message freshness indicator.
         """
-        online, _reason = self._read_guard_state(dt_util.utcnow())
+        online, _reason = self._read_connectivity()
         return online is not False
 
     async def async_prepare(self) -> None:
@@ -174,92 +163,11 @@ class NoahOfflineGuard:
         self._connectivity_ever_found = True
         return candidates[0][1]
 
-    @staticmethod
-    def _state_last_reported(state: State) -> datetime | None:
-        """Return HA's report timestamp where supported."""
-
-        value = getattr(state, "last_reported", None)
-        return value if isinstance(value, datetime) else None
-
-    def _actuator_last_reported(self) -> datetime | None:
-        """Return the last report time of System Output Power."""
-
-        entity_id = self.coordinator.entry.data.get(
-            CONF_SYSTEM_OUTPUT_POWER
-        )
-        if not entity_id:
-            return None
-
-        state = self.hass.states.get(entity_id)
-        if state is None:
-            return None
-
-        return self._state_last_reported(state)
-
-    def _connectivity_last_reported(self) -> datetime | None:
-        """Return the last report time of the resolved Connectivity entity."""
-
-        entity_id = self._connectivity_entity_id
-        if entity_id is None:
-            return None
-
-        state = self.hass.states.get(entity_id)
-        if state is None:
-            return None
-
-        return self._state_last_reported(state)
-
-    def _read_guard_state(
-        self,
-        now: datetime,
-    ) -> tuple[bool | None, str]:
-        """Return online state including post-outage actuator freshness.
-
-        The normal Noah-MQTT status values and Connectivity share the device
-        status topic, but System Output Power is published on the separate
-        parameter-state topic. After an outage, wait for a parameter-state
-        report that is at least as new as the first recovered Connectivity
-        report before source data or active control may resume.
-        """
-
-        online, reason = self._read_connectivity(now)
-
-        if online is False:
-            self._recovery_requires_fresh_actuator = True
-            self._recovery_online_reported_at = None
-            return False, reason
-
-        if online is not True:
-            return online, reason
-
-        if not self._recovery_requires_fresh_actuator:
-            return True, reason
-
-        if self._recovery_online_reported_at is None:
-            self._recovery_online_reported_at = (
-                self._connectivity_last_reported() or now
-            )
-
-        actuator_reported_at = self._actuator_last_reported()
-        if (
-            actuator_reported_at is None
-            or actuator_reported_at
-            < self._recovery_online_reported_at
-        ):
-            return False, "awaiting_fresh_actuator"
-
-        self._recovery_requires_fresh_actuator = False
-        self._recovery_online_reported_at = None
-        return True, "online"
-
-    def _read_connectivity(
-        self,
-        now: datetime,
-    ) -> tuple[bool | None, str]:
-        """Read fresh connectivity.
+    def _read_connectivity(self) -> tuple[bool | None, str]:
+        """Read the Noah-MQTT Connectivity entity state.
 
         True  = online
-        False = offline, unavailable, disappeared or stale
+        False = offline, unavailable, unknown or disappeared
         None  = no connectivity entity has ever been discovered
         """
 
@@ -299,12 +207,6 @@ class NoahOfflineGuard:
 
         if state.state != STATE_ON:
             return False, f"connectivity_unexpected_{state.state}"
-
-        last_reported = self._state_last_reported(state)
-        if last_reported is not None:
-            age = now - last_reported
-            if age > NOAH_CONNECTIVITY_STALE_AFTER:
-                return False, "connectivity_stale"
 
         return True, "online"
 
@@ -441,7 +343,7 @@ class NoahOfflineGuard:
         """
 
         async with self._lock:
-            online, reason = self._read_guard_state(dt_util.utcnow())
+            online, reason = self._read_connectivity()
 
             if online is False:
                 await self._async_enter_offline(reason)
@@ -465,7 +367,7 @@ class NoahOfflineGuard:
         """Block or delegate a normal controller tick."""
 
         async with self._lock:
-            online, reason = self._read_guard_state(dt_util.utcnow())
+            online, reason = self._read_connectivity()
 
             if online is False:
                 # Do not refresh the coordinator here. Cached Noah-MQTT values
@@ -492,5 +394,3 @@ class NoahOfflineGuard:
         self._offline = False
         self._offline_reason = None
         self._offline_notified = False
-        self._recovery_requires_fresh_actuator = False
-        self._recovery_online_reported_at = None

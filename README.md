@@ -4,7 +4,7 @@ Prognosebasierte Steuerung der Ausgangsleistung eines Growatt NOAH 2000
 über Home Assistant und Noah-MQTT.
 
 > **Status:** Stabiler Release `2.0.0`. Aktueller Pre-Release:
-> `2.1.0-beta.10`.
+> `2.1.0-beta.11`.
 >
 > Die aktive Steuerung kann die NOAH-Ausgangsleistung verändern. Vor der
 > Aktivierung sollten Quellwerte, Netzvorzeichen und Stellgröße geprüft werden.
@@ -41,7 +41,7 @@ Aktuelle stabile Version:
 Aktueller Pre-Release:
 
 ```text
-2.1.0-beta.10
+2.1.0-beta.11
 ```
 
 ### 2.1.0-beta.1 – PV-Learning
@@ -204,6 +204,48 @@ bestehende Regelung fortgesetzt.
 
 Beta 10 benötigt keine neue Dashboard-Template-Version.
 
+### 2.1.0-beta.11 – Connectivity-Status korrigiert
+
+Beta 11 behebt eine Fehlinterpretation der Home-Assistant-Zeitstempel von
+MQTT-Entitäten.
+
+Beta 10 verwendete `last_reported`, um einen weiterhin als `on` angezeigten
+Connectivity-Sensor nach drei Minuten als veraltet zu behandeln. Ein
+MQTT-Binary-Sensor mit unverändertem Zustand muss in Home Assistant jedoch
+nicht bei jedem identischen MQTT-Payload erneut geschrieben werden. Dadurch
+konnte ein vollständig online arbeitender NOAH nach einigen Minuten
+fälschlicherweise als offline erkannt werden.
+
+Dasselbe Problem betraf die zusätzliche Wiederfreigabeprüfung über
+`System Output Power.last_reported`.
+
+Ab Beta 11 gilt deshalb ausschließlich der tatsächliche Zustand des von
+Noah-MQTT bereitgestellten Connectivity-Sensors:
+
+```text
+on          = NOAH online
+off         = NOAH offline
+unknown     = nicht verfügbar
+unavailable = nicht verfügbar
+```
+
+Eine zuvor erkannte, aber anschließend verschwundene Connectivity-Entität wird
+weiterhin als offline behandelt.
+
+Alle übrigen Schutzmechanismen aus Beta 10 bleiben erhalten:
+
+- keine normalen Stellbefehle bei Offline
+- kein 0-W-Failsafe-Befehl bei Offline
+- persistente Home-Assistant-Benachrichtigung
+- Schutz aller Coordinator-Updatepfade
+- keine Verarbeitung gecachter Noah-MQTT-Messwerte im Offline-Zustand
+- kein falsches PV-Learning aus gecachter PV-Leistung
+
+Nach `Connectivity = on` wird die Offline-Sperre wieder aufgehoben. Eine
+Zeitstempelprüfung über `last_reported` findet nicht mehr statt.
+
+Keine Dashboard-Migration erforderlich.
+
 ## Voraussetzungen
 
 - Home Assistant
@@ -248,7 +290,7 @@ Typ:
 Integration
 ```
 
-Für `2.1.0-beta.10` müssen in HACS Vorabversionen für dieses Repository
+Für `2.1.0-beta.11` müssen in HACS Vorabversionen für dieses Repository
 angezeigt werden.
 
 Nach Installation oder Update Home Assistant vollständig neu starten.
@@ -769,6 +811,16 @@ Prüfen:
 Danach aktive Steuerung wieder freigeben.
 
 ## Versionshistorie
+
+### 2.1.0-beta.11
+
+- behebt falsche NOAH-Offline-Erkennung bei dauerhaft `on` bleibendem
+  MQTT-Connectivity-Sensor
+- entfernt die ungeeignete 3-Minuten-`last_reported`-Prüfung
+- entfernt die `last_reported`-Wiederfreigabeprüfung von System Output Power
+- nutzt ausschließlich den tatsächlichen Connectivity-Zustand
+- behält Coordinator-, Stellbefehls-, Failsafe- und PV-Learning-Schutz bei
+- keine neue Dashboard-Template-Version
 
 ### 2.1.0-beta.10
 
