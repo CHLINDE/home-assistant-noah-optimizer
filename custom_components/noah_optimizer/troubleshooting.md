@@ -1,7 +1,7 @@
 # Fehlerbehebung
 
-Dieses Dokument bezieht sich auf die HACS-Integration **Growatt NOAH
-Optimizer**, insbesondere `2.1.0-beta.10`.
+Dieses Dokument bezieht sich primär auf die stabile HACS-Integration
+`2.0.0`.
 
 ## 1. Integration wird nicht geladen
 
@@ -13,81 +13,740 @@ noah_optimizer
 
 suchen.
 
-Prüfen:
+Zusätzlich prüfen:
 
-- Home Assistant neu gestartet
-- `manifest.json` auf `2.1.0-beta.10`
-- Quell-Entitäten vorhanden
-- keine Python-Fehler
+- HACS-Installation vollständig
+- Home Assistant nach dem Update neu gestartet
+- `manifest.json` auf `2.0.0` (stabil) oder `2.1.0-beta.10` (aktueller Pre-Release)
+- alle Quell-Entitäten vorhanden
+- keine Python-Fehler im Protokoll
 
 ## 2. Datenstatus ist nicht OK
 
-Unter **Werkzeuge → Zustände** prüfen.
+Unter **Werkzeuge → Zustände** die ausgewählten Quell-Entitäten prüfen.
 
-Kritisch:
+Kritisch sind insbesondere:
 
-- Netzleistung
-- Solar Power
-- Output Power
-- SOC
+- saldierte Netzleistung
+- NOAH Solar Power
+- NOAH Output Power
+- NOAH SOC
 
-Nicht dauerhaft `unknown` oder `unavailable`.
+Die Zustände dürfen nicht dauerhaft:
 
-## 3. Stellgröße nicht verfügbar
+```text
+unknown
+unavailable
+```
 
-System Output Power muss eine beschreibbare `number`-Entität sein.
+sein.
+
+## 3. „Stellgröße nicht verfügbar“
+
+Die konfigurierte `NOAH System Output Power`-Entität muss:
+
+- vorhanden sein
+- verfügbar sein
+- numerisch sein
+- als `number` beschreibbar sein
+- W oder kW verwenden
 
 Unter **Werkzeuge → Aktionen** mit `number.set_value` testen.
 
-Ab Beta 10 kann derselbe Status auch absichtlich gesetzt werden, wenn der NOAH
-über Noah-MQTT als offline erkannt wurde. In diesem Fall erscheint zusätzlich
-die persistente Benachrichtigung **NOAH Optimizer: NOAH offline**.
+Ein `sensor.*_output_power` ist nur ein Messwert und keine Stellgröße.
 
-## 4. Netzvorzeichen falsch
+Ab `2.1.0-beta.10` wird derselbe Status außerdem bewusst verwendet, wenn der
+NOAH über Noah-MQTT als offline beziehungsweise nicht mehr aktuell erkannt
+wurde. In diesem Fall erscheint zusätzlich die persistente Benachrichtigung
+**NOAH Optimizer: NOAH offline**.
 
-Erwartet:
+## 4. Netzbezug und Einspeisung sind vertauscht
+
+Erwartet wird:
 
 ```text
 positiv = Netzbezug
-negativ = Einspeisung
+negativ = Netzeinspeisung
 ```
 
-## 5. Batteriefluss falsch
+Bei umgekehrter Konvention die Integration mit **Netzvorzeichen umkehren**
+einrichten.
+
+## 5. Batteriefluss im Dashboard ist falsch herum
+
+Für Power Flow Card Plus muss gelten:
 
 ```text
 consumption = Entladeleistung
 production  = Ladeleistung
 ```
 
-## 6. Dynamisches SOC-Soll unavailable
+Im HACS-Dashboard:
+
+```yaml
+battery:
+  entity:
+    consumption: __DISCHARGING_POWER__
+    production: __CHARGING_POWER__
+```
+
+Das bedeutet:
+
+```text
+Ladeleistung    -> Energie fließt in den Akku
+Entladeleistung -> Energie fließt aus dem Akku
+```
+
+Beta 8 korrigiert beim bestehenden Dashboard zusätzlich die exakte alte
+Beta-6-Zuordnung, falls sie noch vorhanden ist.
+
+## 6. Dynamisches SOC-Soll ist `unavailable`
+
+Die dynamischen SOC-Werte benötigen eine verfügbare Forecast.Solar-
+Restprognose.
 
 Prüfen:
 
-- Restprognose
-- Einheit
-- `sun.sun`
+- `Restprognose heute` ist verfügbar
+- Einheit ist `Wh` oder `kWh`
+- Sun-Integration liefert `sun.sun`
+- Ziel-SOC, Mindest-SOC und Akkukapazität sind plausibel
+
+Fehlt die Prognose, greift die dynamische SOC-Steuerung nicht ein.
+
+## 7. SOC-Ladeplan zeigt „Hinter Ladeplan“
+
+Das bedeutet:
+
+```text
+Ist-SOC < dynamisches SOC-Soll - 2 Prozentpunkte
+```
+
+Ab `2.1.0-beta.3` wird das dynamische SOC-Soll bei einer nativen
+Forecast.Solar-Quelle aus deren vollständiger zeitaufgelöster Leistungskurve
+abgeleitet. Nur wenn diese Kurve nicht verfügbar ist, wird noch der zeitbasierte
+Beta-10-Tageslichtalgorithmus verwendet.
+
+Der Status ist eine Aussage darüber, ob der Akku vor, im oder hinter dem aktuell
+aus der Prognose berechneten Tages-Ladeplan liegt.
+
+Nur wenn zusätzlich:
+
+```text
+Dynamische SOC-Steuerung aktiv = Ein
+Betriebsart = Automatik
+```
+
+gilt, kann der Zustand den Ausgangssollwert beeinflussen.
+
+### Dynamisches Soll wirkt zeitlich unplausibel
+
+Ab Beta 3 sollte das Soll bei nativer Forecast.Solar-Quelle dem zeitlichen
+PV-Profil folgen. Eine Süd-Anlage darf deshalb morgens lange nahe am Mindest-SOC
+bleiben, wenn Forecast.Solar zu dieser Zeit kaum Leistung prognostiziert.
+
+Prüfen:
+
+- aktueller Pre-Release installiert
+- Home Assistant nach dem Update vollständig neu gestartet
+- `sun.sun` ist verfügbar
+- `sun.sun` steht tagsüber auf `above_horizon`
+- Mindest-SOC ist kleiner als Ziel-SOC
+- Forecast.Solar liefert eine gültige Restprognose
+- **Ladeplanbasis** zeigt `Forecast.Solar-Kurve` und nicht `Tageslicht-Fallback`
+- **PV-Prognose aktualisiert** enthält einen plausiblen Zeitstempel
+- die Karte **PV-Prognose** enthält Forecast.Solar-Leistungspunkte
+
+Nahe Sonnenuntergang ist ein dynamisches Soll am Ziel-SOC dagegen normal.
+
+### Dynamisches Soll bleibt tagsüber ständig beim Mindest-SOC
+
+Prüfen:
+
+- `sun.sun` ist verfügbar
+- Home Assistant besitzt korrekte Standort- und Zeitzoneneinstellungen
+- die Sun-Integration ist geladen
+
+Außerhalb der Tageslichtzeit ist der Mindest-SOC als dynamisches Soll
+beabsichtigt.
+
+### SOC-Ladeplan zeigt nachts „Vor Ladeplan“
+
+Ab Beta 14 ist das nicht mehr vorgesehen. Während die Nachtbedingung aktiv ist,
+muss der Enum-Sensor **SOC-Ladeplan** unabhängig von der rechnerischen
+SOC-Abweichung anzeigen:
+
+```text
+Nachtbetrieb
+```
+
+Die numerische SOC-Abweichung kann nachts weiterhin deutlich positiv sein,
+weil das dynamische SOC-Soll auf den Mindest-SOC zurückfällt. Diese Abweichung
+ist nur noch ein Diagnosewert und wird nachts nicht als `Vor Ladeplan`
+klassifiziert.
+
+Falls weiterhin `Vor Ladeplan` erscheint, prüfen:
+
+- aktueller Pre-Release installiert
+- Home Assistant nach dem Update vollständig neu gestartet
+- `sun.sun` verfügbar
+- bei stark angepasster Reglerstatus-Karte den Rohzustand des Sensors unter
+  **Werkzeuge → Zustände** prüfen
+
+## 8. Dynamische SOC-Steuerung ist an, aber nichts ändert sich
+
+Das kann korrekt sein. Für die dynamische SOC-Steuerung müssen zunächst
+gleichzeitig gelten:
+
+- Automatik aktiv ist
+- Forecast verfügbar ist
+- es Tag ist
+- SOC über Mindest-SOC liegt
+- SOC unter Ziel-SOC liegt
+
+Danach hängt der Eingriff von der Lage zum Ladeplan ab:
+
+- **Hinter Ladeplan** (mehr als 2 Prozentpunkte Rückstand) → **SOC-Nachladung**
+- **Im Ladeplan** oder **Vor Ladeplan** → **SOC-Ladeplan halten**
+
+Im Modus **SOC-Ladeplan halten** begrenzt `2.1.0-beta.3` den Sollwert auf die
+aktuell verfügbare PV-Leistung und den Eigenverbrauchs-Sollwert, ohne
+absichtliche Akkuentladung anzufordern.
+
+Sinkt die verfügbare PV-Leistung, darf eine erforderliche Sollwertreduzierung
+sofort ausgeführt werden und wartet nicht auf den normalen Mindestabstand von
+zwei Minuten. Sollwerterhöhungen im SOC-Halten bleiben weiterhin auf den
+normalen Mindestabstand begrenzt.
+
+## 9. SOC-Nachladung wirkt zu stark
+
+Ab Beta 12 zielt die Nachladung auf das dynamische SOC-Soll am **Ende** des
+Nachholfensters. Die angezeigte dynamisch erforderliche Ladeleistung kann
+deshalb höher sein als bei älteren Versionen, weil zusätzlich der während der
+Nachholzeit weiter steigende Ladeplan berücksichtigt wird.
+
+Wenn die Nachladung trotzdem zu aggressiv ist, Parameter **SOC-Nachholzeit**
+erhöhen.
+
+Beispiel:
+
+```text
+2,0 h -> 3,0 h
+```
+
+Dadurch wird der Rückstand auf einen längeren Zeitraum verteilt und die
+berechnete dynamische Ladeleistung sinkt.
+
+## 10. SOC-Nachladung wirkt zu schwach
+
+Ab Beta 12 sollte ein deutlicher SOC-Rückstand nicht mehr allein deshalb
+bestehen bleiben, weil die Nachladung nur auf das aktuelle, gleichzeitig
+weiter ansteigende Soll zielt.
+
+Prüfen:
+
+- tatsächlich mindestens `2.0.0-beta.12` mit der aktuellen Berechnung installiert
+- `SOC-Ladeplan = Hinter Ladeplan`
+- `Dynamisch erforderliche Ladeleistung` ist größer als `0 W`
+- genügend aktuelle PV-Leistung ist vorhanden, um die berechnete Ladeleistung tatsächlich bereitzustellen
+- maximale NOAH-Ausgangsleistung und Hausverbrauch lassen ausreichend PV für die Akkuladung übrig
+
+Ist die Nachladung bei ausreichender PV weiterhin zu schwach, Parameter
+**SOC-Nachholzeit** reduzieren.
+
+Beispiel:
+
+```text
+2,0 h -> 1,0 h
+```
+
+Nicht sofort extrem kleine Werte verwenden. Zunächst die Sensoren und das
+Reglerverhalten beobachten.
+
+## 11. Reglermodus „SOC-Nachladung“ erscheint nicht
+
+Der Modus erscheint nur bei aktivem Eingriff der neuen Funktion.
+
+Prüfen:
+
+```text
+Optimierer-Berechnung aktiv = Ein
+Dynamische SOC-Steuerung aktiv = Ein
+Betriebsart = Automatik
+SOC-Ladeplan = Hinter Ladeplan
+```
+
+Außerdem müssen Tag, Forecast und SOC-Grenzen die Aktivierung erlauben.
+
+## 12. Dynamische Sensoren rechnen, obwohl der Schalter aus ist
+
+Das ist beabsichtigt.
+
+Die Integration berechnet:
+
+```text
+Dynamisches SOC-Soll
+SOC-Abweichung
+SOC-Ladeplan
+Dynamisch erforderliche Ladeleistung
+```
+
+auch bei ausgeschalteter dynamischer SOC-Steuerung.
+
+Dadurch kann die Berechnung zunächst gefahrlos beobachtet werden.
+
+## 13. Eigenverbrauch, Ladepriorität oder Manuell verändern sich nicht
+
+Das ist ebenfalls beabsichtigt.
+
+Die dynamische SOC-Regelung beeinflusst ausschließlich die Betriebsart **Automatik**.
+
+Die explizit gewählten Betriebsarten:
+
+```text
+Eigenverbrauch
+Ladepriorität
+Manuell
+```
+
+behalten ihr bisheriges Verhalten.
+
+## 14. Optimizer berechnet, steuert aber nicht
+
+Prüfen:
+
+```text
+Optimierer-Berechnung aktiv = Ein
+NOAH-Steuerung aktiv = Ein
+```
+
+Danach am Schalter **NOAH-Steuerung aktiv** das Attribut:
+
+```text
+control_status
+```
+
+prüfen.
+
+### `disabled`
+
+Aktive Steuerung ist aus.
+
+### `optimizer_disabled`
+
+Berechnung ist aus.
+
+### `legacy_controller_active`
+
+Der alte YAML-Optimizer ist noch aktiv:
+
+```text
+input_boolean.noah_optimizer_enabled = on
+```
+
+### `critical_data_missing`
+
+Mindestens ein kritischer Messwert fehlt.
+
+### `actuator_unavailable`
+
+Die beschreibbare Stellgröße ist nicht verfügbar. Ab `2.1.0-beta.10` kann
+dieser Status außerdem bedeuten, dass der NOAH-Connectivity-Guard die
+Verbindung als offline oder veraltet bewertet hat.
+
+### `rate_limited`
+
+Ein neuer Stellbefehl ist tatsächlich erforderlich, wartet aber noch auf den
+für den aktuellen Reglermodus geltenden Mindestabstand. Ab Beta 14 beträgt
+dieser bei `SOC-Freigabe` und `PV-Umlenkung` 30 Sekunden und bei normalen
+Regelzuständen weiterhin zwei Minuten.
+
+### `waiting_for_retry`
+
+Die Anzeige lautet ab Beta 14 **Warte auf Stellwertübernahme** beziehungsweise
+**Waiting for setpoint confirmation**. Der gewünschte Sollwert wurde bereits
+gesendet, die beschreibbare Stellgröße meldet ihn aber noch nicht innerhalb der
+Hysterese zurück. Das ist nicht automatisch ein Schreibfehler. Erst nach dem
+Retry-Intervall wird derselbe Sollwert bei weiterhin bestehender Abweichung
+erneut gesendet.
+
+### `in_sync`
+
+Sollwert und Stellgröße liegen innerhalb der Hysterese.
+
+Ein als offline erkannter NOAH darf ab `2.1.0-beta.10` nicht mehr als
+`in_sync` / **Synchron** angezeigt werden.
+
+### `command_failed`
+
+`number.set_value` ist fehlgeschlagen. Protokoll prüfen.
+
+### `failsafe`
+
+Kritische Messdaten haben zu lange gefehlt.
+
+## 15. Dashboard erscheint nicht
+
+Im Protokoll nach:
+
+```text
+Could not create the NOAH Optimizer dashboard
+```
+
+suchen.
+
+Mögliche Ursache ist ein bereits belegter Pfad:
+
+```text
+/noah-optimizer
+```
+
+## 16. Dashboardfehler nach Beta 8 / Beta 9
+
+### `TemplateSyntaxError: unexpected '}'`
+
+Wenn in der Karte **Reglerstatus** nur der Titel angezeigt wird und darunter die Fehlermeldung
+
+`TemplateSyntaxError: unexpected '}'`
+
+erscheint, wurde das Dashboard wahrscheinlich bereits durch Beta 8 migriert.
+
+Beta 8 konnte beim Einfügen des dynamischen SOC-Ladeplanstatus einen
+fehlerhaften Jinja-Ausdruck erzeugen.
+
+### Lösung
+
+1. `2.0.0-beta.9` oder neuer über HACS installieren.
+2. Home Assistant vollständig neu starten.
+3. Dashboard erneut öffnen.
+
+Beta 9 erhöht die Dashboard-Template-Version auf 9 und repariert die betroffene
+Zeile automatisch.
+
+Das Dashboard muss nicht gelöscht oder neu erstellt werden.
+
+### Neue Dashboardelemente fehlen
+
+Prüfen:
+
+- aktuelle Version installiert
+- Home Assistant nach dem HACS-Update vollständig neu gestartet
+- Protokoll auf `noah_optimizer`-Fehler prüfen
+
+Stark veränderte Standardkarten können verhindern, dass einzelne Blöcke
+automatisch erkannt werden. Die Integration überschreibt bewusst nicht das
+gesamte benutzerdefinierte Dashboard.
+
+## 17. Power Flow Card Plus fehlt
+
+Fehler wie:
+
+```text
+Custom element doesn't exist: power-flow-card-plus
+```
+
+bedeuten, dass Power Flow Card Plus nicht installiert oder noch nicht im
+Frontend geladen ist.
+
+In HACS installieren und Browser/App vollständig neu laden.
+
+## 18. ApexCharts Card fehlt
+
+Fehler wie:
+
+```text
+Custom element doesn't exist: apexcharts-card
+```
+
+entsprechend durch Installation von ApexCharts Card beheben.
+
+## 19. Failsafe
+
+Fehlen kritische Daten zehn Minuten:
+
+- persistente Benachrichtigung wird erzeugt
+- bei erreichbarer Stellgröße wird `0 W` angefordert
+- bei nicht erreichbarer Stellgröße bleibt die Warnung trotzdem bestehen
+
+Nach Wiederkehr der Daten wird der Failsafe zurückgesetzt.
+
+Bei erkanntem NOAH-Offline-Zustand wird ab `2.1.0-beta.10` **kein**
+0-W-Failsafe-Befehl gesendet. Der Offline-Guard blockiert alle Stellbefehle
+und setzt die laufende Missing-Data-Failsafe-Zeit zurück.
+
+## 20. Legacy-YAML und HACS gleichzeitig aktiv
+
+Das ist nicht zulässig.
+
+Vor Aktivierung der HACS-Steuerung:
+
+```text
+input_boolean.noah_optimizer_enabled = Aus
+```
+
+setzen.
+
+Die dynamische SOC-Regelung wird nicht in die Legacy-YAML-Regelung zurückportiert.
+
+## 21. SOC-Freigabe wird nicht aktiv
+
+Der neue Reglermodus lautet:
+
+```text
+SOC-Freigabe
+```
+
+Er kann nur erscheinen, wenn gleichzeitig:
+
+```text
+Optimierer-Berechnung aktiv = Ein
+Dynamische SOC-Steuerung aktiv = Ein
+Vorausschauende SOC-Freigabe aktiv = Ein
+Betriebsart = Automatik
+```
+
+Zusätzlich müssen folgende Bedingungen erfüllt sein:
+
+- Forecast.Solar ist verfügbar
+- es ist Tag
+- der Ist-SOC liegt über der SOC-Freigabegrenze
+- freigebare Akkuenergie ist größer als `0 kWh`
+- der Netzsensor zeigt positiven Netzbezug
+
+Steht der Akku nur **Vor Ladeplan**, reicht das allein nicht. Die
+SOC-Freigabegrenze kann wegen der Restprognose höher als das dynamische SOC-Soll
+liegen.
+
+## 22. SOC-Freigabegrenze ist unerwartet hoch
+
+Die Grenze lautet:
+
+```text
+SOC-Freigabegrenze
+= max(Dynamisches SOC-Soll, Prognosebasierter Mindest-SOC)
+  + 2 %-Punkte
+```
+
+Ab Beta 12 wird der **prognosebasierte Mindest-SOC für
+die SOC-Freigabe** nicht mehr aus derselben konservativen Rechnung wie der
+dynamische Ladeplan abgeleitet.
+
+Für die Freigabe gilt:
+
+```text
+PV-Energie für Wiederaufladung
+= wirksame Restprognose
+  - zusätzliche Energiereserve
+```
+
+Der erwartete Hausenergiebedarf wird dabei nicht abgezogen.
+
+Wenn der prognosebasierte Mindest-SOC trotzdem nahe `100 %` liegt, prüfen:
+
+- wirksame Restprognose
+- zusätzliche Energiereserve
+- Prognose-Sicherheitsfaktor
 - Ziel-SOC
-- Mindest-SOC
 - Akkukapazität
+- Ladewirkungsgrad
 
-## 7. Ladeplanbasis Tageslicht-Fallback
+Ist:
 
-Kann korrekt sein. Native Kurve nur bei sicher auflösbarer Forecast.Solar-
-Quelle.
+```text
+Wirksame Restprognose <= zusätzliche Energiereserve
+```
 
-## 8. PV-Learning nicht bereit
+vorhanden, ist ein prognosebasierter Mindest-SOC bis zum Ziel-SOC korrekt. Es
+steht dann nach der Sicherheitsreserve keine prognostizierte Energie mehr zur
+Verfügung, um einen jetzt freigegebenen Akkuanteil später wieder aufzuladen.
 
-Mindestens drei gültige Lerntage.
+Wichtig: Der **erwartete Hausenergiebedarf gehört nicht zu dieser
+Fehlerprüfung** und wird auch bei der nativen Forecast.Solar-Kurve nicht aus der
+SOC-Ladeplan-Kurve abgezogen. Er bleibt separat für Prognosemarge,
+Prognosedeckung und Ausgangsregelung relevant. Nur der ältere
+**Tageslicht-Fallback** verwendet weiterhin die konservative Lastanrechnung.
 
-Mögliche ungültige Tage:
+## 23. Netzbezug trotz ausreichender PV-Leistung und gleichzeitiger Akkuladung
 
-- große Messlücken
-- fehlende Prognosereferenz
-- unvollständiger Lerntag
-- unplausible Messwerte
-- längerer NOAH-Offline-Zeitraum während des Tages
+Typisches Bild:
 
-## 9. Lernfaktor wirkt nicht
+```text
+Ist-SOC >= dynamisches SOC-Soll
+Netzbezug > 0 W
+Akkuladeleistung > 0 W
+Reglermodus vor Beta 14: Ladepriorität
+```
+
+Vor Beta 14 konnte die negative Prognosemarge die Ladepriorität aktiv halten,
+obwohl der Akku bereits am oder über dem dynamischen SOC-Soll lag. Dadurch
+konnte der Speicher gleichzeitig geladen und Hausleistung aus dem Netz bezogen
+werden.
+
+Beta 14 führt dafür **PV-Umlenkung** ein. Sie berechnet:
+
+```text
+PV-Umlenkungsleistung = min(Netzbezug, Akkuladeleistung)
+PV-Umlenkungs-Soll = aktuelle NOAH-Ausgangsleistung + PV-Umlenkungsleistung
+```
+
+Die Funktion reduziert damit zuerst nur die vorhandene Akkuladung und fordert
+keine absichtliche Akkuentladung an. Voraussetzung ist unter anderem:
+
+- `Betriebsart = Automatik`
+- `Dynamische SOC-Steuerung aktiv = Ein`
+- Tagbetrieb
+- Forecast verfügbar
+- `Ist-SOC >= dynamisches SOC-Soll`
+- Akkuladeleistung größer als `0 W`
+- positiver Netzbezug
+- keine aktive SOC-Nachladung
+
+Der Schalter **Vorausschauende SOC-Freigabe aktiv** ist für die PV-Umlenkung
+nicht erforderlich. Eine zusätzliche Akkuentladung bleibt weiterhin Aufgabe
+der separaten SOC-Freigabe.
+
+Wenn die Bedingungen erfüllt sind, sollte der Reglermodus **PV-Umlenkung**
+anzeigen. Das Ausgangssoll wird in diesem Modus auf das Stellgrößenraster
+abgerundet und kann deshalb etwas unter dem rechnerischen Rohwert liegen. Die
+Abrundung verhindert, dass das Raster den sicheren Umlenkungswert überschreitet.
+Ist die sicher umlenkbare Leistung kleiner als der nächste mögliche
+Raster-Schritt, kann die PV-Umlenkung deshalb bewusst aussetzen.
+
+## 24. Akku wird trotz Netzbezug nicht entladen
+
+Prüfen:
+
+- `Vorausschauende SOC-Freigabe aktiv = Ein`
+- `Dynamische SOC-Steuerung aktiv = Ein`
+- `Betriebsart = Automatik`
+- `SOC-Freigabegrenze < Ist-SOC`
+- `Freigebare Akkuenergie > 0 kWh`
+- Netzleistung ist tatsächlich positiv
+
+Ist die aktive NOAH-Steuerung ausgeschaltet, werden Reglermodus und
+Ausgangssollwert zwar berechnet, aber nicht an die Stellgröße geschrieben.
+Das ist der empfohlene Testbetrieb.
+
+## 25. SOC-Freigabe reagiert zu träge auf Netzbezug
+
+Ab Beta 14 wird der aktive Controller weiterhin alle `15 s` ausgewertet.
+Während `SOC-Freigabe` und `PV-Umlenkung` darf ein erforderlicher höherer
+Stellwert im Abstand von `30 s` geschrieben werden. Normale Betriebsarten
+behalten den bisherigen 2-Minuten-Mindestabstand.
+
+Typisches Diagnosebild vor Beta 13:
+
+```text
+Reglermodus:          SOC-Freigabe
+Sollwert:             deutlich höher
+Letzter Stellwert:    deutlich niedriger
+Netzbezug:            weiterhin positiv
+```
+
+Ab Beta 13 sollte ein solcher Unterschied wesentlich schneller nachgeführt
+werden. Kurzzeitig kann weiterhin Netzbezug bestehen, weil Messwertaktualisierung,
+15-Sekunden-Auswertung, 30-Sekunden-Mindestabstand, Stellgrößenraster und die
+NOAH-Leistungsübernahme zusammenwirken.
+
+Prüfen:
+
+- `Reglermodus = SOC-Freigabe`
+- `SOC-Freigabe-Soll` beziehungsweise Ausgangssollwert liegt über dem letzten Stellwert
+- `Controller = Wartezeit nach Stellbefehl` darf höchstens bis zum nächsten zulässigen Freigabe-Stellbefehl bestehen bleiben
+- `NOAH System Output Power` übernimmt den geschriebenen Wert
+- Stellgrößenraster und maximale Ausgangsleistung begrenzen den Sollwert nicht unerwartet
+
+Sicherheitsrelevante **Reduzierungen** nach einem SOC-Freigabe-Befehl bleiben
+weiterhin ohne diese Wartezeit möglich.
+
+## 26. Bei SOC-Freigabe entsteht kurz Netzeinspeisung
+
+Die Funktion fordert keine absichtliche Batterieeinspeisung an. Das
+SOC-Freigabe-Soll orientiert sich am aktuell gemessenen positiven Netzbezug.
+
+Kurzzeitige kleine Einspeisung kann trotzdem entstehen durch:
+
+- Stellgrößenraster
+- Mess- und MQTT-Verzögerungen
+- schnelle Änderungen der Hauslast
+- Verzögerung bei der NOAH-Leistungsübernahme
+
+Soll der Ausgang nach einem SOC-Freigabe-Stellbefehl reduziert werden, umgeht
+diese Reduzierung bewusst die normale 2-Minuten-Wartezeit und die
+Schalt-Hysterese. Dadurch soll eine sinkende Hauslast möglichst schnell zu
+einem niedrigeren Sollwert führen.
+
+Wenn stärkere oder dauerhafte Einspeisung auftritt:
+
+1. **Vorausschauende SOC-Freigabe aktiv** ausschalten.
+2. Prüfen, ob Ausgangssollwert und NOAH-Stellgröße auf einen niedrigeren Wert
+   zurückgehen.
+3. Anschließend bei Bedarf **NOAH-Steuerung aktiv** ausschalten.
+
+Das Ausschalten von **NOAH-Steuerung aktiv** verhindert weitere Stellbefehle,
+setzt einen zuvor geschriebenen NOAH-Sollwert jedoch nicht automatisch auf
+`0 W`.
+
+Falls die Stellgröße nicht wie erwartet zurückgeht, kann `NOAH System Output
+Power` unter **Werkzeuge → Aktionen** mit `number.set_value` manuell auf einen
+sicheren Wert gesetzt werden.
+
+Anschließend Netzleistung, Ausgangssollwert, SOC-Freigabe-Soll und tatsächliche
+NOAH-Ausgangsleistung vergleichen.
+
+## 27. Abend-SOC wird trotz SOC-Freigabe nicht erreicht
+
+Die SOC-Freigabe schützt den aufgrund der **aktuellen** Restprognose
+berechneten Wiederaufladebedarf. Sie ist keine absolute Garantie.
+
+Für die Freigabe wird angenommen, dass die verbleibende PV-Energie bei Bedarf
+zum Wiederaufladen des Akkus priorisiert werden darf. Der spätere
+Hausverbrauch kann deshalb zeitweise Netzbezug verursachen.
+
+Mögliche Ursachen für ein später zu niedriges Abend-SOC:
+
+- tatsächlicher PV-Ertrag niedriger als Forecast.Solar
+- Prognose-Sicherheitsfaktor zu optimistisch
+- zusätzliche Energiereserve zu klein
+- unerwartete Verluste oder Leistungsbegrenzungen
+- PV-Leistung kommt zeitlich so spät oder kurz, dass der Akku sie nicht
+  vollständig aufnehmen kann
+
+Ein höherer tatsächlicher Hausverbrauch ist für die **Freigabe-Reserve** nicht
+direkt abgezogen. Er kann jedoch dazu führen, dass später mehr Netzbezug nötig
+ist, während PV zum Wiederaufladen des Akkus reserviert wird.
+
+In diesem Fall die vorausschauende SOC-Freigabe zunächst deaktivieren und
+Prognose-Sicherheitsfaktor beziehungsweise Energiereserve konservativer
+einstellen. Die dynamische **SOC-Nachladung** sollte aktiviert bleiben, damit
+ein später erkannter SOC-Rückstand wieder aufgeholt werden kann.
+
+## 28. PV-Learning wird nicht bereit
+
+Der Binary Sensor **PV-Learning bereit** wird erst nach mindestens drei
+gültigen, vollständig abgeschlossenen Lerntagen aktiv.
+
+Prüfen:
+
+- **NOAH Solar Power** liefert tagsüber plausible Werte.
+- **Forecast.Solar Restprognose heute** liefert Werte in Wh oder kWh.
+- **PV-Prognosereferenz heute** wird früh am Tag gesetzt.
+- **PV-Energie heute** steigt während der PV-Erzeugung an.
+- Home Assistant beziehungsweise die Integration lief bereits früh genug am
+  Lerntag. Ein erster deutlich zu spät gestarteter Teil-Tag wird verworfen.
+- Die Beobachtung erreichte mindestens 85 % des Tageslichtfensters. Ein Ausfall
+  bis weit vor den Abend kann deshalb keinen unvollständigen Tagesertrag lernen.
+- Es gab während der Tagesbeobachtung keine Messlücke über zehn Minuten. Eine
+  solche Lücke verwirft den gesamten Lerntag; die fehlende PV-Produktion wird
+  nicht als Nullertrag angelernt.
+- Mindestens zwei Stunden gültige Tagesbeobachtung lagen vor.
+
+**PV-Lerntage** wird erst beim Abschluss eines gültigen Tages erhöht, also
+typischerweise beim ersten Coordinator-Update des Folgetags.
+
+Nach **PV-Lerndaten zurücksetzen** beginnt die Lernhistorie wieder bei null.
+
+## 29. Gelernte PV-Korrektur hat keine Wirkung
 
 Prüfen:
 
@@ -96,352 +755,180 @@ PV-Learning bereit = Ein
 Gelernte PV-Korrektur verwenden = Ein
 ```
 
-## 10. Hinter Ladeplan
+Ist einer der beiden Zustände nicht erfüllt, verwendet der Optimizer weiterhin
+nur den konfigurierten Prognose-Sicherheitsfaktor.
+
+Zum Vergleich die Sensoren prüfen:
 
 ```text
-Ist-SOC < dynamisches SOC-Soll - 2 %-Punkte
+PV-Lernfaktor
+Wirksamer Prognosefaktor
+Wirksame Restprognose
 ```
 
-Ein aktiver Eingriff erfolgt nur bei dynamischer SOC-Steuerung in Automatik.
-
-## 11. Nachts Vor Ladeplan
-
-Ab Beta 14 nicht vorgesehen.
-
-Erwartet:
+Bei aktivem und bereitem Learning muss gelten:
 
 ```text
-Nachtbetrieb
+Wirksamer Prognosefaktor
+= Prognose-Sicherheitsfaktor × PV-Lernfaktor
 ```
 
-## 12. SOC-Nachladung zu stark
+Der Lern-Schalter ändert keine Betriebsart und umgeht keine vorhandenen
+Sicherheitsmechanismen der aktiven NOAH-Steuerung.
 
-SOC-Nachholzeit erhöhen.
+## 30. PV-Lernfaktor wirkt unplausibel
 
-## 13. SOC-Nachladung zu schwach
+Der Faktor basiert auf dem Median der letzten maximal sieben gültigen Tage.
+Ein einzelner schlechter Tag sollte den Median deshalb nur begrenzt
+beeinflussen. Für das Learning wird jeder Tageswert zusätzlich auf
+`0,50 ... 1,50` begrenzt.
+
+Bei dauerhaft unplausiblen Werten prüfen:
+
+- ob **NOAH Solar Power** wirklich die gesamte zu Forecast.Solar passende
+  PV-Leistung beschreibt
+- ob Forecast.Solar dieselbe PV-Anlage beziehungsweise Modulausrichtung
+  prognostiziert
+- ob es häufige Neustarts oder längere Datenlücken während der PV-Zeit gibt
+
+Sind die Quellen inzwischen korrigiert worden, **PV-Lerndaten zurücksetzen**
+und eine neue Lernhistorie aufbauen.
+
+## 31. Ladeplanbasis zeigt „Tageslicht-Fallback“
+
+`2.1.0-beta.3` kann die vollständige Prognosekurve nur automatisch übernehmen,
+wenn die beim NOAH Optimizer konfigurierte **Forecast.Solar Restprognose heute**
+direkt zu einer Home-Assistant-Config-Entry der Integration `forecast_solar`
+gehört.
 
 Prüfen:
 
-- Hinter Ladeplan
-- dynamische Ladeleistung > 0
-- ausreichend PV
-- Ausgangsgrenzen
+- die ausgewählte Restprognose ist ein originaler Forecast.Solar-Sensor und kein Template-Sensor
+- Forecast.Solar ist vollständig geladen und liefert im Energiedashboard eine Prognose
+- Home Assistant wurde nach dem Update vollständig neu gestartet
+- **PV-Prognose aktualisiert** ist verfügbar
+- **PV-Prognosekurve** ist verfügbar und enthält im Attribut `raw_power` Punkte
 
-## 14. SOC-Halten erscheint nicht
+Der Fallback ist kein Fehlerzustand. Er hält die ältere Beta-10-Berechnung für
+kompatible Fremdprognosen weiterhin funktionsfähig.
 
-Benötigt erfüllten Plan in Automatik mit dynamischer SOC-Steuerung.
+## 32. PV-Prognosekurve weicht stark von der realen PV-Leistung ab
 
-## 15. Unnötige Ladepriorität trotz erfülltem Plan
-
-Ab 2.1.0-beta.2 sollte `soc_hold` dies verhindern.
-
-Version, Ist-SOC, dynamisches Soll und Reglermodus prüfen.
-
-## 16. SOC-Freigabe erscheint nicht
+Die Karte zeigt bewusst sowohl die Vorhersage als auch die reale PV-Leistung.
+Der Ladeplan wird **nicht** nachträglich anhand des Ist-SOC oder der realen
+PV-Leistung passend gerechnet. Dadurch bleibt ein Prognosefehler sichtbar.
 
 Prüfen:
 
-```text
-Automatik
-Dynamische SOC-Steuerung = Ein
-Vorausschauende SOC-Freigabe = Ein
-Tag
-Forecast verfügbar
-Ist-SOC > Freigabegrenze
-Netzbezug > 0
-```
+- Ausrichtung, Neigung und Anlagenleistung in Forecast.Solar
+- Zeitpunkt **PV-Prognose aktualisiert**
+- Prognose-Sicherheitsfaktor
+- PV-Lernfaktor und ob **Gelernte PV-Korrektur verwenden** aktiv ist
 
-## 17. Prognosebasierter Mindest-SOC sehr hoch
+Ändert Forecast.Solar seine Prognose bei der nächsten Aktualisierung, wird der
+Ladeplan aus der neuen Forecast-Kurve neu berechnet.
 
-Für die Freigabe:
+## 33. Ladepriorität obwohl der Ist-SOC bereits im dynamischen Ladeplan liegt
+
+Typisches Bild vor `2.1.0-beta.2`:
 
 ```text
-PV-Energie für Wiederaufladung
-= wirksame Restprognose - zusätzliche Energiereserve
+Dynamische SOC-Steuerung aktiv = Ein
+Ist-SOC >= dynamisches SOC-Soll - Toleranz
+Prognosemarge < 0 kWh
+Reglermodus = Ladepriorität
 ```
 
-Der erwartete Hausenergiebedarf wird hier nicht abgezogen.
+Die klassische Prognosemarge betrachtet den noch fehlenden Energiebedarf bis
+zum endgültigen Ziel-SOC. Der dynamische SOC-Ladeplan berücksichtigt Forecast,
+Hauslast und Sicherheitsreserve jedoch bereits in seinem zeitabhängigen Soll.
+Dadurch konnte dieselbe knappe Prognose ein zweites Mal bewertet werden und
+Ladepriorität anzeigen, obwohl der Speicher den aktuellen Ladeplan bereits
+erfüllt hatte.
 
-## 18. PV-Umlenkung erscheint nicht
+Ab `2.1.0-beta.2` verwendet die Automatik in diesem Zustand den internen Modus
+**SOC-Ladeplan halten**. Er fordert höchstens die kleinere Leistung aus
+aktueller PV-Leistung und Eigenverbrauchs-Soll an und wird auf das
+Stellgrößenraster abgerundet. Damit entsteht durch diesen Modus keine
+absichtliche Akkuentladung.
 
-Benötigt:
+Soll Akkuenergie oberhalb der sicheren Freigabegrenze gezielt für den
+Hausverbrauch genutzt werden, muss weiterhin **Vorausschauende SOC-Freigabe
+aktiv** eingeschaltet sein. SOC-Nachladung und PV-Umlenkung behalten ihre
+vorhandenen Prioritäten.
 
-- Automatik
-- dynamische SOC-Steuerung
-- Tag
-- Forecast
-- Ist-SOC mindestens am Soll
-- Akkuladeleistung > 0
-- Netzbezug > 0
-- keine priorisierte SOC-Nachladung
+## 34. Historischer SOC-Ladeplan zeigt keine Daten
 
-## 19. Akku wird nicht zusätzlich entladen
-
-PV-Umlenkung soll keine zusätzliche Akkuentladung erzeugen.
-
-Dafür ist SOC-Freigabe zuständig.
-
-## 20. Optimizer berechnet, steuert aber nicht
-
-```text
-Optimierer-Berechnung aktiv = Ein
-NOAH-Steuerung aktiv = Ein
-```
-
-## 21. controller_status disabled
-
-Aktive Steuerung aus.
-
-## 22. optimizer_disabled
-
-Berechnung aus.
-
-## 23. legacy_controller_active
-
-Legacy-YAML noch aktiv.
-
-## 24. critical_data_missing
-
-Kritischer Messwert fehlt.
-
-## 25. actuator_unavailable
-
-Stellgröße nicht verfügbar oder Beta 10 hat den NOAH als offline erkannt.
-
-Bei erkanntem NOAH-Offline-Zustand wird keine Stellgröße beschrieben.
-
-## 26. rate_limited
-
-Befehl erforderlich, aber Mindestabstand noch nicht erreicht.
-
-## 27. waiting_for_retry
-
-Anzeige:
-
-```text
-Warte auf Stellwertübernahme
-```
-
-Sollwert wurde geschrieben, aber noch nicht bestätigt.
-
-## 28. in_sync
-
-Sollwert und Stellgröße innerhalb Hysterese.
-
-Ein offline erkannter NOAH darf in Beta 10 nicht mehr auf `in_sync` /
-**Synchron** stehen.
-
-## 29. command_failed
-
-`number.set_value` fehlgeschlagen.
-
-## 30. failsafe
-
-Kritische Daten fehlten zu lange.
-
-Der 0-W-Failsafe-Befehl wird bei erkanntem NOAH-Offline-Zustand bewusst nicht
-gesendet.
-
-## 31. Dashboard erscheint nicht
-
-Nach:
-
-```text
-Could not create the NOAH Optimizer dashboard
-```
-
-suchen.
-
-## 32. Power Flow Card Plus fehlt
-
-HACS installieren und Frontend neu laden.
-
-## 33. ApexCharts Card fehlt
-
-HACS installieren und Frontend neu laden.
-
-## 34. Historische SOC-Karte Configuration error
+Ab `2.1.0-beta.4` verwendet die Karte **Historischer SOC-Ladeplan** Home
+Assistants History/Recorder für Ist-SOC, dynamisches Soll und Ziel-SOC.
 
 Prüfen:
 
-- Beta 10
-- Neustart
-- Lovelace-Ressource
-- Browser/App neu laden
-- Cache `?v=8`
+- aktueller Pre-Release installiert und Home Assistant neu gestartet
+- die Integrationen `frontend` und `history` sind geladen
+- Recorder enthält für den gewählten Tag Zustände der drei SOC-Entitäten
+- der gewählte Tag liegt innerhalb der Aufbewahrungszeit des Recorders
+- Browser beziehungsweise Home-Assistant-App nach dem Update vollständig neu geladen
 
-## 35. Historische Daten fehlen
+Bei Tagen, die älter als die Recorder-Aufbewahrungszeit sind, können die
+Verlaufslinien nicht mehr rekonstruiert werden.
 
-Recorder-Konfiguration prüfen.
+## 35. Für einen vergangenen Tag ist kein Planstand auswählbar
 
-## 36. Vergangener Tag weicht von heutiger Berechnung ab
+Forecast-/Plan-Snapshots werden erst ab `2.1.0-beta.4` gesammelt. Es gibt daher
+keine rückwirkenden Snapshots für Tage vor der Installation dieser Version.
 
-Beabsichtigt. Historie zeigt tatsächliche damalige Zustände.
-
-## 37. Farben nach Beta 7 weiterhin falsch
-
-Genau dieser Upgrade-Fall wird durch `2.1.0-beta.8` behoben.
-
-Ursache: alte explizite `color`-Werte im gespeicherten Dashboard.
-
-Lösung:
-
-1. Beta 8 installieren.
-2. Home Assistant neu starten.
-3. Dashboard öffnen.
-
-Template-Version:
-
-```text
-18
-```
-
-## 38. Reglerverhalten falsche Farben
-
-Erwartet:
-
-```text
-Regler-Soll                  #2196F3
-Ist-Ausgang                  #009B21
-Eigenverbrauch-Soll          #FF6A00
-Ladepriorität-Soll           #FFD800
-Nötige Ladeleistung          #00FFFF
-Dynamische Nachladeleistung  #B200FF
-```
-
-## 39. Reglerverhalten bleibt nach Beta 8 falsch
-
-Das kann bei einem bereits gespeicherten älteren **5-Serien-Chart** auftreten.
-Beta 8 erkannte `Reglerverhalten` nur, wenn auch die später ergänzte Serie
-**Dynamische Nachladeleistung** vorhanden war.
-
-Beta 9 behebt diesen Fall und erhöht die Dashboard-Template-Version auf 19.
-Dadurch wird die Migration auch dann erneut ausgeführt, wenn Template 18 schon
-gespeichert war.
-
-Erwartete Farben der fünf Kernserien:
-
-```text
-Regler-Soll                  #2196F3
-Ist-Ausgang                  #009B21
-Eigenverbrauch-Soll          #FF6A00
-Ladepriorität-Soll           #FFD800
-Nötige Ladeleistung          #00FFFF
-```
-
-Ist die sechste Serie vorhanden:
-
-```text
-Dynamische Nachladeleistung  #B200FF
-```
-
-## 40. Historischer SOC falsche Farben
-
-Erwartet:
-
-```text
-Ist-SOC                      #2196F3
-Dynamisches SOC-Soll         #009B21
-Ziel-SOC                     #FF6A00
-Gespeicherter Plan           #FFD800
-```
-
-## 41. Eigenes ApexCharts wird nicht umgefärbt
-
-Beabsichtigt.
-
-Template v19 ändert nur eindeutig erkannte Standardcharts.
-
-## 42. Eigenes ApexCharts wurde unerwartet geändert
-
-Mit aktuellem Beta-9-Fix darf die alte breite v17-Farbmigration nicht mehr
-vorgeschaltet sein.
+Die Integration hält die Snapshot-Historie rollierend für 31 Tage und maximal
+48 unterschiedliche Planstände je Tag. Ein neuer Snapshot wird nur gespeichert,
+wenn sich die Forecast-/SOC-Plan-Daten oder ein planungsrelevanter Parameter
+tatsächlich ändern. Identische Pläne erzeugen keinen zusätzlichen Eintrag.
 
 Prüfen:
 
-- aktuelle `dashboard_migration_v18.py`
-- Version `2.1.0-beta.10`
-- Neustart
+- **Ladeplanbasis** steht auf `Forecast.Solar-Kurve`
+- **PV-Prognosekurve** ist verfügbar
+- **PV-Prognose aktualisiert** enthält einen plausiblen Zeitstempel
+- der ausgewählte Tag liegt nicht mehr als 31 Tage zurück
 
-## 43. Migration läuft immer wieder
+Die Planstand-Auswahl ist eine Diagnosefunktion. Fehlende Snapshots beeinflussen
+die aktive NOAH-Regelung nicht.
 
-Gespeicherte Template-Version prüfen.
+## Historischer SOC-Ladeplan zeigt „Konfigurationsfehler“
 
-Bei stark verändertem Dashboard kann eine sichere Erkennung bewusst
-ausbleiben.
+Ab `2.1.0-beta.4` wird die gebündelte Karte `noah-soc-history-card.js`
+in Home Assistants Storage-Ressourcenmodus als echte Lovelace-Modulressource
+registriert. Dadurch wird die Karte vor dem Aufbau des Dashboards geladen.
 
-## 44. Historischer Beta-8-Jinja-Fehler
+Nach einem Update von einem früheren Beta-4-Stand sollte das Frontend einmal
+neu geladen werden. Falls die Karte weiterhin als `Konfigurationsfehler`
+erscheint:
 
-```text
-TemplateSyntaxError: unexpected '}'
-```
+1. Home Assistant neu starten.
+2. Browserseite vollständig neu laden (`Strg+F5`).
+3. Unter **Einstellungen → Dashboards → Ressourcen** prüfen, ob die Ressource
+   `/noah_optimizer/noah-soc-history-card.js` vorhanden ist.
 
-wird durch die ältere Template-9-Migration repariert.
+Im YAML-Ressourcenmodus verwendet die Integration weiterhin die
+Frontend-Injektion als Kompatibilitäts-Fallback.
 
-## 45. Frontend zeigt alte JS-Version
+## Diagrammfarben stimmen nach dem Update nicht
 
-Cache:
+Der aktuelle Stand verwendet Dashboard-Template-Version 19 und feste
+Serienfarben. Prüfen:
 
-```text
-?v=8
-```
+1. Home Assistant nach dem Update vollständig neu starten.
+2. Browser/App vollständig neu laden; im Browser gegebenenfalls `Strg+F5`.
+3. Bereits manuell gesetzte, nicht als NOAH-Standard erkannte Charts werden
+   bewusst nicht pauschal überschrieben.
 
-Browser/App vollständig neu laden.
+Standardfarben der SOC-Historie: Ist-SOC `#2196F3`, dynamisches Soll `#009B21`,
+Ziel-SOC `#FF6A00`, gespeicherter Plan `#FFD800`.
 
-## 46. Plan-Snapshots fehlen
+**Reglerverhalten** verwendet: Regler-Soll `#2196F3`, Ist-Ausgang `#009B21`,
+Eigenverbrauch-Soll `#FF6A00`, Ladepriorität-Soll `#FFD800`, nötige
+Ladeleistung `#00FFFF` und dynamische Nachladeleistung `#B200FF`.
 
-Snapshots werden dedupliziert und nur bei relevanten Planänderungen gespeichert.
-
-## 47. Failsafe
-
-Bei dauerhaft fehlenden Daten:
-
-- Warnung
-- wenn möglich 0 W
-- Rücksetzen nach Datenrückkehr
-
-Bei NOAH offline wird nicht versucht, 0 W zu schreiben.
-
-## 48. Legacy-YAML und HACS gleichzeitig
-
-Nicht zulässig.
-
-## 49. SOC-Freigabe reagiert zu träge
-
-```text
-Controller-Auswertung = 15 s
-Erhöhungen            = 30 s
-Normal                = 120 s
-```
-
-## 50. Kurzzeitige Einspeisung
-
-Möglich durch:
-
-- Messverzögerung
-- MQTT-Verzögerung
-- Stellgrößenraster
-- Lastsprünge
-- NOAH-Übernahmezeit
-
-## 51. Abend-SOC wird nicht erreicht
-
-Die Prognose ist keine Garantie. Reale PV und Last können abweichen.
-
-## 52. Welche Version?
-
-HACS und `manifest.json` prüfen:
-
-```text
-2.1.0-beta.10
-```
-
-## 53. Was ändert Beta 9 an der Regelung?
-
-Nichts. Beta 9 korrigiert die verbleibende Reglerverhalten-Farbmigration.
-Optimizer- und Controllerlogik bleiben unverändert.
-
-## 54. Home Assistant meldet „NOAH Optimizer: NOAH offline“
+## 36. Home Assistant meldet „NOAH Optimizer: NOAH offline“
 
 Prüfen:
 
@@ -449,98 +936,39 @@ Prüfen:
 2. In ShinePhone kontrollieren, ob der NOAH als Online angezeigt wird.
 3. Beim Noah-MQTT-Gerät unter Home Assistant den Binary-Sensor
    **Connectivity** prüfen.
-4. Falls die IoT-Anzeige am NOAH aus ist, die IoT-Verbindung bzw. IoT-Taste
-   prüfen.
+4. Falls die IoT-Anzeige am NOAH aus ist, die IoT-Verbindung beziehungsweise
+   IoT-Taste prüfen.
 5. Noah-MQTT-Protokoll auf API-/MQTT-Fehler prüfen.
 
 Während dieser Meldung blockiert der Optimizer sämtliche Stellbefehle.
 
-## 55. Connectivity ist `on`, aber der Optimizer meldet offline
+## 37. Connectivity ist `on`, aber der Optimizer meldet offline
 
-Beta 10 behandelt einen Connectivity-Zustand zusätzlich als veraltet, wenn er
-länger als drei Minuten nicht neu gemeldet wurde.
+`2.1.0-beta.10` behandelt einen Connectivity-Zustand zusätzlich als veraltet,
+wenn er länger als drei Minuten nicht neu gemeldet wurde.
 
 Das weist typischerweise auf ein Problem mit Noah-MQTT oder dessen
-Datenaktualisierung hin. Noah-MQTT prüfen bzw. neu starten.
+Datenaktualisierung hin. Noah-MQTT prüfen beziehungsweise neu starten.
 
-## 56. Connectivity-Sensor fehlt
+## 38. Connectivity-Sensor fehlt
 
 Der Optimizer sucht automatisch auf demselben Home-Assistant-Gerät wie
 **NOAH System Output Power** nach einem Binary-Sensor der Geräteklasse
-`connectivity` bzw. der Noah-MQTT-Unique-ID mit Suffix `_connectivity`.
+`connectivity` beziehungsweise der Noah-MQTT-Unique-ID mit Suffix
+`_connectivity`.
 
 Wenn noch nie ein solcher Sensor gefunden wurde, bleibt Beta 10 aus
 Kompatibilitätsgründen im bisherigen Verhalten und schreibt eine Warnung ins
-Protokoll. Noah-MQTT aktualisieren bzw. MQTT-Discovery prüfen.
+Protokoll. Noah-MQTT aktualisieren beziehungsweise MQTT-Discovery prüfen.
 
-## 57. PV-Energie steigt scheinbar weiter, obwohl NOAH offline ist
+## 39. PV-Energie steigt während NOAH offline weiter
 
 Das darf mit der korrigierten Beta-10-Implementierung nicht passieren.
 
-Der ursprüngliche Feature-Stand hat den Coordinator auch während Offline alle
-15 Sekunden aktualisiert. Bei einem von Noah-MQTT gecachten PV-Wert konnte das
-PV-Learning dadurch fiktive Energie integrieren.
+Solange der NOAH offline ist, werden Noah-MQTT-Quellwerte nicht erneut in die
+Optimizer-Berechnung und das PV-Learning übernommen. Dadurch kann ein gecachter
+letzter PV-Leistungswert nicht als reale weitere Produktion integriert werden.
 
-Die korrigierte Implementierung prüft Connectivity vor jeder
-Quellwertübernahme und pausiert Coordinator/PV-Learning während Offline.
-
-Nach Wiederverbindung wird die Messlücke normal bewertet. Eine lange
-Tageslücke verwirft den Lerntag.
-
-## Feste Dashboard-Farbpalette
-
-Die von der Integration erzeugten Standarddiagramme verwenden eine feste
-Farbpalette:
-
-```text
-Blau     #2196F3
-Grün     #009B21
-Orange   #FF6A00
-Gelb     #FFD800
-Cyan     #00FFFF
-Violett  #B200FF
-```
-
-### Reglerverhalten
-
-```text
-Regler-Soll                  #2196F3  Blau
-Ist-Ausgang                  #009B21  Grün
-Eigenverbrauch-Soll          #FF6A00  Orange
-Ladepriorität-Soll           #FFD800  Gelb
-Nötige Ladeleistung          #00FFFF  Cyan
-Dynamische Nachladeleistung  #B200FF  Violett
-```
-
-### Historischer SOC-Ladeplan
-
-```text
-Ist-SOC                      #2196F3  Blau
-Dynamisches SOC-Soll         #009B21  Grün
-Ziel-SOC                     #FF6A00  Orange
-Gespeicherter Ladeplan       #FFD800  Gelb
-```
-
-### Dashboard-Migration in 2.1.0-beta.8
-
-Beta 8 erhöht die Dashboard-Template-Version von `17` auf `18`.
-
-Die vorherigen Farbänderungen hatten die Dashboardvorlagen bereits korrigiert.
-In einem schon gespeicherten Lovelace-Dashboard konnten jedoch explizite alte
-`color`-Werte erhalten bleiben. Dadurch waren nach einem Update weiterhin
-falsche Farben sichtbar.
-
-Template v18 korrigiert deshalb vorhandene Farben nur auf eindeutig erkannten
-NOAH-Standard-ApexCharts. Für die Erkennung werden der bekannte deutsche oder
-englische Kartentitel und die erwartete Entity-Kombination geprüft. Bei der
-PV-Prognose werden zusätzlich die bekannten Data-Generatoren ausgewertet.
-
-Eigene oder zusätzlich angelegte ApexCharts werden nicht pauschal verändert.
-
-Die historische SOC-Karte verwendet bereits die aktuelle
-Blau/Grün/Orange/Gelb-Palette. Ihr Frontend-Cache wird mit Beta 8 auf `v8`
-angehoben.
-
-Die Änderung betrifft ausschließlich Dashboarddarstellung und
-Dashboardmigration. Optimizer-Berechnung und aktive NOAH-Regelung bleiben
-unverändert.
+Nach Wiederverbindung wird die entstandene Messlücke von der vorhandenen
+PV-Learning-Logik bewertet. Eine Tageslücke von mehr als zehn Minuten verwirft
+den Lerntag.
