@@ -17,7 +17,7 @@ Zusätzlich prüfen:
 
 - HACS-Installation vollständig
 - Home Assistant nach dem Update neu gestartet
-- `manifest.json` auf `2.0.0` (stabil) oder `2.1.0-beta.4` (aktueller Pre-Release)
+- `manifest.json` auf `2.0.0` (stabil) oder `2.1.0-beta.10` (aktueller Pre-Release)
 - alle Quell-Entitäten vorhanden
 - keine Python-Fehler im Protokoll
 
@@ -54,6 +54,11 @@ Die konfigurierte `NOAH System Output Power`-Entität muss:
 Unter **Werkzeuge → Aktionen** mit `number.set_value` testen.
 
 Ein `sensor.*_output_power` ist nur ein Messwert und keine Stellgröße.
+
+Ab `2.1.0-beta.10` wird derselbe Status außerdem bewusst verwendet, wenn der
+NOAH über Noah-MQTT als offline beziehungsweise nicht mehr aktuell erkannt
+wurde. In diesem Fall erscheint zusätzlich die persistente Benachrichtigung
+**NOAH Optimizer: NOAH offline**.
 
 ## 4. Netzbezug und Einspeisung sind vertauscht
 
@@ -142,7 +147,7 @@ bleiben, wenn Forecast.Solar zu dieser Zeit kaum Leistung prognostiziert.
 
 Prüfen:
 
-- tatsächlich `2.1.0-beta.4` installiert
+- aktueller Pre-Release installiert
 - Home Assistant nach dem Update vollständig neu gestartet
 - `sun.sun` ist verfügbar
 - `sun.sun` steht tagsüber auf `above_horizon`
@@ -182,10 +187,9 @@ klassifiziert.
 
 Falls weiterhin `Vor Ladeplan` erscheint, prüfen:
 
-- beim aktuellen Pre-Release tatsächlich `2.1.0-beta.4` installiert
+- aktueller Pre-Release installiert
 - Home Assistant nach dem Update vollständig neu gestartet
 - `sun.sun` verfügbar
-- Dashboard-Template-Version 17 wurde übernommen
 - bei stark angepasster Reglerstatus-Karte den Rohzustand des Sensors unter
   **Werkzeuge → Zustände** prüfen
 
@@ -346,7 +350,9 @@ Mindestens ein kritischer Messwert fehlt.
 
 ### `actuator_unavailable`
 
-Die beschreibbare Stellgröße ist nicht verfügbar.
+Die beschreibbare Stellgröße ist nicht verfügbar. Ab `2.1.0-beta.10` kann
+dieser Status außerdem bedeuten, dass der NOAH-Connectivity-Guard die
+Verbindung als offline oder veraltet bewertet hat.
 
 ### `rate_limited`
 
@@ -367,6 +373,9 @@ erneut gesendet.
 ### `in_sync`
 
 Sollwert und Stellgröße liegen innerhalb der Hysterese.
+
+Ein als offline erkannter NOAH darf ab `2.1.0-beta.10` nicht mehr als
+`in_sync` / **Synchron** angezeigt werden.
 
 ### `command_failed`
 
@@ -420,7 +429,7 @@ Das Dashboard muss nicht gelöscht oder neu erstellt werden.
 
 Prüfen:
 
-- tatsächlich `2.0.0` installiert
+- aktuelle Version installiert
 - Home Assistant nach dem HACS-Update vollständig neu gestartet
 - Protokoll auf `noah_optimizer`-Fehler prüfen
 
@@ -460,6 +469,10 @@ Fehlen kritische Daten zehn Minuten:
 - bei nicht erreichbarer Stellgröße bleibt die Warnung trotzdem bestehen
 
 Nach Wiederkehr der Daten wird der Failsafe zurückgesetzt.
+
+Bei erkanntem NOAH-Offline-Zustand wird ab `2.1.0-beta.10` **kein**
+0-W-Failsafe-Befehl gesendet. Der Offline-Guard blockiert alle Stellbefehle
+und setzt die laufende Missing-Data-Failsafe-Zeit zurück.
 
 ## 20. Legacy-YAML und HACS gleichzeitig aktiv
 
@@ -781,7 +794,6 @@ Bei dauerhaft unplausiblen Werten prüfen:
 Sind die Quellen inzwischen korrigiert worden, **PV-Lerndaten zurücksetzen**
 und eine neue Lernhistorie aufbauen.
 
-
 ## 31. Ladeplanbasis zeigt „Tageslicht-Fallback“
 
 `2.1.0-beta.3` kann die vollständige Prognosekurve nur automatisch übernehmen,
@@ -845,7 +857,6 @@ Hausverbrauch genutzt werden, muss weiterhin **Vorausschauende SOC-Freigabe
 aktiv** eingeschaltet sein. SOC-Nachladung und PV-Umlenkung behalten ihre
 vorhandenen Prioritäten.
 
-
 ## 34. Historischer SOC-Ladeplan zeigt keine Daten
 
 Ab `2.1.0-beta.4` verwendet die Karte **Historischer SOC-Ladeplan** Home
@@ -853,8 +864,7 @@ Assistants History/Recorder für Ist-SOC, dynamisches Soll und Ziel-SOC.
 
 Prüfen:
 
-- tatsächlich `2.1.0-beta.4` installiert und Home Assistant neu gestartet
-- Dashboard-Template-Version 17 wurde übernommen
+- aktueller Pre-Release installiert und Home Assistant neu gestartet
 - die Integrationen `frontend` und `history` sind geladen
 - Recorder enthält für den gewählten Tag Zustände der drei SOC-Entitäten
 - der gewählte Tag liegt innerhalb der Aufbewahrungszeit des Recorders
@@ -895,25 +905,70 @@ erscheint:
 
 1. Home Assistant neu starten.
 2. Browserseite vollständig neu laden (`Strg+F5`).
-3. Unter **Einstellungen → Dashboards → Ressourcen** prüfen, ob eine Ressource
-   mit `/noah_optimizer/noah-soc-history-card.js?v=7` vorhanden ist.
+3. Unter **Einstellungen → Dashboards → Ressourcen** prüfen, ob die Ressource
+   `/noah_optimizer/noah-soc-history-card.js` vorhanden ist.
 
 Im YAML-Ressourcenmodus verwendet die Integration weiterhin die
 Frontend-Injektion als Kompatibilitäts-Fallback.
 
 ## Diagrammfarben stimmen nach dem Update nicht
 
-Der aktuelle `2.1.0-beta.4`-Stand verwendet Dashboard-Template-Version 17 und
-feste Serienfarben. Prüfen:
+Der aktuelle Stand verwendet Dashboard-Template-Version 19 und feste
+Serienfarben. Prüfen:
 
 1. Home Assistant nach dem Update vollständig neu starten.
 2. Browser/App vollständig neu laden; im Browser gegebenenfalls `Strg+F5`.
-3. Bei der historischen SOC-Karte unter **Einstellungen → Dashboards → Ressourcen**
-   die Ressource `/noah_optimizer/noah-soc-history-card.js?v=7` prüfen.
-4. Bereits manuell gesetzte `color`-Werte werden von der Migration bewusst nicht
-   überschrieben.
+3. Bereits manuell gesetzte, nicht als NOAH-Standard erkannte Charts werden
+   bewusst nicht pauschal überschrieben.
 
 Standardfarben der SOC-Historie: Ist-SOC `#2196F3`, dynamisches Soll `#009B21`,
 Ziel-SOC `#FF6A00`, gespeicherter Plan `#FFD800`.
 
-**Reglerverhalten** verwendet: Regler-Soll `#2196F3`, Ist-Ausgang `#009B21`, Eigenverbrauch-Soll `#FF6A00`, Ladepriorität-Soll `#FFD800`, nötige Ladeleistung `#00FFFF` und dynamische Nachladeleistung `#B200FF`.
+**Reglerverhalten** verwendet: Regler-Soll `#2196F3`, Ist-Ausgang `#009B21`,
+Eigenverbrauch-Soll `#FF6A00`, Ladepriorität-Soll `#FFD800`, nötige
+Ladeleistung `#00FFFF` und dynamische Nachladeleistung `#B200FF`.
+
+## 36. Home Assistant meldet „NOAH Optimizer: NOAH offline“
+
+Prüfen:
+
+1. Direkt am NOAH die IoT-/WLAN-Anzeige prüfen.
+2. In ShinePhone kontrollieren, ob der NOAH als Online angezeigt wird.
+3. Beim Noah-MQTT-Gerät unter Home Assistant den Binary-Sensor
+   **Connectivity** prüfen.
+4. Falls die IoT-Anzeige am NOAH aus ist, die IoT-Verbindung beziehungsweise
+   IoT-Taste prüfen.
+5. Noah-MQTT-Protokoll auf API-/MQTT-Fehler prüfen.
+
+Während dieser Meldung blockiert der Optimizer sämtliche Stellbefehle.
+
+## 37. Connectivity ist `on`, aber der Optimizer meldet offline
+
+`2.1.0-beta.10` behandelt einen Connectivity-Zustand zusätzlich als veraltet,
+wenn er länger als drei Minuten nicht neu gemeldet wurde.
+
+Das weist typischerweise auf ein Problem mit Noah-MQTT oder dessen
+Datenaktualisierung hin. Noah-MQTT prüfen beziehungsweise neu starten.
+
+## 38. Connectivity-Sensor fehlt
+
+Der Optimizer sucht automatisch auf demselben Home-Assistant-Gerät wie
+**NOAH System Output Power** nach einem Binary-Sensor der Geräteklasse
+`connectivity` beziehungsweise der Noah-MQTT-Unique-ID mit Suffix
+`_connectivity`.
+
+Wenn noch nie ein solcher Sensor gefunden wurde, bleibt Beta 10 aus
+Kompatibilitätsgründen im bisherigen Verhalten und schreibt eine Warnung ins
+Protokoll. Noah-MQTT aktualisieren beziehungsweise MQTT-Discovery prüfen.
+
+## 39. PV-Energie steigt während NOAH offline weiter
+
+Das darf mit der korrigierten Beta-10-Implementierung nicht passieren.
+
+Solange der NOAH offline ist, werden Noah-MQTT-Quellwerte nicht erneut in die
+Optimizer-Berechnung und das PV-Learning übernommen. Dadurch kann ein gecachter
+letzter PV-Leistungswert nicht als reale weitere Produktion integriert werden.
+
+Nach Wiederverbindung wird die entstandene Messlücke von der vorhandenen
+PV-Learning-Logik bewertet. Eine Tageslücke von mehr als zehn Minuten verwirft
+den Lerntag.

@@ -1,7 +1,7 @@
 # Konfiguration
 
 Dieses Dokument beschreibt die HACS-Integration **Growatt NOAH Optimizer**
-für den Pre-Release `2.1.0-beta.4`.
+für den aktuellen Pre-Release `2.1.0-beta.10`.
 
 `2.1.0-beta.1` ergänzt auf Basis des stabilen Stands `2.0.0` passives,
 persistentes PV-Learning. `2.1.0-beta.2` korrigiert zusätzlich die Automatik
@@ -1157,7 +1157,7 @@ Ab `2.1.0-beta.3` zeigt das Dashboard zusätzlich eine Karte **PV-Prognose**
 mit Forecast.Solar-Leistung, wirksamer korrigierter Prognose und realer
 PV-Leistung. Der Aktualisierungszeitpunkt, der prognostizierte End-SOC und die
 Ladeplanbasis werden in den Planungsdetails angezeigt. Beta 3 führte dafür
-Dashboard-Template-Version 14 ein; der aktuelle `2.1.0-beta.4`-Stand verwendet
+Dashboard-Template-Version 14 ein; der aktuelle `2.1.0-beta.10`-Stand verwendet
 nach Historienkarte und vollständiger Serienfarben-Migration **Template-Version 17**.
 
 
@@ -1260,7 +1260,7 @@ verwendet; sie dient ausschließlich der späteren Nachvollziehbarkeit.
 
 ## Feste Dashboard-Serienfarben
 
-Ab dem aktuellen `2.1.0-beta.4`-Stand verwendet das erzeugte Dashboard eine
+Ab dem aktuellen `2.1.0-beta.10`-Stand verwendet das erzeugte Dashboard eine
 feste Serienpalette. Dadurch bleiben Kurven auch nach Dashboard-Migrationen und
 ApexCharts-Änderungen visuell eindeutig.
 
@@ -1279,3 +1279,34 @@ Bei der Migration auf Dashboard-Template-Version 17 werden fehlende Farben
 ergänzt. Zusätzlich wird ausschließlich der frühere NOAH-Standard
 Ziel-SOC Rot `#F44336` auf Orange `#FF6A00` umgestellt; andere manuell
 gesetzte Farben werden nicht überschrieben.
+
+## 10. NOAH-Offline-Erkennung ab 2.1.0-beta.10
+
+`2.1.0-beta.10` wertet automatisch den Noah-MQTT-Binary-Sensor
+**Connectivity** aus, der zum selben Home-Assistant-Gerät wie die konfigurierte
+Entität **NOAH System Output Power** gehört. Eine zusätzliche Auswahl im
+Config Flow ist nicht erforderlich.
+
+Als offline beziehungsweise nicht sicher erreichbar gelten:
+
+- `Connectivity = off`
+- `unknown` oder `unavailable`
+- eine zuvor erkannte Connectivity-Entität ist verschwunden
+- ein weiterhin als `on` angezeigter Connectivity-Zustand wurde länger als
+  drei Minuten nicht mehr gemeldet
+
+Während dieses Zustands werden keine normalen Stellbefehle und auch kein
+0-W-Failsafe-Befehl gesendet. Home Assistant erzeugt einmalig die persistente
+Benachrichtigung **NOAH Optimizer: NOAH offline**.
+
+Gecachte Noah-MQTT-Quellwerte werden während Offline nicht erneut in den
+Coordinator übernommen. Das schützt insbesondere das PV-Learning davor, einen
+letzten gecachten PV-Leistungswert als fiktive weitere Produktion zu
+integrieren. Nach Wiederverbindung wird die Messlücke von der bestehenden
+PV-Learning-Logik normal bewertet.
+
+Nach einem frischen Online-Status wird die Benachrichtigung automatisch
+entfernt, die aktuellen Quellwerte werden neu eingelesen und die bestehende
+Regelung fortgesetzt.
+
+Beta 10 benötigt keine neue Dashboard-Template-Version.

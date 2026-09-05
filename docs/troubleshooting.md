@@ -1,7 +1,7 @@
 # Fehlerbehebung
 
 Dieses Dokument bezieht sich auf die HACS-Integration **Growatt NOAH
-Optimizer**, insbesondere `2.1.0-beta.9`.
+Optimizer**, insbesondere `2.1.0-beta.10`.
 
 ## 1. Integration wird nicht geladen
 
@@ -16,7 +16,7 @@ suchen.
 Prüfen:
 
 - Home Assistant neu gestartet
-- `manifest.json` auf `2.1.0-beta.9`
+- `manifest.json` auf `2.1.0-beta.10`
 - Quell-Entitäten vorhanden
 - keine Python-Fehler
 
@@ -38,6 +38,10 @@ Nicht dauerhaft `unknown` oder `unavailable`.
 System Output Power muss eine beschreibbare `number`-Entität sein.
 
 Unter **Werkzeuge → Aktionen** mit `number.set_value` testen.
+
+Ab Beta 10 kann derselbe Status auch absichtlich gesetzt werden, wenn der NOAH
+über Noah-MQTT als offline erkannt wurde. In diesem Fall erscheint zusätzlich
+die persistente Benachrichtigung **NOAH Optimizer: NOAH offline**.
 
 ## 4. Netzvorzeichen falsch
 
@@ -81,6 +85,7 @@ Mögliche ungültige Tage:
 - fehlende Prognosereferenz
 - unvollständiger Lerntag
 - unplausible Messwerte
+- längerer NOAH-Offline-Zeitraum während des Tages
 
 ## 9. Lernfaktor wirkt nicht
 
@@ -201,7 +206,9 @@ Kritischer Messwert fehlt.
 
 ## 25. actuator_unavailable
 
-Stellgröße nicht verfügbar.
+Stellgröße nicht verfügbar oder Beta 10 hat den NOAH als offline erkannt.
+
+Bei erkanntem NOAH-Offline-Zustand wird keine Stellgröße beschrieben.
 
 ## 26. rate_limited
 
@@ -221,6 +228,9 @@ Sollwert wurde geschrieben, aber noch nicht bestätigt.
 
 Sollwert und Stellgröße innerhalb Hysterese.
 
+Ein offline erkannter NOAH darf in Beta 10 nicht mehr auf `in_sync` /
+**Synchron** stehen.
+
 ## 29. command_failed
 
 `number.set_value` fehlgeschlagen.
@@ -228,6 +238,9 @@ Sollwert und Stellgröße innerhalb Hysterese.
 ## 30. failsafe
 
 Kritische Daten fehlten zu lange.
+
+Der 0-W-Failsafe-Befehl wird bei erkanntem NOAH-Offline-Zustand bewusst nicht
+gesendet.
 
 ## 31. Dashboard erscheint nicht
 
@@ -251,7 +264,7 @@ HACS installieren und Frontend neu laden.
 
 Prüfen:
 
-- Beta 8
+- Beta 10
 - Neustart
 - Lovelace-Ressource
 - Browser/App neu laden
@@ -347,7 +360,7 @@ vorgeschaltet sein.
 Prüfen:
 
 - aktuelle `dashboard_migration_v18.py`
-- Version `2.1.0-beta.9`
+- Version `2.1.0-beta.10`
 - Neustart
 
 ## 43. Migration läuft immer wieder
@@ -387,6 +400,8 @@ Bei dauerhaft fehlenden Daten:
 - wenn möglich 0 W
 - Rücksetzen nach Datenrückkehr
 
+Bei NOAH offline wird nicht versucht, 0 W zu schreiben.
+
 ## 48. Legacy-YAML und HACS gleichzeitig
 
 Nicht zulässig.
@@ -418,12 +433,59 @@ Die Prognose ist keine Garantie. Reale PV und Last können abweichen.
 HACS und `manifest.json` prüfen:
 
 ```text
-2.1.0-beta.9
+2.1.0-beta.10
 ```
 
 ## 53. Was ändert Beta 9 an der Regelung?
 
-Nichts. Beta 9 korrigiert die verbleibende Reglerverhalten-Farbmigration. Optimizer- und Controllerlogik bleiben unverändert.
+Nichts. Beta 9 korrigiert die verbleibende Reglerverhalten-Farbmigration.
+Optimizer- und Controllerlogik bleiben unverändert.
+
+## 54. Home Assistant meldet „NOAH Optimizer: NOAH offline“
+
+Prüfen:
+
+1. Direkt am NOAH die IoT-/WLAN-Anzeige prüfen.
+2. In ShinePhone kontrollieren, ob der NOAH als Online angezeigt wird.
+3. Beim Noah-MQTT-Gerät unter Home Assistant den Binary-Sensor
+   **Connectivity** prüfen.
+4. Falls die IoT-Anzeige am NOAH aus ist, die IoT-Verbindung bzw. IoT-Taste
+   prüfen.
+5. Noah-MQTT-Protokoll auf API-/MQTT-Fehler prüfen.
+
+Während dieser Meldung blockiert der Optimizer sämtliche Stellbefehle.
+
+## 55. Connectivity ist `on`, aber der Optimizer meldet offline
+
+Beta 10 behandelt einen Connectivity-Zustand zusätzlich als veraltet, wenn er
+länger als drei Minuten nicht neu gemeldet wurde.
+
+Das weist typischerweise auf ein Problem mit Noah-MQTT oder dessen
+Datenaktualisierung hin. Noah-MQTT prüfen bzw. neu starten.
+
+## 56. Connectivity-Sensor fehlt
+
+Der Optimizer sucht automatisch auf demselben Home-Assistant-Gerät wie
+**NOAH System Output Power** nach einem Binary-Sensor der Geräteklasse
+`connectivity` bzw. der Noah-MQTT-Unique-ID mit Suffix `_connectivity`.
+
+Wenn noch nie ein solcher Sensor gefunden wurde, bleibt Beta 10 aus
+Kompatibilitätsgründen im bisherigen Verhalten und schreibt eine Warnung ins
+Protokoll. Noah-MQTT aktualisieren bzw. MQTT-Discovery prüfen.
+
+## 57. PV-Energie steigt scheinbar weiter, obwohl NOAH offline ist
+
+Das darf mit der korrigierten Beta-10-Implementierung nicht passieren.
+
+Der ursprüngliche Feature-Stand hat den Coordinator auch während Offline alle
+15 Sekunden aktualisiert. Bei einem von Noah-MQTT gecachten PV-Wert konnte das
+PV-Learning dadurch fiktive Energie integrieren.
+
+Die korrigierte Implementierung prüft Connectivity vor jeder
+Quellwertübernahme und pausiert Coordinator/PV-Learning während Offline.
+
+Nach Wiederverbindung wird die Messlücke normal bewertet. Eine lange
+Tageslücke verwirft den Lerntag.
 
 ## Feste Dashboard-Farbpalette
 

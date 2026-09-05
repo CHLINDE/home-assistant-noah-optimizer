@@ -2,7 +2,7 @@
 
 Stable release: `2.0.0`
 
-Current pre-release: `2.1.0-beta.4`
+Current pre-release: `2.1.0-beta.10`
 
 The `2.1.0-beta.1` pre-release adds passive, persistent PV learning. Applying
 the learned correction is opt-in and disabled by default. `2.1.0-beta.2` keeps
@@ -13,6 +13,31 @@ dynamic SOC schedule from the time-resolved forecast without making extra
 Forecast.Solar API calls.
 `2.1.0-beta.4` adds date-selectable SOC schedule history and persistent
 forecast/plan snapshots for reviewing older days and individual plan versions.
+
+## 2.1.0-beta.10 – NOAH offline detection
+
+This release adds a guard in front of the existing active controller. The
+guard automatically discovers the Noah-MQTT **Connectivity** binary sensor on
+the same Home Assistant device as the configured **NOAH System Output Power**
+entity.
+
+The NOAH is treated as unavailable if connectivity is `off`, `unknown`,
+`unavailable`, a previously discovered connectivity entity disappears, or an
+unchanged `on` state has not been reported again for more than three minutes.
+
+While offline:
+
+- normal NOAH output commands are blocked
+- the missing-data `0 W` failsafe command is also blocked
+- a persistent Home Assistant notification `NOAH Optimizer: NOAH offline` is
+  created once per outage
+- retained Noah-MQTT source values are not consumed by the coordinator
+- PV learning is paused so a cached PV-power value cannot be integrated as
+  fictitious production
+
+After a fresh online report the notification is removed, current source values
+are read, and the unchanged controller resumes. No dashboard-template migration
+is required.
 
 ## Direct HACS repository button
 
@@ -1066,7 +1091,7 @@ First stable 2.x release:
 
 ## Current limitations 
 
-The current `2.1.0-beta.4` pre-release does not yet include:
+The current `2.1.0-beta.10` pre-release does not yet include:
 
 - learned household load
 - multiple independent NOAH systems

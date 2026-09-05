@@ -1,3 +1,48 @@
+## [2.1.0-beta.10]
+
+### Added
+
+- Automatic discovery of the Noah-MQTT `Connectivity` binary sensor belonging
+  to the configured NOAH device
+- NOAH offline/stale connectivity protection
+- Persistent Home Assistant notification `NOAH Optimizer: NOAH offline`
+- Automatic notification dismissal after connectivity recovers
+
+### Fixed
+
+- Cached Noah-MQTT values can no longer leave the active controller appearing
+  synchronized while the physical NOAH is offline
+- Offline controller ticks no longer refresh the coordinator from retained
+  Noah-MQTT values
+- Source-state changes now check NOAH connectivity before source values are
+  consumed
+- Every coordinator refresh path now passes through the same connectivity gate,
+  including the built-in scheduled refresh, startup refresh, option changes and
+  PV-learning reset actions
+- Recovery now waits for a fresh `System Output Power` report after
+  `Connectivity` returns online; the actuator state is published by Noah-MQTT
+  on a separate parameter-state topic and may otherwise still be cached
+- Prevented retained PV-power values from being integrated by PV learning as
+  fictitious PV production during a NOAH outage
+
+### Safety
+
+- Normal output commands are blocked while the NOAH is offline
+- The missing-data `0 W` failsafe command is also blocked while offline
+- Existing failsafe timing state is reset during the offline condition so an
+  old outage interval cannot trigger an immediate write after recovery
+- After connectivity returns, fresh source values are read before the normal
+  controller resumes
+
+### Changed
+
+- Integration version updated to `2.1.0-beta.10`
+- No dashboard-template migration is required
+- Existing `actuator_unavailable` data/controller status is reused while the
+  persistent notification provides the explicit `NOAH offline` diagnosis
+
+---
+
 ## [2.1.0-beta.9]
 
 ### Fixed

@@ -31,6 +31,7 @@ from .control import (
     NoahOptimizerController,
 )
 from .coordinator import NoahOptimizerCoordinator
+from .guarded_coordinator import NoahOfflineAwareCoordinator
 from .dashboard_migration_v18 import (
     async_ensure_dashboard,
     remove_dashboard_panel,
@@ -40,6 +41,7 @@ from .history import (
     async_register_history_store,
     async_unregister_history_store,
 )
+from .offline_guard import NoahOfflineGuard
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -55,19 +57,34 @@ async def async_setup_entry(
 ) -> bool:
     """Set up the Growatt NOAH Optimizer."""
 
-    coordinator = NoahOptimizerCoordinator(
+    coordinator = NoahOfflineAwareCoordinator(
         hass,
         entry,
     )
     await coordinator.async_initialize()
-    await coordinator.async_config_entry_first_refresh()
 
-    controller = NoahOptimizerController(
+    base_controller = NoahOptimizerController(
         hass,
         coordinator,
     )
+    controller = NoahOfflineGuard(
+        hass,
+        coordinator,
+        base_controller,
+    )
+    await controller.async_prepare()
+
+    # Install the connectivity gate before the very first coordinator refresh.
+    # This protects startup, scheduled DataUpdateCoordinator refreshes, option
+    # changes and reset actions from consuming retained Noah-MQTT values.
+    coordinator.set_source_update_guard(
+        controller.source_updates_allowed
+    )
+
     coordinator.controller = controller
     entry.runtime_data = coordinator
+
+    await coordinator.async_config_entry_first_refresh()
 
     async_register_history_store(hass, entry.entry_id, coordinator.history)
 
@@ -83,12 +100,22 @@ async def async_setup_entry(
         "sun.sun",
     ]
 
+    connectivity_entity_id = controller.connectivity_entity_id
+    if (
+        connectivity_entity_id is not None
+        and connectivity_entity_id not in source_entities
+    ):
+        source_entities.append(connectivity_entity_id)
+
     async def _async_source_state_changed(
         event: Event[EventStateChangedData],
     ) -> None:
         """Refresh when a configured source entity changes."""
 
-        await coordinator.async_update_from_states()
+        # Check NOAH connectivity before consuming source values. This keeps
+        # retained Noah-MQTT measurements out of PV learning while the device
+        # is offline.
+        await controller.async_source_state_changed()
 
     entry.async_on_unload(
         async_track_state_change_event(
@@ -111,6 +138,7 @@ async def async_setup_entry(
     )
 
     # Resume active control only when the user had explicitly enabled it.
+    # The offline guard runs before the original controller can write.
     await controller.async_control_tick()
 
     # The bundled date-selectable history card is optional and must never
@@ -142,6 +170,15 @@ async def async_unload_entry(
     entry: NoahOptimizerConfigEntry,
 ) -> bool:
     """Unload the Growatt NOAH Optimizer."""
+
+    controller = getattr(entry.runtime_data, "controller", None)
+    if controller is not None:
+        try:
+            await controller.async_shutdown()
+        except Exception:  # noqa: BLE001
+            _LOGGER.exception(
+                "Could not shut down the NOAH offline guard"
+            )
 
     # Persist the latest PV-learning and plan-history state before a controlled
     # reload or Home Assistant shutdown.

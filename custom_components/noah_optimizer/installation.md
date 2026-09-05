@@ -1,7 +1,7 @@
 # Installation
 
 Diese Anleitung beschreibt die Installation und das Update des **Home
-Assistant Growatt NOAH Optimizers** für den Pre-Release `2.1.0-beta.4`.
+Assistant Growatt NOAH Optimizers** für den aktuellen Pre-Release `2.1.0-beta.10`.
 
 Für neue Installationen wird die HACS-Integration empfohlen.
 
@@ -102,16 +102,16 @@ Typ:
 Integration
 ```
 
-## 5. Version 2.1.0-beta.4 installieren
+## 5. Version 2.1.0-beta.10 installieren
 
 Zu installierende Version:
 
 ```text
-2.1.0-beta.4
+2.1.0-beta.10
 ```
 
 In HACS müssen für dieses Repository Vorabversionen angezeigt beziehungsweise
-berücksichtigt werden. Danach `2.1.0-beta.4` auswählen und installieren.
+berücksichtigt werden. Danach `2.1.0-beta.10` auswählen und installieren.
 
 Nach der Installation Home Assistant vollständig neu starten.
 
@@ -691,3 +691,25 @@ in die Legacy-YAML-Regelung zurückportiert.
 - [Fehlerbehebung](troubleshooting.md)
 - [HACS Beta / Pre-Release](hacs-beta.md)
 
+## 20. NOAH-Offline-Erkennung in 2.1.0-beta.10
+
+Beta 10 benötigt keine zusätzliche Config-Flow-Auswahl. Der Optimizer sucht
+automatisch auf demselben Home-Assistant-Gerät wie **NOAH System Output Power**
+nach dem Noah-MQTT-Binary-Sensor **Connectivity**.
+
+Nach dem Update unter dem Noah-MQTT-Gerät prüfen, dass **Connectivity** vorhanden
+ist. Zum Funktionstest kann die IoT-Verbindung des NOAH kurz unterbrochen werden.
+
+Erwartet:
+
+- persistente Benachrichtigung **NOAH Optimizer: NOAH offline**
+- keine neuen normalen Stellbefehle
+- kein 0-W-Failsafe-Befehl während Offline
+- Daten-/Controllerstatus nicht weiter `OK` / `Synchron`
+- keine weitere Integration eines gecachten PV-Leistungswerts ins PV-Learning
+- nach Wiederverbindung automatische Entfernung der Benachrichtigung und
+  Fortsetzung der Regelung mit neu eingelesenen Quellwerten
+
+Ein unveränderter `on`-Connectivity-Zustand gilt nach drei Minuten ohne neue
+Meldung ebenfalls als veraltet. Beta 10 benötigt keine neue
+Dashboard-Template-Version.

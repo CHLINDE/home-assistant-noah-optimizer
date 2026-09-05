@@ -4,7 +4,7 @@ Prognosebasierte Steuerung der Ausgangsleistung eines Growatt NOAH 2000
 über Home Assistant und Noah-MQTT.
 
 > **Status:** Stabiler Release `2.0.0`. Aktueller Pre-Release:
-> `2.1.0-beta.9`.
+> `2.1.0-beta.10`.
 >
 > Die aktive Steuerung kann die NOAH-Ausgangsleistung verändern. Vor der
 > Aktivierung sollten Quellwerte, Netzvorzeichen und Stellgröße geprüft werden.
@@ -26,6 +26,9 @@ Prognosebasierte Steuerung der Ausgangsleistung eines Growatt NOAH 2000
 - Regelzustand, Prognose und Energiefluss im Dashboard darstellen
 - historische SOC-Ladepläne und gespeicherte Forecast-Stände nachvollziehen
 - konsistente Farben in allen NOAH-Standarddiagrammen verwenden
+- einen offline beziehungsweise nicht mehr aktuell gemeldeten NOAH erkennen
+- Stellbefehle und PV-Learning gegen gecachte Offline-Daten absichern
+- bei NOAH-Offline-Zustand eine persistente Home-Assistant-Benachrichtigung anzeigen
 
 ## HACS-Integration
 
@@ -38,7 +41,7 @@ Aktuelle stabile Version:
 Aktueller Pre-Release:
 
 ```text
-2.1.0-beta.9
+2.1.0-beta.10
 ```
 
 ### 2.1.0-beta.1 – PV-Learning
@@ -170,12 +173,43 @@ Dashboard-Template-Version auf **19**.
 
 Optimizer-Berechnung und aktive NOAH-Regelung bleiben unverändert.
 
+### 2.1.0-beta.10 – NOAH-Offline-Erkennung
+
+Beta 10 wertet automatisch den von Noah-MQTT bereitgestellten
+**Connectivity**-Binary-Sensor des konfigurierten NOAH aus. Die Zuordnung
+erfolgt über dasselbe Home-Assistant-Gerät wie die konfigurierte Entität
+**NOAH System Output Power**; eine zusätzliche Auswahl im Config Flow ist
+nicht erforderlich.
+
+Als offline beziehungsweise nicht sicher erreichbar gelten:
+
+- `Connectivity = off`
+- `unknown` oder `unavailable`
+- eine zuvor erkannte Connectivity-Entität ist verschwunden
+- ein weiterhin als `on` angezeigter Connectivity-Zustand wurde länger als
+  drei Minuten nicht mehr gemeldet
+
+Während Offline werden keine normalen Stellbefehle und auch kein
+0-W-Failsafe-Befehl gesendet. Home Assistant erzeugt einmalig die persistente
+Benachrichtigung **NOAH Optimizer: NOAH offline**.
+
+Gecachte Noah-MQTT-Quellwerte werden während Offline nicht erneut in den
+Coordinator übernommen. Dadurch kann insbesondere ein letzter gecachter
+PV-Leistungswert nicht als fiktive weitere Produktion in das PV-Learning
+integriert werden.
+
+Nach einem frischen Online-Status wird die Benachrichtigung automatisch
+entfernt. Anschließend werden die aktuellen Quellwerte neu eingelesen und die
+bestehende Regelung fortgesetzt.
+
+Beta 10 benötigt keine neue Dashboard-Template-Version.
+
 ## Voraussetzungen
 
 - Home Assistant
 - HACS
 - MQTT
-- Noah-MQTT
+- aktuelle Noah-MQTT-Version mit Connectivity-Binary-Sensor
 - Forecast.Solar
 - Sun-Integration
 - saldierter Netzleistungssensor
@@ -214,7 +248,7 @@ Typ:
 Integration
 ```
 
-Für `2.1.0-beta.9` müssen in HACS Vorabversionen für dieses Repository
+Für `2.1.0-beta.10` müssen in HACS Vorabversionen für dieses Repository
 angezeigt werden.
 
 Nach Installation oder Update Home Assistant vollständig neu starten.
@@ -225,6 +259,7 @@ Ausführliche Dokumentation:
 - [Konfiguration](docs/configuration.md)
 - [Fehlerbehebung](docs/troubleshooting.md)
 - [HACS Beta / Pre-Release](docs/hacs-beta.md)
+- [NOAH-Offline-Erkennung](docs/offline-detection.md)
 
 ## Benötigte Quell-Entitäten
 
@@ -238,6 +273,9 @@ Beim Einrichten werden ausgewählt:
 - NOAH Discharge Power
 - Forecast.Solar Restprognose heute
 - NOAH System Output Power
+
+Zusätzlich wird automatisch der Noah-MQTT-Connectivity-Binary-Sensor des
+NOAH-Geräts gesucht.
 
 Unterstützte Einheiten:
 
@@ -527,6 +565,10 @@ Schutzmechanismen:
 - Failsafe
 - persistente Home-Assistant-Warnung
 - Sperre gegen gleichzeitige Legacy-YAML-Steuerung
+- NOAH-Connectivity-Guard
+- Stale-Data-Erkennung
+- Sperre normaler und Failsafe-Stellbefehle bei erkanntem Offline-Zustand
+- Pause der Quellwertübernahme und PV-Lernintegration während Offline
 
 ## Controllerstatus
 
@@ -553,6 +595,10 @@ failsafe
 DE: Warte auf Stellwertübernahme
 EN: Waiting for setpoint confirmation
 ```
+
+Bei einem erkannten NOAH-Offline-Zustand verwendet Beta 10 den bestehenden
+Status `actuator_unavailable`; die persistente Benachrichtigung nennt die
+Ursache ausdrücklich als **NOAH offline**.
 
 ## Automatisches Dashboard
 
@@ -668,7 +714,6 @@ Nachladeleistung erhält Violett, wenn sie im Chart vorhanden ist.
 Eigene ApexCharts werden weiterhin nur dann verändert, wenn Titel und
 NOAH-Kernserien eindeutig dem Standardchart entsprechen.
 
-
 ## Dashboard-Migrationshistorie
 
 ```text
@@ -687,6 +732,8 @@ NOAH-Kernserien eindeutig dem Standardchart entsprechen.
 ```
 
 Migrationen sind gezielt. Das komplette Dashboard wird nicht pauschal ersetzt.
+
+Beta 10 benötigt keine neue Dashboard-Template-Version.
 
 ## Legacy-YAML-Optimizer
 
@@ -715,11 +762,23 @@ Prüfen:
 - dynamisches SOC-Soll
 - Controllerstatus
 - Ausgangssollwert
+- Noah-MQTT Connectivity
+- Offline-Benachrichtigung
 - Dashboard
 
 Danach aktive Steuerung wieder freigeben.
 
 ## Versionshistorie
+
+### 2.1.0-beta.10
+
+- NOAH-Offline-Erkennung über Noah-MQTT Connectivity
+- persistente Home-Assistant-Benachrichtigung
+- normale und Failsafe-Stellbefehle bei Offline gesperrt
+- Stale-Data-Erkennung nach drei Minuten ohne neue Connectivity-Meldung
+- gecachte Noah-MQTT-Quellwerte werden während Offline nicht erneut verarbeitet
+- PV-Learning integriert während Offline keine fiktive PV-Energie
+- keine neue Dashboard-Template-Version
 
 ### 2.1.0-beta.9
 
