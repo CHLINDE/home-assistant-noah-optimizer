@@ -9,7 +9,7 @@ Stable release:
 Current pre-release:
 
 ```text
-2.1.0-beta.9
+2.1.0-beta.10
 ```
 
 ## Direct HACS repository button
@@ -94,6 +94,27 @@ Dashboard template 18 -> 19
 
 The version bump forces the corrected migration to run on installations that
 have already stored template version 18.
+
+### Beta 10 - NOAH offline detection
+
+Beta 10 evaluates the Noah-MQTT `Connectivity` binary sensor belonging to the
+configured NOAH.
+
+When the NOAH is reported offline, unavailable, or its connectivity state is
+stale:
+
+- active NOAH output commands are blocked
+- the 0 W missing-data failsafe command is also blocked
+- a persistent Home Assistant notification is created
+- cached Noah-MQTT measurement values are not fed into the optimizer while the
+  device is offline
+- PV learning is paused so a retained PV-power value cannot be integrated as
+  fictitious production
+
+After a fresh online report, the notification is removed automatically and the
+normal controller resumes with newly read source values.
+
+No dashboard-template migration is required for Beta 10.
 
 ## Standard palette
 
@@ -191,6 +212,10 @@ command_failed
 failsafe
 ```
 
+During a detected NOAH-offline condition Beta 10 deliberately uses the existing
+`actuator_unavailable` controller/data status. The persistent notification
+contains the explicit `NOAH offline` diagnosis.
+
 ## Dashboard migration history
 
 ```text
@@ -210,14 +235,15 @@ failsafe
 
 ## Upgrade test
 
-After Beta 9 restart:
+After Beta 10 restart:
 
-1. Dashboard loads.
-2. Controller behavior uses six standard colors.
-3. Historical SOC uses blue/green/orange/yellow.
-4. Other standard charts are consistent.
-5. Custom ApexCharts are unchanged.
-6. Optimizer behavior is unchanged.
+1. Dashboard loads unchanged.
+2. Noah-MQTT `Connectivity` is found on the same device as System Output Power.
+3. Disconnecting the NOAH IoT connection creates one persistent notification.
+4. No output command is sent while connectivity is offline.
+5. PV energy/learning does not continue integrating a retained PV value.
+6. Restoring connectivity dismisses the notification and resumes control.
+7. Existing Beta-9 dashboard color migrations remain unchanged.
 
 ## Rollback
 

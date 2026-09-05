@@ -36,3 +36,14 @@ weiter und schreibt eine Warnung in das Home-Assistant-Protokoll.
 
 Aktualisiere Noah-MQTT auf eine Version, die den Connectivity-Binary-Sensor
 bereitstellt.
+
+## PV-Energie steigt während Offline nicht weiter
+
+Das ist ab Beta 10 beabsichtigt. Solange der NOAH offline ist, werden
+Noah-MQTT-Quellwerte nicht erneut in die Optimizer-Berechnung und das
+PV-Learning übernommen. Dadurch kann ein gecachter letzter PV-Leistungswert
+nicht als reale weitere Produktion integriert werden.
+
+Nach der Wiederverbindung wird die Messlücke vom PV-Learning bewertet. Eine
+lange Tageslücke verwirft den Lerntag gemäß der bestehenden Lernlogik.
+

@@ -26,3 +26,15 @@ isoliert von der neuen Geräteerreichbarkeitsprüfung.
 Basis dieses Overlays:
 `main` Commit `51744ec1cf429636ed975a2410237707b55831ed`
 (`2.1.0-beta.9`).
+
+## Review correction
+
+The first feature implementation refreshed the coordinator every 15 seconds
+even while the NOAH was offline. Because Noah-MQTT can retain the last PV
+power value and PV learning integrates power over elapsed time, this could
+create fictitious PV energy during an outage.
+
+The corrected implementation checks connectivity **before** consuming source
+states and pauses coordinator/PV-learning refreshes while offline. Source-state
+events and periodic controller ticks use the same guard lock.
+

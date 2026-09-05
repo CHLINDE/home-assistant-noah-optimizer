@@ -103,8 +103,10 @@ async def async_setup_entry(
     ) -> None:
         """Refresh when a configured source entity changes."""
 
-        await coordinator.async_update_from_states()
-        await controller.async_refresh_status()
+        # Check NOAH connectivity before consuming source values. This keeps
+        # retained Noah-MQTT measurements out of PV learning while the device
+        # is offline.
+        await controller.async_source_state_changed()
 
     entry.async_on_unload(
         async_track_state_change_event(

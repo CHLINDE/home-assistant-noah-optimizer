@@ -52,3 +52,16 @@ wird einmalig eine Warnung in das Home-Assistant-Protokoll geschrieben.
 
 Für die vollständige Offline-Erkennung wird eine aktuelle Noah-MQTT-Version
 empfohlen.
+
+## Cached measurements and PV learning
+
+While the NOAH is offline the coordinator is deliberately **not refreshed**
+from Noah-MQTT source entities. Noah-MQTT may retain the last PV power and SOC
+values even though the physical device is unreachable.
+
+This is important for PV learning: PV energy is integrated over elapsed time.
+Repeatedly feeding a retained PV-power value into the learner would create
+fictitious PV production. After connectivity returns, the skipped interval is
+handled as a normal measurement gap; a long daytime outage therefore invalidates
+that learning day instead of corrupting the learned factor.
+

@@ -2,7 +2,7 @@
 
 Dieses Dokument beschreibt die HACS-Integration **Growatt NOAH Optimizer**
 für den stabilen Release `2.0.0` und den aktuellen Pre-Release
-`2.1.0-beta.9`.
+`2.1.0-beta.10`.
 
 Die tatsächlichen Entity-IDs können durch Bereichsnamen oder manuelle
 Umbenennungen abweichen. Die Integration und das automatische Dashboard lösen
@@ -304,6 +304,17 @@ Das Learning läuft passiv. Der Faktor beeinflusst die Regelung erst, wenn
 **Gelernte PV-Korrektur verwenden** eingeschaltet ist und mindestens drei
 gültige Lerntage vorliegen.
 
+### Verhalten bei NOAH offline
+
+Ab Beta 10 werden Noah-MQTT-Quellwerte **nicht** erneut in das PV-Learning
+übernommen, solange der Connectivity-Status des NOAH offline oder veraltet ist.
+Das verhindert, dass ein gecachter letzter PV-Leistungswert über die
+Offline-Zeit weiter integriert wird.
+
+Nach Wiederverbindung bewertet die vorhandene PV-Learning-Logik die entstandene
+Messlücke. Überschreitet eine Tageslücke zehn Minuten, wird der Lerntag
+verworfen.
+
 ### Wirksamer Prognosefaktor
 
 Ohne angewendetes Learning:
@@ -520,6 +531,10 @@ command_failed
 failsafe
 ```
 
+Während eines erkannten NOAH-Offline-Zustands verwendet Beta 10 bewusst den
+bereits vorhandenen Status `actuator_unavailable`. Die eindeutige Diagnose
+**NOAH offline** steht in der persistenten Home-Assistant-Benachrichtigung.
+
 ## 11. Befehlsintervalle
 
 Die aktive Regelung wird unabhängig vom normalen Stellintervall alle 15
@@ -545,7 +560,44 @@ Fehlen kritische Daten mindestens zehn Minuten:
 - wenn die Stellgröße erreichbar ist, Anforderung von `0 W`
 - Rücksetzen des Failsafe-Zustands und Schließen der Warnung nach Datenrückkehr
 
-## 13. Legacy-Sperre
+Bei einem erkannten NOAH-Offline-Zustand wird auch der 0-W-Failsafe-Befehl
+blockiert. Ein vorhandener Failsafe-Zähler wird zurückgesetzt, damit nach der
+Wiederverbindung kein alter Offline-Zeitraum sofort einen Schreibbefehl
+auslöst.
+
+## 13. NOAH-Offline-Erkennung
+
+Beta 10 findet den Noah-MQTT-Binary-Sensor **Connectivity** automatisch über
+dasselbe Home-Assistant-Gerät wie die konfigurierte Entität
+**NOAH System Output Power**.
+
+Als offline bzw. nicht sicher erreichbar gelten:
+
+- `Connectivity = off`
+- `unknown`
+- `unavailable`
+- eine zuvor erkannte Connectivity-Entität ist verschwunden
+- ein weiterhin als `on` angezeigter Connectivity-Zustand wurde länger als
+  drei Minuten nicht mehr gemeldet
+
+Während Offline:
+
+- keine normalen Stellbefehle
+- kein Failsafe-Stellbefehl
+- keine erneute Übernahme gecachter Noah-MQTT-Quellwerte in Coordinator und
+  PV-Learning
+- persistente Benachrichtigung **NOAH Optimizer: NOAH offline**
+- Daten-/Controllerstatus `actuator_unavailable`
+
+Nach einem frischen Online-Status wird die Benachrichtigung entfernt. Danach
+werden die aktuellen Quellwerte neu eingelesen und der normale Controller
+fortgesetzt.
+
+Falls noch nie ein Connectivity-Sensor gefunden wurde, arbeitet die Integration
+aus Kompatibilitätsgründen mit dem bisherigen Verhalten weiter und schreibt
+eine Warnung in das Home-Assistant-Protokoll.
+
+## 14. Legacy-Sperre
 
 Wenn:
 
@@ -555,7 +607,7 @@ input_boolean.noah_optimizer_enabled = on
 
 werden konkurrierende HACS-Stellbefehle blockiert.
 
-## 14. Historische Ladeplanansicht
+## 15. Historische Ladeplanansicht
 
 Recorder-Daten:
 
@@ -567,7 +619,7 @@ Gespeicherte Forecast-/Plan-Snapshots können zusätzlich überlagert werden.
 
 Die Historie ist diagnostisch.
 
-## 15. Dashboard
+## 16. Dashboard
 
 Das Dashboard enthält unter anderem:
 
@@ -660,8 +712,7 @@ Die sechste Serie **Dynamische Nachladeleistung** ist optional. Damit werden
 sowohl ältere gespeicherte 5-Serien-Charts als auch die aktuelle
 6-Serien-Variante korrekt migriert.
 
-
-## 16. Dashboard-Migrationshistorie
+## 17. Dashboard-Migrationshistorie
 
 ```text
 8   Dynamischer SOC
@@ -678,7 +729,9 @@ sowohl ältere gespeicherte 5-Serien-Charts als auch die aktuelle
 19  Reglerverhalten: 5-/6-Serien-Migration
 ```
 
-## 17. Sicherheit
+Beta 10 benötigt keine neue Dashboard-Template-Version.
+
+## 18. Sicherheit
 
 Vor aktiver Steuerung prüfen:
 
@@ -690,3 +743,4 @@ Vor aktiver Steuerung prüfen:
 - dynamisches SOC-Soll
 - Freigabegrenze
 - Controllerstatus
+- Noah-MQTT Connectivity

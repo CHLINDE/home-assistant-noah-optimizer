@@ -4,7 +4,7 @@ Prognosebasierte Steuerung der Ausgangsleistung eines Growatt NOAH 2000
 über Home Assistant und Noah-MQTT.
 
 > **Status:** Stabiler Release `2.0.0`. Aktueller Pre-Release:
-> `2.1.0-beta.9`.
+> `2.1.0-beta.10`.
 >
 > Die aktive Steuerung kann die NOAH-Ausgangsleistung verändern. Vor der
 > Aktivierung sollten Quellwerte, Netzvorzeichen und Stellgröße geprüft werden.
@@ -26,6 +26,9 @@ Prognosebasierte Steuerung der Ausgangsleistung eines Growatt NOAH 2000
 - Regelzustand, Prognose und Energiefluss im Dashboard darstellen
 - historische SOC-Ladepläne und gespeicherte Forecast-Stände nachvollziehen
 - konsistente Farben in allen NOAH-Standarddiagrammen verwenden
+- einen offline bzw. nicht mehr aktualisierten NOAH erkennen
+- Stellbefehle und PV-Learning gegen gecachte Offline-Daten absichern
+- bei NOAH-Offline-Zustand eine persistente Home-Assistant-Benachrichtigung anzeigen
 
 ## HACS-Integration
 
@@ -38,7 +41,7 @@ Aktuelle stabile Version:
 Aktueller Pre-Release:
 
 ```text
-2.1.0-beta.9
+2.1.0-beta.10
 ```
 
 ### 2.1.0-beta.1 – PV-Learning
@@ -81,10 +84,8 @@ Die Anwendung ist standardmäßig ausgeschaltet.
 Ist der dynamische SOC-Ladeplan erfüllt, wird die alte Prognosemarge nicht
 nochmals als Grund für eine unnötige Ladepriorität ausgewertet.
 
-Der neue interne Modus **SOC-Ladeplan halten** verwendet die aktuelle
+Der interne Modus **SOC-Ladeplan halten** verwendet die aktuelle
 PV-Leistung für den Hausverbrauch, ohne absichtlich Akkuenergie freizugeben.
-
-Näherung:
 
 ```text
 SOC-Halten-Soll
@@ -92,8 +93,6 @@ SOC-Halten-Soll
 ```
 
 Der Wert wird auf das Stellgrößenraster abgerundet.
-
-Eine bewusste Akkuentladung bleibt Aufgabe der optionalen SOC-Freigabe.
 
 ### 2.1.0-beta.3 – zeitaufgelöste Forecast.Solar-Kurve
 
@@ -103,49 +102,17 @@ Leistungskurve.
 
 Es werden keine zusätzlichen Forecast.Solar-API-Aufrufe erzeugt.
 
-Die wirksame Kurve berücksichtigt:
-
-- Prognose-Sicherheitsfaktor
-- optionalen PV-Lernfaktor
-- Ladewirkungsgrad
-- zusätzliche Energiereserve
-- zeitliche Verteilung der erwarteten PV-Leistung
-
-Die erwartete Hauslast bleibt separat Bestandteil von Prognosemarge und
-Ausgangsregelung. Sie wird nicht aus jedem einzelnen Forecast-Intervall
-herausgerechnet.
-
-Wenn keine native Forecast.Solar-Kurve sicher aufgelöst werden kann, bleibt der
-Tageslicht-Ladeplan als Fallback aktiv.
-
 ### 2.1.0-beta.4 – historische Ladeplanansicht
 
-Die Integration liefert eine eigene historische SOC-Karte.
-
-Möglichkeiten:
-
-- vorheriger Tag
-- nächster Tag
-- Heute
-- direkte Datumsauswahl
-- Ist-SOC aus Home Assistants Recorder
-- tatsächlich aktives dynamisches SOC-Soll
-- Ziel-SOC
-- gespeicherte Forecast-/Ladeplan-Snapshots
-- Auswahl eines konkreten historischen Planstands
+Die Integration liefert eine eigene historische SOC-Karte mit Datumsauswahl,
+Recorder-Historie und gespeicherten Forecast-/Plan-Snapshots.
 
 Forecast-/Plan-Snapshots werden für bis zu 31 Tage gespeichert.
-
-Die historische Darstellung dient ausschließlich der Diagnose und greift nicht
-in die aktive Regelung ein.
 
 ### 2.1.0-beta.5 bis beta.7 – Serienfarben
 
 Die Dashboard-Serienfarben wurden schrittweise auf eine feste Palette
 vereinheitlicht.
-
-Beta 7 schließt die noch abweichenden Diagramme ab, insbesondere
-**Reglerverhalten** und den historischen SOC-Ladeplan.
 
 ### 2.1.0-beta.8 – Farbmigration
 
@@ -153,29 +120,58 @@ Beta 8 behebt den Upgrade-Fall, bei dem ein bestehendes gespeichertes
 Dashboard trotz korrekter neuer Vorlagen noch alte explizite Serienfarben
 enthielt.
 
-Die Dashboard-Template-Version steigt auf 18. Eigene ApexCharts bleiben
-unangetastet, sofern sie nicht eindeutig als NOAH-Standardchart erkannt werden.
+Die Dashboard-Template-Version steigt auf 18.
 
 ### 2.1.0-beta.9 – Reglerverhalten-Migration
 
 Beta 9 behebt den verbleibenden Upgrade-Fall beim Diagramm
 **Reglerverhalten**. Bereits gespeicherte Dashboards können noch die ältere
-5-Serien-Variante des Charts enthalten. Beta 8 verlangte für die Erkennung
-bereits die später ergänzte sechste Serie und übersprang diese älteren Karten.
+5-Serien-Variante des Charts enthalten.
 
-Die Migration akzeptiert jetzt sowohl die alte 5-Serien- als auch die aktuelle
-6-Serien-Variante. Damit die Korrektur auch bei bereits auf Template 18
-migrierten Installationen erneut ausgeführt wird, steigt die
-Dashboard-Template-Version auf **19**.
+Die Migration akzeptiert sowohl die alte 5-Serien- als auch die aktuelle
+6-Serien-Variante. Die Dashboard-Template-Version steigt auf **19**.
 
-Optimizer-Berechnung und aktive NOAH-Regelung bleiben unverändert.
+### 2.1.0-beta.10 – NOAH-Offline-Erkennung
+
+Beta 10 wertet automatisch den von Noah-MQTT bereitgestellten
+**Connectivity**-Binary-Sensor des konfigurierten NOAH aus.
+
+Die Zuordnung erfolgt über dasselbe Home-Assistant-Gerät wie die konfigurierte
+Entität **NOAH System Output Power**. Eine zusätzliche Auswahl im Config Flow
+ist nicht erforderlich.
+
+Als nicht sicher erreichbar gelten:
+
+- `Connectivity = off`
+- `unknown`
+- `unavailable`
+- eine zuvor erkannte Connectivity-Entität ist verschwunden
+- ein weiterhin als `on` angezeigter Connectivity-Zustand wurde länger als
+  drei Minuten nicht mehr gemeldet
+
+Während des Offline-Zustands:
+
+- werden keine normalen Stellbefehle gesendet
+- wird auch kein 0-W-Failsafe-Befehl gesendet
+- erscheint einmalig die persistente Benachrichtigung
+  **NOAH Optimizer: NOAH offline**
+- werden gecachte Noah-MQTT-Quellwerte nicht erneut in den Coordinator
+  übernommen
+- wird insbesondere PV-Learning pausiert, damit ein letzter gecachter
+  PV-Leistungswert nicht als fiktive weitere Produktion integriert wird
+
+Nach einem frischen Online-Status wird die Benachrichtigung automatisch
+entfernt. Anschließend werden neue Quellwerte eingelesen und die normale
+Regelung fortgesetzt.
+
+Beta 10 benötigt keine neue Dashboard-Template-Version.
 
 ## Voraussetzungen
 
 - Home Assistant
 - HACS
 - MQTT
-- Noah-MQTT
+- aktuelle Noah-MQTT-Version mit Connectivity-Binary-Sensor
 - Forecast.Solar
 - Sun-Integration
 - saldierter Netzleistungssensor
@@ -214,7 +210,7 @@ Typ:
 Integration
 ```
 
-Für `2.1.0-beta.9` müssen in HACS Vorabversionen für dieses Repository
+Für `2.1.0-beta.10` müssen in HACS Vorabversionen für dieses Repository
 angezeigt werden.
 
 Nach Installation oder Update Home Assistant vollständig neu starten.
@@ -225,6 +221,7 @@ Ausführliche Dokumentation:
 - [Konfiguration](docs/configuration.md)
 - [Fehlerbehebung](docs/troubleshooting.md)
 - [HACS Beta / Pre-Release](docs/hacs-beta.md)
+- [NOAH-Offline-Erkennung](docs/offline-detection.md)
 
 ## Benötigte Quell-Entitäten
 
@@ -238,6 +235,9 @@ Beim Einrichten werden ausgewählt:
 - NOAH Discharge Power
 - Forecast.Solar Restprognose heute
 - NOAH System Output Power
+
+Zusätzlich wird automatisch der Noah-MQTT-Connectivity-Binary-Sensor des
+NOAH-Geräts gesucht.
 
 Unterstützte Einheiten:
 
@@ -355,45 +355,10 @@ Zeit-Soll
   + p × (Ziel-SOC - Mindest-SOC)
 ```
 
-Beispiel bei Mindest-SOC 10 % und Ziel-SOC 100 %:
-
-```text
-Sonnenaufgang      10,0 %
-25 % des Tages     32,5 %
-50 % des Tages     55,0 %
-75 % des Tages     77,5 %
-Sonnenuntergang   100,0 %
-```
-
-### Konservative Prognose-Anforderung
-
-```text
-PV-Energie für Ladeplan
-= wirksame Restprognose
-  - erwarteter Hausenergiebedarf
-  - zusätzliche Energiereserve
-```
-
-Daraus wird berechnet, welcher SOC aufgrund der noch erwarteten PV-Energie
-bereits erreicht sein sollte.
-
-Im Tageslicht-Fallback gilt:
-
-```text
-Prognosedruck
-= max(Prognose-Anforderung - Zeit-Soll, 0)
-
-Dynamisches SOC-Soll
-= Zeit-Soll + p × Prognosedruck
-```
-
 ### Native Forecast.Solar-Kurve
 
-Ab 2.1.0-beta.3 wird bei direkt auflösbarer Forecast.Solar-Quelle die
-zeitaufgelöste Leistungskurve verwendet.
-
-Dadurch folgt das dynamische SOC-Soll stärker der erwarteten tatsächlichen
-PV-Verteilung über den Tag.
+Bei direkt auflösbarer Forecast.Solar-Quelle wird die zeitaufgelöste
+Leistungskurve verwendet.
 
 ### SOC-Abweichung
 
@@ -416,70 +381,19 @@ Nachts:
 Nachtbetrieb
 ```
 
-### Dynamische Nachladung
-
-Ein aktiver Eingriff erfolgt erst, wenn der Ist-SOC mehr als zwei
-Prozentpunkte hinter dem aktuellen dynamischen Soll liegt.
-
-Das Nachholziel wird bis zum Ende des Nachholfensters vorausberechnet:
-
-```text
-Nachholfenster
-= min(SOC-Nachholzeit, verbleibende Zeit bis Sonnenuntergang)
-```
-
-```text
-Nachholziel
-= dynamisches SOC-Soll am Ende des Nachholfensters
-```
-
-Dadurch läuft die Nachladung einer steigenden Sollkurve nicht dauerhaft
-hinterher.
-
 ## SOC-Ladeplan halten
 
 Ist der Ladeplan erfüllt, kann der Modus **SOC-Ladeplan halten** verhindern,
 dass die alte Prognosemarge unnötig wieder Ladepriorität auswählt.
 
-Der Sollwert wird PV-basiert und nach unten auf das Stellgrößenraster
-gerundet.
-
 ## Vorausschauende SOC-Freigabe
 
 Die Funktion ist separat schaltbar und standardmäßig aus.
-
-Für die Wiederauflade-Reserve gilt:
-
-```text
-PV-Energie für Wiederaufladung
-= wirksame Restprognose
-  - zusätzliche Energiereserve
-```
-
-Der erwartete Hausenergiebedarf wird für diese separate Reserve nicht
-abgezogen.
-
-```text
-Prognosebasierter Mindest-SOC
-= Ziel-SOC - möglicher Wiederauflade-SOC
-```
-
-Die Freigabegrenze schützt den größeren Wert aus dynamischem Soll und
-prognosebasiertem Mindest-SOC:
 
 ```text
 SOC-Freigabegrenze
 = max(Dynamisches SOC-Soll, Prognosebasierter Mindest-SOC)
   + 2 %-Punkte
-```
-
-Nur der SOC oberhalb dieser Grenze gilt als freigebbar.
-
-Bei positivem Netzbezug:
-
-```text
-SOC-Freigabe-Soll
-= aktuelle NOAH-Ausgangsleistung + aktueller Netzbezug
 ```
 
 Die Funktion fordert keine absichtliche Netzeinspeisung aus dem Akku an.
@@ -527,6 +441,10 @@ Schutzmechanismen:
 - Failsafe
 - persistente Home-Assistant-Warnung
 - Sperre gegen gleichzeitige Legacy-YAML-Steuerung
+- NOAH-Connectivity-Guard
+- Stale-Data-Erkennung
+- Sperre aller Stellbefehle bei erkanntem Offline-Zustand
+- Pause der Quellwertübernahme/PV-Lernintegration während Offline
 
 ## Controllerstatus
 
@@ -547,12 +465,9 @@ command_failed
 failsafe
 ```
 
-`waiting_for_retry` wird lokalisiert als:
-
-```text
-DE: Warte auf Stellwertübernahme
-EN: Waiting for setpoint confirmation
-```
+Während Beta 10 einen NOAH-Offline-Zustand erkennt, wird der bestehende Zustand
+`actuator_unavailable` verwendet. Die persistente Benachrichtigung nennt die
+Ursache ausdrücklich als **NOAH offline**.
 
 ## Automatisches Dashboard
 
@@ -561,9 +476,6 @@ Die Integration erzeugt das Dashboard:
 ```text
 NOAH Optimizer
 ```
-
-Die eigenen Entity-IDs werden über die Home-Assistant Entity Registry
-aufgelöst.
 
 Standardsprache:
 
@@ -586,22 +498,7 @@ Dashboard-Inhalte:
 - Kalibrierung
 - Diagnose
 
-Für Power Flow Card Plus gilt:
-
-```text
-Grid:
-consumption = Netzbezug
-production  = Netzeinspeisung
-
-Battery:
-consumption = Entladeleistung
-production  = Ladeleistung
-```
-
 ## Feste Dashboard-Farbpalette
-
-Die von der Integration erzeugten Standarddiagramme verwenden eine feste
-Farbpalette:
 
 ```text
 Blau     #2196F3
@@ -632,43 +529,6 @@ Ziel-SOC                     #FF6A00  Orange
 Gespeicherter Ladeplan       #FFD800  Gelb
 ```
 
-### Dashboard-Migration in 2.1.0-beta.8
-
-Beta 8 erhöht die Dashboard-Template-Version von `17` auf `18`.
-
-Die vorherigen Farbänderungen hatten die Dashboardvorlagen bereits korrigiert.
-In einem schon gespeicherten Lovelace-Dashboard konnten jedoch explizite alte
-`color`-Werte erhalten bleiben. Dadurch waren nach einem Update weiterhin
-falsche Farben sichtbar.
-
-Template v18 korrigiert deshalb vorhandene Farben nur auf eindeutig erkannten
-NOAH-Standard-ApexCharts. Für die Erkennung werden der bekannte deutsche oder
-englische Kartentitel und die erwartete Entity-Kombination geprüft. Bei der
-PV-Prognose werden zusätzlich die bekannten Data-Generatoren ausgewertet.
-
-Eigene oder zusätzlich angelegte ApexCharts werden nicht pauschal verändert.
-
-Die historische SOC-Karte verwendet bereits die aktuelle
-Blau/Grün/Orange/Gelb-Palette. Ihr Frontend-Cache wird mit Beta 8 auf `v8`
-angehoben.
-
-Die Änderung betrifft ausschließlich Dashboarddarstellung und
-Dashboardmigration. Optimizer-Berechnung und aktive NOAH-Regelung bleiben
-unverändert.
-
-### Dashboard-Migration in 2.1.0-beta.9
-
-Beta 9 erhöht die Dashboard-Template-Version von `18` auf `19`.
-
-Beim Standardchart **Reglerverhalten** werden jetzt sowohl bereits gespeicherte
-5-Serien-Karten als auch die aktuelle 6-Serien-Variante erkannt. Die fünf
-Kernserien erhalten immer die definierte Palette; die optionale dynamische
-Nachladeleistung erhält Violett, wenn sie im Chart vorhanden ist.
-
-Eigene ApexCharts werden weiterhin nur dann verändert, wenn Titel und
-NOAH-Kernserien eindeutig dem Standardchart entsprechen.
-
-
 ## Dashboard-Migrationshistorie
 
 ```text
@@ -686,7 +546,7 @@ NOAH-Kernserien eindeutig dem Standardchart entsprechen.
 19  Reglerverhalten: alte 5-Serien-Variante migrieren
 ```
 
-Migrationen sind gezielt. Das komplette Dashboard wird nicht pauschal ersetzt.
+Beta 10 benötigt keine neue Dashboard-Migration.
 
 ## Legacy-YAML-Optimizer
 
@@ -715,11 +575,23 @@ Prüfen:
 - dynamisches SOC-Soll
 - Controllerstatus
 - Ausgangssollwert
+- Noah-MQTT Connectivity
+- Offline-Benachrichtigung
 - Dashboard
 
 Danach aktive Steuerung wieder freigeben.
 
 ## Versionshistorie
+
+### 2.1.0-beta.10
+
+- NOAH-Offline-Erkennung über Noah-MQTT Connectivity
+- persistente Home-Assistant-Benachrichtigung
+- normale und Failsafe-Stellbefehle bei Offline gesperrt
+- Stale-Data-Erkennung
+- gecachte Noah-MQTT-Werte werden während Offline nicht erneut verarbeitet
+- PV-Learning integriert während Offline keine fiktive PV-Energie
+- keine neue Dashboard-Template-Version
 
 ### 2.1.0-beta.9
 
@@ -734,7 +606,6 @@ Danach aktive Steuerung wieder freigeben.
 - alte explizite Serienfarben auf eindeutig erkannten Standardcharts korrigiert
 - eigene ApexCharts geschützt
 - History-Card-Cache v8
-- keine Änderung der Regelalgorithmen
 
 ### 2.1.0-beta.7
 
@@ -776,69 +647,6 @@ Danach aktive Steuerung wieder freigeben.
 
 Erster stabiler Release der 2.x-Reihe. Funktionsstand entspricht
 `2.0.0-beta.14`.
-
-### 2.0.0-beta.14
-
-- Nachtstatus
-- PV-Umlenkung
-- eigener Controllerstatus-Enum-Sensor
-- Template-Version 11
-
-### 2.0.0-beta.13
-
-- schnellere Lastnachführung der SOC-Freigabe
-
-### 2.0.0-beta.12
-
-- korrigierte Wiederauflade-Reserve
-- vorausschauendes Nachholziel
-
-### 2.0.0-beta.11
-
-- vorausschauende SOC-Freigabe
-- Template-Version 10
-
-### 2.0.0-beta.10
-
-- zeitbasierter dynamischer SOC-Ladeplan
-
-### 2.0.0-beta.9
-
-- Dashboard-Jinja-Hotfix
-- Template-Version 9
-
-### 2.0.0-beta.8
-
-- erster dynamischer SOC-Ladeplan
-- Template-Version 8
-
-### 2.0.0-beta.7
-
-- Batterie-Flussrichtung korrigiert
-
-### 2.0.0-beta.6
-
-- automatisches Lovelace-Dashboard
-
-### 2.0.0-beta.5
-
-- optionale aktive Steuerung
-
-### 2.0.0-beta.4
-
-- fehlende `select.py` ergänzt
-
-### 2.0.0-beta.3
-
-- Optimizer-Berechnung nach Python portiert
-
-### 2.0.0-beta.2
-
-- Integrationstyp `device`
-
-### 2.0.0-beta.1
-
-- erste HACS-kompatible Integration
 
 ## Lizenz
 

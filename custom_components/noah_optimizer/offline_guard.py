@@ -338,15 +338,32 @@ class NoahOfflineGuard:
         self._offline_notified = False
         self._first_online_cleanup_done = True
 
+    async def async_source_state_changed(self) -> None:
+        """Refresh source data only while the NOAH connection is valid.
+
+        Noah-MQTT can keep numeric entities at their last value while the
+        physical NOAH is offline. Connectivity must therefore be checked
+        before the coordinator consumes source values; otherwise cached PV
+        power would be integrated by PV learning as if it were live data.
+        """
+
+        async with self._lock:
+            online, reason = self._read_connectivity(dt_util.utcnow())
+
+            if online is False:
+                await self._async_enter_offline(reason)
+                return
+
+            if online is True:
+                await self._async_leave_offline()
+
+            # Online or compatibility mode: source data may be consumed.
+            await self.coordinator.async_update_from_states()
+
     async def async_refresh_status(self) -> None:
-        """Refresh offline status on any watched source-state change."""
+        """Backward-compatible alias for source-state refresh handling."""
 
-        online, reason = self._read_connectivity(dt_util.utcnow())
-
-        if online is False:
-            await self._async_enter_offline(reason)
-        elif online is True:
-            await self._async_leave_offline()
+        await self.async_source_state_changed()
 
     async def async_control_tick(
         self,
@@ -358,10 +375,11 @@ class NoahOfflineGuard:
             online, reason = self._read_connectivity(dt_util.utcnow())
 
             if online is False:
-                # Keep calculated values current, but do not delegate to the
-                # controller because it contains both normal and failsafe
-                # number.set_value writes.
-                await self.coordinator.async_update_from_states()
+                # Do not refresh the coordinator here. Cached Noah-MQTT values
+                # must not be consumed while the physical NOAH is offline; in
+                # particular, PV learning integrates power over elapsed time.
+                # The skipped interval becomes a normal learning gap after
+                # connectivity returns instead of fake PV production.
                 await self._async_enter_offline(reason)
                 return
 

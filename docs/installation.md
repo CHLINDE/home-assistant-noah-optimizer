@@ -2,14 +2,14 @@
 
 Diese Anleitung beschreibt Installation und Update des **Home Assistant
 Growatt NOAH Optimizers** für den stabilen Release `2.0.0` und den aktuellen
-Pre-Release `2.1.0-beta.9`.
+Pre-Release `2.1.0-beta.10`.
 
 ## 1. Voraussetzungen
 
 - Home Assistant
 - HACS
 - MQTT
-- Noah-MQTT
+- aktuelle Noah-MQTT-Version mit `Connectivity`-Binary-Sensor
 - Forecast.Solar
 - Sun-Integration
 - saldierter Netzleistungssensor
@@ -21,6 +21,10 @@ Dashboard zusätzlich:
 - ApexCharts Card
 
 Die historische SOC-Karte wird mit der Integration ausgeliefert.
+
+Beta 10 wertet automatisch den Noah-MQTT-Binary-Sensor **Connectivity** aus,
+der zum selben Home-Assistant-Gerät wie **NOAH System Output Power** gehört.
+Eine zusätzliche Auswahl im Config Flow ist nicht erforderlich.
 
 ## 2. Benötigte Quell-Entitäten
 
@@ -76,7 +80,7 @@ HACS-Vorabversionen aktivieren.
 Installieren:
 
 ```text
-2.1.0-beta.9
+2.1.0-beta.10
 ```
 
 Home Assistant vollständig neu starten.
@@ -109,7 +113,7 @@ Gelernte PV-Korrektur verwenden = Aus
 Betriebsart = Automatik
 ```
 
-## 8. Update von 2.0.0 auf 2.1.0-beta.9
+## 8. Update von 2.0.0 auf 2.1.0-beta.10
 
 Vor dem Update:
 
@@ -117,9 +121,9 @@ Vor dem Update:
 NOAH-Steuerung aktiv = Aus
 ```
 
-Dann Beta 9 installieren und neu starten.
+Dann Beta 10 installieren und neu starten.
 
-Beta 9 enthält gegenüber dem stabilen 2.0.0 zusätzlich:
+Beta 10 enthält gegenüber dem stabilen 2.0.0 zusätzlich:
 
 - PV-Learning
 - SOC-Ladeplan halten
@@ -130,6 +134,10 @@ Beta 9 enthält gegenüber dem stabilen 2.0.0 zusätzlich:
 - feste Serienfarben
 - korrigierte Farbmigration
 - erneute Reglerverhalten-Migration für ältere 5-Serien-Charts
+- NOAH-Offline-Erkennung über Noah-MQTT Connectivity
+- persistente Home-Assistant-Benachrichtigung bei Offline
+- Sperre aller NOAH-Stellbefehle während Offline
+- Schutz des PV-Learnings vor gecachten Offline-Messwerten
 
 ## 9. Update von 2.1.0-beta.4 bis beta.7
 
@@ -160,7 +168,29 @@ mit Beta 8 auf Template 18 gespeicherten Installation erneut läuft.
 Nach Installation Home Assistant vollständig neu starten und anschließend das
 Dashboard neu öffnen.
 
-## 11. Farben prüfen
+## 11. Update von 2.1.0-beta.9 auf beta.10
+
+Beta 10 ändert keine Dashboard-Template-Version.
+
+Nach dem Neustart unter dem Noah-MQTT-Gerät prüfen:
+
+```text
+binary_sensor ... Connectivity = on
+```
+
+Der sichtbare Entity-Name darf durch Home Assistant umbenannt worden sein. Die
+Zuordnung im Optimizer erfolgt über das Geräteobjekt und die Connectivity-
+Geräteklasse bzw. Noah-MQTT-Unique-ID.
+
+Zum Funktionstest kann die IoT-Verbindung des NOAH kurz unterbrochen werden.
+Erwartet:
+
+- persistente Benachrichtigung **NOAH Optimizer: NOAH offline**
+- keine neuen Stellbefehle
+- Daten-/Controllerstatus nicht mehr `OK` / `Synchron`
+- nach Wiederverbindung automatische Entfernung der Benachrichtigung
+
+## 12. Farben prüfen
 
 Reglerverhalten:
 
@@ -188,7 +218,7 @@ History-Card-Cache:
 v8
 ```
 
-## 12. Forecast.Solar prüfen
+## 13. Forecast.Solar prüfen
 
 Bei nativer Quelle sollte die Ladeplanbasis auf die Forecast.Solar-Kurve
 hinweisen.
@@ -202,7 +232,7 @@ Prüfen:
 
 Bei nicht auflösbarer Quelle ist der Tageslicht-Fallback korrekt.
 
-## 13. PV-Learning prüfen
+## 14. PV-Learning prüfen
 
 Zunächst Anwendung aus lassen.
 
@@ -216,7 +246,11 @@ Beobachten:
 
 Mindestens drei gültige Tage vor Anwendung.
 
-## 14. Historische SOC-Karte prüfen
+Bei erkanntem NOAH-Offline-Zustand werden die Noah-MQTT-Messwerte nicht weiter
+in das PV-Learning übernommen. Eine längere Tageslücke verwirft den Lerntag
+gemäß der bestehenden Lernlogik.
+
+## 15. Historische SOC-Karte prüfen
 
 Testen:
 
@@ -225,7 +259,7 @@ Testen:
 - Datumsauswahl
 - gespeicherte Planstände
 
-## 15. Dynamischen SOC-Ladeplan prüfen
+## 16. Dynamischen SOC-Ladeplan prüfen
 
 Beobachten:
 
@@ -242,13 +276,13 @@ Nachts:
 SOC-Ladeplan = Nachtbetrieb
 ```
 
-## 16. SOC-Halten prüfen
+## 17. SOC-Halten prüfen
 
 Bei erfülltem Plan kann der Reglermodus **SOC-Ladeplan halten** erscheinen.
 
 Keine absichtliche Akkuentladung.
 
-## 17. SOC-Freigabe prüfen
+## 18. SOC-Freigabe prüfen
 
 Voraussetzungen:
 
@@ -260,7 +294,7 @@ Voraussetzungen:
 - Ist-SOC über Freigabegrenze
 - positiver Netzbezug
 
-## 18. PV-Umlenkung prüfen
+## 19. PV-Umlenkung prüfen
 
 Geeignet:
 
@@ -276,7 +310,7 @@ Erwartet:
 Reglermodus = PV-Umlenkung
 ```
 
-## 19. Stellgröße manuell testen
+## 20. Stellgröße manuell testen
 
 Unter **Werkzeuge → Aktionen**:
 
@@ -288,7 +322,7 @@ data:
   value: 300
 ```
 
-## 20. Aktive Steuerung
+## 21. Aktive Steuerung
 
 Erst nach plausibler Prüfung:
 
@@ -296,7 +330,7 @@ Erst nach plausibler Prüfung:
 NOAH-Steuerung aktiv = Ein
 ```
 
-## 21. Schutzmechanismen
+## 22. Schutzmechanismen
 
 - Hysterese
 - Stellgrößenraster
@@ -305,12 +339,15 @@ NOAH-Steuerung aktiv = Ein
 - Failsafe
 - Legacy-Sperre
 - schnelle sichere Reduzierungen
+- NOAH-Connectivity-Guard
+- Stale-Data-Erkennung
+- Sperre von Normal- und Failsafe-Stellbefehlen bei Offline
 
-## 22. Legacy-YAML
+## 23. Legacy-YAML
 
 Nicht gleichzeitig aktiv verwenden.
 
-## 23. Dashboard-Migrationsstände
+## 24. Dashboard-Migrationsstände
 
 ```text
 8   Dynamischer SOC
@@ -326,6 +363,8 @@ Nicht gleichzeitig aktiv verwenden.
 18  Farbmigrationskorrektur
 19  Reglerverhalten 5-/6-Serien-Migration
 ```
+
+Beta 10 benötigt keine weitere Dashboard-Migration.
 
 ## Feste Dashboard-Farbpalette
 
