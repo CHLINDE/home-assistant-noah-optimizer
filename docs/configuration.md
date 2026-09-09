@@ -2,7 +2,7 @@
 
 Dieses Dokument beschreibt die HACS-Integration **Growatt NOAH Optimizer**
 für den stabilen Release `2.0.0` und den aktuellen Pre-Release
-`2.1.0-beta.11`.
+`2.1.0-beta.12`.
 
 Die tatsächlichen Entity-IDs können durch Bereichsnamen oder manuelle
 Umbenennungen abweichen. Die Integration und das automatische Dashboard lösen
@@ -588,7 +588,8 @@ Während Offline:
 - kein Failsafe-Stellbefehl
 - keine erneute Übernahme gecachter Noah-MQTT-Quellwerte in Coordinator und
   PV-Learning
-- persistente Benachrichtigung **NOAH Optimizer: NOAH offline**
+- persistente Benachrichtigung **NOAH Optimizer: NOAH offline**, sofern keine
+  Beta-12-Unterdrückungsbedingung greift
 - Daten-/Controllerstatus `actuator_unavailable`
 
 Nach `Connectivity = on` wird die Benachrichtigung entfernt. Danach werden
@@ -599,6 +600,24 @@ findet ab Beta 11 nicht mehr statt.
 Falls noch nie ein Connectivity-Sensor gefunden wurde, arbeitet die Integration
 aus Kompatibilitätsgründen mit dem bisherigen Verhalten weiter und schreibt
 eine Warnung in das Home-Assistant-Protokoll.
+
+
+### Beta 12: Benachrichtigungslogik
+
+Die Sicherheitsentscheidung und die sichtbare Benachrichtigung sind ab Beta 12
+getrennt:
+
+- Jeder nicht sichere Connectivity-Zustand blockiert Quellwertübernahme und
+  Stellbefehle sofort.
+- `unknown`, `unavailable` oder kurzzeitig fehlende States erzeugen während der
+  ersten 90 Sekunden nach Start noch keine persistente Warnung.
+- Bei Nacht/früher Dämmerung und zuletzt bekanntem SOC am Mindest-SOC wird eine
+  erwartete NOAH-Abschaltung ebenfalls ohne Warnung behandelt.
+- Oberhalb einer Sonnenhöhe von 3° wird ein weiterhin nicht erreichbarer NOAH
+  wieder als unerwartet gewertet und gemeldet.
+
+Diese Ausnahmen unterdrücken nur die Benachrichtigung, niemals die
+Stellbefehls-Sperre.
 
 ## 14. Legacy-Sperre
 

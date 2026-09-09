@@ -2,7 +2,7 @@
 
 Diese Anleitung beschreibt Installation und Update des **Home Assistant
 Growatt NOAH Optimizers** für den stabilen Release `2.0.0` und den aktuellen
-Pre-Release `2.1.0-beta.11`.
+Pre-Release `2.1.0-beta.12`.
 
 ## 1. Voraussetzungen
 
@@ -80,7 +80,7 @@ HACS-Vorabversionen aktivieren.
 Installieren:
 
 ```text
-2.1.0-beta.11
+2.1.0-beta.12
 ```
 
 Home Assistant vollständig neu starten.
@@ -113,7 +113,7 @@ Gelernte PV-Korrektur verwenden = Aus
 Betriebsart = Automatik
 ```
 
-## 8. Update von 2.0.0 auf 2.1.0-beta.11
+## 8. Update von 2.0.0 auf 2.1.0-beta.12
 
 Vor dem Update:
 
@@ -121,9 +121,9 @@ Vor dem Update:
 NOAH-Steuerung aktiv = Aus
 ```
 
-Dann Beta 11 installieren und neu starten.
+Dann Beta 12 installieren und neu starten.
 
-Beta 11 enthält gegenüber dem stabilen 2.0.0 zusätzlich:
+Beta 12 enthält gegenüber dem stabilen 2.0.0 zusätzlich:
 
 - PV-Learning
 - SOC-Ladeplan halten
@@ -138,6 +138,8 @@ Beta 11 enthält gegenüber dem stabilen 2.0.0 zusätzlich:
 - persistente Home-Assistant-Benachrichtigung bei Offline
 - Sperre aller NOAH-Stellbefehle während Offline
 - Schutz des PV-Learnings vor gecachten Offline-Messwerten
+- gemeinsamer Hover-/Tap-Tooltip im historischen SOC-Ladeplan
+- Startup-Grace und erwartete Mindest-SOC-Nachtabschaltung ohne Fehlalarm
 
 ## Update von 2.1.0-beta.10 auf beta.11
 
@@ -159,6 +161,25 @@ Nach dem Update:
    aufgehoben werden.
 
 Beta 11 benötigt keine Dashboard-Migration.
+
+## Update von 2.1.0-beta.11 auf beta.12
+
+Beta 12 benötigt keine Dashboard-Migration. Nach dem Update Home Assistant
+vollständig neu starten, damit die neue History-Card-Ressource `v9` registriert
+wird.
+
+Prüfen:
+
+1. Im historischen SOC-Ladeplan mit der Maus über den Chart fahren bzw. auf
+   Mobilgeräten tippen: Zeitpunkt und alle verfügbaren SOC-Serien müssen
+   gemeinsam angezeigt werden.
+2. Nach einem Home-Assistant-Neustart darf ein kurzzeitiges
+   `unknown`/`unavailable` des Connectivity-Sensors keine sofortige persistente
+   Warnung mehr auslösen. Die Steuerung bleibt währenddessen gesperrt.
+3. Erreicht der NOAH nachts den Mindest-SOC und schaltet sich ab, darf keine
+   persistente Offline-Warnung erscheinen.
+4. Bleibt der NOAH später am Morgen oberhalb von etwa 3° Sonnenhöhe weiterhin
+   nicht erreichbar, muss die normale Offline-Warnung wieder erscheinen.
 
 ## 9. Update von 2.1.0-beta.4 bis beta.7
 
@@ -236,7 +257,7 @@ Gespeicherter Plan           #FFD800
 History-Card-Cache:
 
 ```text
-v8
+v9
 ```
 
 ## 13. Forecast.Solar prüfen
@@ -385,7 +406,7 @@ Nicht gleichzeitig aktiv verwenden.
 19  Reglerverhalten 5-/6-Serien-Migration
 ```
 
-Beta 11 benötigt keine weitere Dashboard-Migration.
+Beta 12 benötigt keine weitere Dashboard-Migration.
 
 ## Feste Dashboard-Farbpalette
 

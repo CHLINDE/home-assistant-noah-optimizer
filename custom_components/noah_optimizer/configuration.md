@@ -1,7 +1,7 @@
 # Konfiguration
 
 Dieses Dokument beschreibt die HACS-Integration **Growatt NOAH Optimizer**
-für den aktuellen Pre-Release `2.1.0-beta.11`.
+für den aktuellen Pre-Release `2.1.0-beta.12`.
 
 `2.1.0-beta.1` ergänzt auf Basis des stabilen Stands `2.0.0` passives,
 persistentes PV-Learning. `2.1.0-beta.2` korrigiert zusätzlich die Automatik
@@ -1298,8 +1298,9 @@ Ab Beta 11 gilt `Connectivity = on` als online. Die in Beta 10 verwendete
 identische MQTT-Payloads nicht zwingend als neuen Entity-State schreibt.
 
 Während dieses Zustands werden keine normalen Stellbefehle und auch kein
-0-W-Failsafe-Befehl gesendet. Home Assistant erzeugt einmalig die persistente
-Benachrichtigung **NOAH Optimizer: NOAH offline**.
+0-W-Failsafe-Befehl gesendet. Bis Beta 11 erzeugt Home Assistant dabei einmalig
+die persistente Benachrichtigung **NOAH Optimizer: NOAH offline**. Beta 12
+unterdrückt diese Warnung in den unten beschriebenen erwarteten Situationen.
 
 Gecachte Noah-MQTT-Quellwerte werden während Offline nicht erneut in den
 Coordinator übernommen. Das schützt insbesondere das PV-Learning davor, einen
@@ -1313,3 +1314,15 @@ fortgesetzt. Eine zusätzliche Wiederfreigabeprüfung über
 `System Output Power.last_reported` findet ab Beta 11 nicht mehr statt.
 
 Beta 11 benötigt keine neue Dashboard-Template-Version.
+
+## Beta 12 – Offline-Benachrichtigungen
+
+Beta 12 blockiert weiterhin sofort jede aktive Steuerung, wenn Connectivity
+nicht sicher `on` ist. Die persistente Warnung wird jedoch in zwei erwarteten
+Situationen unterdrückt: bis zu 90 Sekunden während der MQTT-Initialisierung
+nach Home-Assistant-Start sowie bei einer erwarteten Nachtabschaltung am
+Mindest-SOC (Sonnenhöhe unter 3°).
+
+Die Stellbefehls-, Failsafe-, Coordinator- und PV-Learning-Sperren bleiben
+dabei vollständig aktiv.
+

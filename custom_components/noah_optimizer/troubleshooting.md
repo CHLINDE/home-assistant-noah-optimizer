@@ -17,7 +17,7 @@ Zusätzlich prüfen:
 
 - HACS-Installation vollständig
 - Home Assistant nach dem Update neu gestartet
-- `manifest.json` auf `2.0.0` (stabil) oder `2.1.0-beta.11` (aktueller Pre-Release)
+- `manifest.json` auf `2.0.0` (stabil) oder `2.1.0-beta.12` (aktueller Pre-Release)
 - alle Quell-Entitäten vorhanden
 - keine Python-Fehler im Protokoll
 
@@ -977,3 +977,14 @@ letzter PV-Leistungswert nicht als reale weitere Produktion integriert werden.
 Nach Wiederverbindung wird die entstandene Messlücke von der vorhandenen
 PV-Learning-Logik bewertet. Eine Tageslücke von mehr als zehn Minuten verwirft
 den Lerntag.
+## Beta 12: Offline-Warnung nach Neustart oder bei Mindest-SOC in der Nacht
+
+Direkt nach Home-Assistant-Start werden `unknown`, `unavailable` und kurzzeitig
+fehlende Connectivity-States für bis zu 90 Sekunden ohne persistente Meldung
+behandelt. Die Steuerung bleibt dabei blockiert.
+
+Schaltet sich der NOAH nachts nach Erreichen des Mindest-SOC erwartungsgemäß
+ab, wird ebenfalls keine persistente Offline-Meldung erzeugt. Sobald die
+Sonnenhöhe über etwa 3° steigt, wird ein weiterhin nicht erreichbarer NOAH
+wieder normal gemeldet.
+

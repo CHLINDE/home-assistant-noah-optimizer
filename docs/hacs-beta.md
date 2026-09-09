@@ -9,7 +9,7 @@ Stable release:
 Current pre-release:
 
 ```text
-2.1.0-beta.11
+2.1.0-beta.12
 ```
 
 ## Direct HACS repository button
@@ -95,6 +95,22 @@ Dashboard template 18 -> 19
 The version bump forces the corrected migration to run on installations that
 have already stored template version 18.
 
+### Beta 12 - History tooltip and offline notification handling
+
+Beta 12 adds a shared hover/tap tooltip to the bundled historical SOC schedule
+card and raises the history-card cache from `v8` to `v9`.
+
+It also avoids two expected false-positive offline notifications while keeping
+all safety blocking active:
+
+- 90-second startup grace for `unknown`, `unavailable` and temporarily missing
+  Connectivity states
+- no persistent warning for the expected NOAH shutdown at minimum SOC during
+  night / early dawn (sun elevation below 3°)
+
+An explicit offline state outside that expected minimum-SOC condition remains
+actionable immediately. No dashboard-template migration is required.
+
 ### Beta 11 - Connectivity timestamp fix
 
 Beta 11 fixes a false-offline condition introduced by Beta 10.
@@ -179,7 +195,7 @@ Saved plan       Yellow
 History-card cache:
 
 ```text
-v8
+v9
 ```
 
 ## Dynamic SOC

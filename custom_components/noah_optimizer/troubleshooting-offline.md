@@ -6,49 +6,76 @@ Prüfe zuerst direkt am Growatt NOAH:
 
 1. Ist das Gerät eingeschaltet?
 2. Ist die IoT-/WLAN-Anzeige aktiv?
-3. Falls nötig, die **IoT-Taste** bzw. WLAN-Kopplung des NOAH prüfen.
+3. Falls nötig, die **IoT-Taste** beziehungsweise WLAN-Kopplung des NOAH prüfen.
 4. In ShinePhone kontrollieren, ob der NOAH wieder als `Online` angezeigt wird.
 5. In Home Assistant beim Noah-MQTT-Gerät den Binary-Sensor
    **Connectivity** prüfen.
 
-Während des echten Offline-Zustands blockiert der Optimizer bewusst alle
-Stellbefehle.
+Während eines nicht sicheren Connectivity-Zustands blockiert der Optimizer
+bewusst alle Stellbefehle, auch wenn die sichtbare Benachrichtigung in einer der
+unten beschriebenen erwarteten Situationen unterdrückt wird.
+
+## Nach Home-Assistant-Neustart erscheint kurzzeitig keine Offline-Warnung
+
+Das ist ab `2.1.0-beta.12` beabsichtigt.
+
+Nach einem Neustart können MQTT-Entitäten zunächst `unknown`, `unavailable`
+oder ohne State sein. Der Optimizer blockiert die aktive Regelung in dieser
+Phase sofort, wartet für die persistente Warnung aber bis zu **90 Sekunden** auf
+den ersten stabilen Noah-MQTT-Status.
+
+`Connectivity = off` wird grundsätzlich sofort als echter Offline-Zustand
+behandelt, sofern nicht gleichzeitig die erwartete Nachtabschaltung am
+Mindest-SOC greift.
+
+## NOAH schaltet sich nachts bei Mindest-SOC ab
+
+Das kann ein normaler Betriebszustand sein. Wenn der zuletzt bekannte Batterie-
+SOC am eingestellten Mindest-SOC liegt und der NOAH während Nacht beziehungsweise
+früher Dämmerung nicht erreichbar wird, zeigt Beta 12 **keine persistente
+Offline-Benachrichtigung** mehr an.
+
+Die Sicherheitssperre bleibt aktiv:
+
+```text
+keine normalen Stellbefehle
+kein 0-W-Failsafe-Befehl
+keine Verarbeitung gecachter Noah-MQTT-Werte
+```
+
+Steht die Sonne anschließend höher als etwa 3° und der NOAH bleibt weiterhin
+nicht erreichbar, wird die Situation wieder als unerwartet behandelt und die
+Warnung erscheint.
 
 ## Datenstatus zeigt „Stellgröße nicht verfügbar“, Connectivity ist aber `on`
 
-Unter `2.1.0-beta.10` kann dies durch die fehlerhafte 3-Minuten-Prüfung von
-`Connectivity.last_reported` verursacht werden.
+Unter `2.1.0-beta.10` konnte dies durch die fehlerhafte 3-Minuten-Prüfung von
+`Connectivity.last_reported` verursacht werden. Ab Beta 11 wird dieser
+Zeitstempel nicht mehr als MQTT-Freshness-Indikator verwendet.
 
-Home Assistant MQTT-Entitäten schreiben bei erneut empfangenen identischen
-Payloads nicht zwingend einen neuen Entity-State. Deshalb konnte
-`last_reported` altern, obwohl Noah-MQTT weiterhin aktuelle Daten erhielt.
-
-Lösung:
+Lösung bei einer alten Installation:
 
 ```text
-Auf 2.1.0-beta.11 oder neuer aktualisieren.
+Auf 2.1.0-beta.12 oder neuer aktualisieren.
 ```
-
-Beta 11 verwendet für die Online-/Offline-Entscheidung keinen
-`last_reported`-Timeout mehr.
 
 ## Datenstatus zeigt „Stellgröße nicht verfügbar“ und Connectivity ist `off`
 
-Das ist beabsichtigt. Die Noah-MQTT-Leistungswerte können weiterhin als
-zuletzt bekannte/gecachte Werte vorhanden sein. Solange Connectivity `off`,
-`unknown` oder `unavailable` meldet, werden sie nicht als aktuelle NOAH-Daten
-verwendet.
+Das ist beabsichtigt. Die Noah-MQTT-Leistungswerte können weiterhin als zuletzt
+bekannte beziehungsweise gecachte Werte vorhanden sein. Solange Connectivity
+`off`, `unknown` oder `unavailable` meldet, werden sie nicht als aktuelle
+NOAH-Daten verwendet.
 
-## Connectivity bleibt `on`, obwohl Noah-MQTT selbst keine Daten mehr erhält
+## Connectivity bleibt `on`, obwohl der NOAH physisch aus ist
 
-Beta 11 setzt einen vorhandenen Connectivity-Sensor mit Zustand `on` nicht
-allein aufgrund eines alten Home-Assistant-Zeitstempels auf offline.
+Das ist eine Einschränkung des von Noah-MQTT gelieferten Connectivity-Zustands.
+Der Optimizer behandelt `Connectivity = on` bewusst als online, weil
+Home-Assistant-Zeitstempel bei unveränderten MQTT-Werten keine zuverlässige
+Freshness-Information liefern.
 
-Grund: `last_reported` ist bei MQTT-Entitäten kein verlässlicher Indikator
-dafür, wann die letzte identische MQTT-Nachricht eingegangen ist.
-
-Wenn Noah-MQTT selbst hängt oder beendet wurde, Noah-MQTT beziehungsweise den
-MQTT-Broker separat überwachen.
+Wenn ShinePhone den NOAH bereits als offline zeigt, Noah-MQTT/Home-Assistant
+aber weiterhin `Connectivity = on`, sollte die Availability-/Expiry-Logik in
+Noah-MQTT geprüft beziehungsweise dort als Issue gemeldet werden.
 
 ## Keine Connectivity-Entität vorhanden
 
@@ -70,9 +97,6 @@ lange Tageslücke verwirft den Lerntag gemäß der bestehenden Lernlogik.
 
 ## NOAH ist wieder online
 
-Ab Beta 11 reicht `Connectivity = on` zur Wiederfreigabe der Offline-Sperre.
-
-Die in Beta 10 verwendete zusätzliche Prüfung über
-`System Output Power.last_reported` wurde entfernt, weil auch ein
-unveränderter MQTT-Number-Wert nicht zwingend zu einem neuen Entity-State in
-Home Assistant führt.
+`Connectivity = on` hebt die Offline-Sperre wieder auf. Eine vorhandene
+Offline-Benachrichtigung wird automatisch entfernt und die aktuellen Quellwerte
+werden wieder verarbeitet.

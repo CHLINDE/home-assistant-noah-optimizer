@@ -1,3 +1,35 @@
+## [2.1.0-beta.12]
+
+### Added
+
+- Added a shared hover/tap tooltip to the historical SOC schedule card
+- Tooltip shows timestamp plus Actual SOC, Dynamic target, Target SOC and Saved plan
+- Increased bundled history-card cache version from `v8` to `v9`
+
+### Changed
+
+- Suppress persistent offline notifications for the expected NOAH shutdown at
+  minimum SOC during night / early dawn
+- Added a 90-second startup grace period for `unknown`, `unavailable` and
+  temporarily missing Connectivity states
+- Active control remains blocked immediately during both notification-suppressed
+  situations
+- Explicit `Connectivity = off` remains immediately actionable except for the
+  expected minimum-SOC night shutdown
+
+### Safety
+
+- No normal output command is sent while Connectivity is not online
+- No missing-data `0 W` failsafe command is sent while Connectivity is not online
+- Coordinator source updates and PV learning remain blocked while offline
+
+### Changed version
+
+- Integration version updated to `2.1.0-beta.12`
+- No dashboard-template migration is required
+
+---
+
 ## [2.1.0-beta.11]
 
 ### Fixed

@@ -1,7 +1,7 @@
 # Fehlerbehebung
 
 Dieses Dokument bezieht sich auf die HACS-Integration **Growatt NOAH
-Optimizer**, insbesondere `2.1.0-beta.11`.
+Optimizer**, insbesondere `2.1.0-beta.12`.
 
 ## 1. Integration wird nicht geladen
 
@@ -16,7 +16,7 @@ suchen.
 Prüfen:
 
 - Home Assistant neu gestartet
-- `manifest.json` auf `2.1.0-beta.11`
+- `manifest.json` auf `2.1.0-beta.12`
 - Quell-Entitäten vorhanden
 - keine Python-Fehler
 
@@ -360,7 +360,7 @@ vorgeschaltet sein.
 Prüfen:
 
 - aktuelle `dashboard_migration_v18.py`
-- Version `2.1.0-beta.11`
+- Version `2.1.0-beta.12`
 - Neustart
 
 ## 43. Migration läuft immer wieder
@@ -433,13 +433,30 @@ Die Prognose ist keine Garantie. Reale PV und Last können abweichen.
 HACS und `manifest.json` prüfen:
 
 ```text
-2.1.0-beta.11
+2.1.0-beta.12
 ```
 
 ## 53. Was ändert Beta 9 an der Regelung?
 
 Nichts. Beta 9 korrigiert die verbleibende Reglerverhalten-Farbmigration.
 Optimizer- und Controllerlogik bleiben unverändert.
+
+## Beta 12: Offline-Warnung direkt nach einem Neustart
+
+`unknown`, `unavailable` oder ein vorübergehend fehlender Connectivity-State
+blockieren die Steuerung sofort, erzeugen in den ersten 90 Sekunden nach Start
+aber noch keine persistente Warnung. Wird der Sensor rechtzeitig `on`, ist keine
+Aktion nötig.
+
+## Beta 12: NOAH schaltet nachts bei Mindest-SOC ab
+
+Das ist ein erwarteter Betriebszustand. Liegt der zuletzt bekannte SOC am
+Mindest-SOC und befindet sich die Sonne unter 3° Höhe, wird die Offline-
+Benachrichtigung unterdrückt. Stellbefehle bleiben trotzdem vollständig
+gesperrt.
+
+Wenn der NOAH später am Morgen weiterhin nicht erreichbar ist, erscheint die
+normale Warnung wieder.
 
 ## Beta-10-Fehler: „Stellgröße nicht verfügbar“ trotz Connectivity = Verbunden
 
@@ -456,7 +473,7 @@ obwohl weiterhin aktuelle MQTT-Daten vorlagen.
 Lösung:
 
 ```text
-2.1.0-beta.11 oder neuer installieren
+2.1.0-beta.12 oder neuer installieren
 Home Assistant vollständig neu starten
 ```
 
@@ -490,7 +507,7 @@ behandelt.
 
 Wenn dieses Verhalten noch auftritt:
 
-1. Prüfen, ob tatsächlich `2.1.0-beta.11` oder neuer installiert ist.
+1. Prüfen, ob tatsächlich `2.1.0-beta.12` oder neuer installiert ist.
 2. Home Assistant vollständig neu starten.
 3. Den Rohzustand des Noah-MQTT-Connectivity-Sensors unter
    **Werkzeuge → Zustände** prüfen.

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime
+from datetime import datetime, timedelta
 import logging
 
 from homeassistant.const import (
@@ -18,10 +18,13 @@ from homeassistant.helpers import entity_registry as er
 from homeassistant.util import dt as dt_util
 
 from .const import (
+    CONF_BATTERY_SOC,
     CONF_SYSTEM_OUTPUT_POWER,
     CONTROL_STATUS_ACTUATOR_UNAVAILABLE,
     DATA_ACTUATOR_AVAILABLE,
+    DATA_SOC,
     DATA_STATUS,
+    OPT_MIN_SOC,
     STATUS_ACTUATOR_UNAVAILABLE,
 )
 from .control import NoahOptimizerController
@@ -29,6 +32,9 @@ from .control import NoahOptimizerController
 _LOGGER = logging.getLogger(__name__)
 
 NOAH_OFFLINE_NOTIFICATION_ID = "noah_optimizer_noah_offline"
+STARTUP_NOTIFICATION_GRACE = timedelta(seconds=90)
+EXPECTED_SHUTDOWN_SOC_TOLERANCE = 0.5
+EXPECTED_SHUTDOWN_MAX_SUN_ELEVATION = 3.0
 
 
 class NoahOfflineGuard:
@@ -55,6 +61,7 @@ class NoahOfflineGuard:
         self._offline_reason: str | None = None
         self._offline_notified = False
         self._first_online_cleanup_done = False
+        self._started_at = dt_util.utcnow()
 
 
     @property
@@ -210,6 +217,77 @@ class NoahOfflineGuard:
 
         return True, "online"
 
+    def _last_known_soc(self) -> float | None:
+        """Return the configured battery SOC without consuming coordinator data."""
+
+        entity_id = self.coordinator.entry.data.get(CONF_BATTERY_SOC)
+        if entity_id:
+            state = self.hass.states.get(entity_id)
+            if state is not None and state.state not in {
+                STATE_UNKNOWN,
+                STATE_UNAVAILABLE,
+                "",
+            }:
+                try:
+                    value = float(state.state)
+                except (TypeError, ValueError):
+                    value = None
+                if value is not None and 0 <= value <= 100:
+                    return value
+
+        value = (self.coordinator.data or {}).get(DATA_SOC)
+        try:
+            value = float(value)
+        except (TypeError, ValueError):
+            return None
+        return value if 0 <= value <= 100 else None
+
+    def _is_night_or_early_dawn(self) -> bool:
+        """Return whether a minimum-SOC shutdown is still expected."""
+
+        sun = self.hass.states.get("sun.sun")
+        if sun is None:
+            return False
+        if sun.state == "below_horizon":
+            return True
+        try:
+            elevation = float(sun.attributes.get("elevation", 90.0))
+        except (TypeError, ValueError):
+            return False
+        return elevation < EXPECTED_SHUTDOWN_MAX_SUN_ELEVATION
+
+    def _expected_min_soc_shutdown(self) -> bool:
+        """Return whether NOAH may intentionally sleep at the minimum SOC."""
+
+        if not self._is_night_or_early_dawn():
+            return False
+
+        soc = self._last_known_soc()
+        if soc is None:
+            return False
+
+        try:
+            min_soc = float(self.coordinator.get_option(OPT_MIN_SOC))
+        except (TypeError, ValueError):
+            return False
+
+        return soc <= min_soc + EXPECTED_SHUTDOWN_SOC_TOLERANCE
+
+    def _notification_suppression_reason(self, reason: str) -> str | None:
+        """Return why an offline notification should currently stay silent."""
+
+        if self._expected_min_soc_shutdown():
+            return "expected_min_soc_night_shutdown"
+
+        # A real reported ``off`` state is actionable immediately. During HA
+        # startup, however, MQTT entities often pass through unavailable,
+        # unknown or missing states before Noah-MQTT publishes its first poll.
+        if reason != "reported_offline":
+            if dt_util.utcnow() - self._started_at < STARTUP_NOTIFICATION_GRACE:
+                return "startup_grace"
+
+        return None
+
     def _notification_text(self) -> tuple[str, str]:
         """Return localized persistent-notification content."""
 
@@ -283,10 +361,11 @@ class NoahOfflineGuard:
         self._controller._failsafe_notified = False
 
     async def _async_enter_offline(self, reason: str) -> None:
-        """Enter protected offline state."""
+        """Enter protected offline state and notify only when actionable."""
 
         was_offline = self._offline
         old_reason = self._offline_reason
+        suppression_reason = self._notification_suppression_reason(reason)
 
         self._offline = True
         self._offline_reason = reason
@@ -305,10 +384,27 @@ class NoahOfflineGuard:
         self.coordinator.async_update_listeners()
 
         if not was_offline or old_reason != reason:
-            _LOGGER.warning(
-                "NOAH offline guard active (%s); output commands are blocked",
-                reason,
-            )
+            if suppression_reason is None:
+                _LOGGER.warning(
+                    "NOAH offline guard active (%s); output commands are blocked",
+                    reason,
+                )
+            else:
+                _LOGGER.info(
+                    "NOAH offline guard active (%s, notification suppressed: %s); "
+                    "output commands are blocked",
+                    reason,
+                    suppression_reason,
+                )
+
+        if suppression_reason is not None:
+            # Also remove a stale notification left from a previous HA run or
+            # from an earlier actionable phase of the same offline episode.
+            if self._offline_notified or not self._first_online_cleanup_done:
+                await self._async_dismiss_offline_notification()
+            self._offline_notified = False
+            self._first_online_cleanup_done = True
+            return
 
         if not self._offline_notified:
             await self._async_create_offline_notification()
