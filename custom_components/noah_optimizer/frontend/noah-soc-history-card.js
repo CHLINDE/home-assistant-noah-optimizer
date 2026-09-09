@@ -12,6 +12,7 @@ class NoahSocHistoryCard extends HTMLElement {
     this._error = null;
     this._lastLoad = 0;
     this._loadToken = 0;
+    this._tooltipPinned = false;
   }
 
   setConfig(config) {
@@ -118,7 +119,7 @@ class NoahSocHistoryCard extends HTMLElement {
         input, select { padding: 4px 8px; }
         .snapshot-row { margin-top:10px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
         .snapshot-row label { color: var(--secondary-text-color); font-size: 13px; }
-        .chart-wrap { margin-top:12px; width:100%; overflow:hidden; }
+        .chart-wrap { margin-top:12px; width:100%; overflow:hidden; position:relative; }
         svg { width:100%; height:auto; display:block; }
         .grid { stroke: var(--divider-color); stroke-width:1; stroke-dasharray:4 4; }
         .axis-label { fill: var(--secondary-text-color); font-size: 12px; }
@@ -127,9 +128,33 @@ class NoahSocHistoryCard extends HTMLElement {
         .dynamic { stroke: #009B21; stroke-width:3; }
         .target { stroke: #FF6A00; stroke-width:1.5; stroke-dasharray:6 4; }
         .saved { stroke: #FFD800; stroke-width:2.5; stroke-dasharray:8 5; }
+        .hover-line { stroke: var(--primary-text-color); stroke-width:1; stroke-dasharray:4 4; opacity:.55; vector-effect:non-scaling-stroke; pointer-events:none; }
+        .hover-marker { stroke: var(--ha-card-background, var(--card-background-color)); stroke-width:2; vector-effect:non-scaling-stroke; pointer-events:none; }
+        .hitbox { fill:transparent; pointer-events:all; touch-action:pan-y; cursor:crosshair; }
+        .tooltip {
+          position:absolute;
+          display:none;
+          min-width:220px;
+          max-width:min(320px, calc(100% - 16px));
+          padding:10px 12px;
+          border:1px solid var(--primary-text-color);
+          border-radius:6px;
+          background:var(--ha-card-background, var(--card-background-color));
+          color:var(--primary-text-color);
+          box-shadow:0 4px 14px rgba(0,0,0,.35);
+          font-size:12px;
+          line-height:1.4;
+          box-sizing:border-box;
+          z-index:3;
+          pointer-events:none;
+        }
+        .tooltip-time { font-weight:600; padding-bottom:7px; margin-bottom:6px; border-bottom:1px solid var(--divider-color); }
+        .tooltip-row { display:flex; align-items:center; gap:7px; padding:3px 0; }
+        .tooltip-row .name { flex:1; min-width:0; }
+        .tooltip-row .value { font-weight:600; white-space:nowrap; }
         .legend { display:flex; gap:16px; flex-wrap:wrap; justify-content:center; margin-top:6px; font-size:12px; }
         .legend span { display:inline-flex; align-items:center; gap:5px; }
-        .dot { width:10px; height:10px; border-radius:50%; display:inline-block; }
+        .dot { width:10px; height:10px; border-radius:50%; display:inline-block; flex:0 0 auto; }
         .meta { margin-top:10px; color:var(--secondary-text-color); font-size:12px; line-height:1.5; }
         .message { min-height:280px; display:flex; align-items:center; justify-content:center; color:var(--secondary-text-color); text-align:center; }
         .error { color: var(--error-color); }
@@ -155,6 +180,7 @@ class NoahSocHistoryCard extends HTMLElement {
     this.shadowRoot.getElementById("next").addEventListener("click", () => this._shiftDate(1));
     this.shadowRoot.getElementById("today").addEventListener("click", () => this._setDate(this._todayString()));
     this.shadowRoot.getElementById("date").addEventListener("change", (ev) => this._setDate(ev.target.value));
+    this._tooltipPinned = false;
     this._renderData();
   }
 
@@ -184,9 +210,6 @@ class NoahSocHistoryCard extends HTMLElement {
   _setDate(value) {
     if (!value || value > this._todayString()) return;
 
-    // Invalidate a request for the previously selected day. Date controls
-    // remain usable while data is loading, so the new day must be allowed to
-    // start its own request instead of waiting for stale data to finish.
     this._loadToken += 1;
     this._loading = false;
     this._selectedDate = value;
@@ -195,6 +218,7 @@ class NoahSocHistoryCard extends HTMLElement {
     this._snapshots = [];
     this._error = null;
     this._lastLoad = 0;
+    this._tooltipPinned = false;
     this._render();
     this._loadData();
   }
@@ -247,11 +271,7 @@ class NoahSocHistoryCard extends HTMLElement {
         ? snapshotResult.value?.retention_days
         : null;
 
-      if (this._snapshots.length) {
-        this._snapshotIndex = this._snapshots.length - 1;
-      } else {
-        this._snapshotIndex = -1;
-      }
+      this._snapshotIndex = this._snapshots.length ? this._snapshots.length - 1 : -1;
       this._lastLoad = Date.now();
     } catch (err) {
       this._error = err?.message || String(err);
@@ -314,21 +334,9 @@ class NoahSocHistoryCard extends HTMLElement {
     const endDate = new Date(`${this._selectedDate}T00:00:00`);
     endDate.setDate(endDate.getDate() + 1);
     const end = endDate.getTime();
-    const actual = this._clipSeries(
-      this._parseSeries(this._config.soc_entity),
-      start,
-      end,
-    );
-    const dynamic = this._clipSeries(
-      this._parseSeries(this._config.dynamic_target_entity),
-      start,
-      end,
-    );
-    const target = this._clipSeries(
-      this._parseSeries(this._config.target_soc_entity),
-      start,
-      end,
-    );
+    const actual = this._clipSeries(this._parseSeries(this._config.soc_entity), start, end);
+    const dynamic = this._clipSeries(this._parseSeries(this._config.dynamic_target_entity), start, end);
+    const target = this._clipSeries(this._parseSeries(this._config.target_soc_entity), start, end);
     const snapshot = this._selectedSnapshot();
     const saved = this._snapshotPlan(snapshot, start, end);
 
@@ -344,6 +352,7 @@ class NoahSocHistoryCard extends HTMLElement {
     const margin = { left: 50, right: 18, top: 16, bottom: 34 };
     const plotW = width - margin.left - margin.right;
     const plotH = height - margin.top - margin.bottom;
+    const seriesEnd = this._seriesEnd(end);
     const x = (t) => margin.left + ((t - start) / (end - start)) * plotW;
     const y = (v) => margin.top + (1 - Math.max(0, Math.min(100, v)) / 100) * plotH;
 
@@ -363,11 +372,17 @@ class NoahSocHistoryCard extends HTMLElement {
       svg += `<text class="axis-label" x="${xx}" y="${height - 10}" text-anchor="middle">${hh}:${mm}</text>`;
     }
 
-    svg += this._path(actual, x, y, false, "actual", this._seriesEnd(end));
-    svg += this._path(dynamic, x, y, true, "dynamic", this._seriesEnd(end));
-    svg += this._path(target, x, y, true, "target", this._seriesEnd(end));
+    svg += this._path(actual, x, y, false, "actual", seriesEnd);
+    svg += this._path(dynamic, x, y, true, "dynamic", seriesEnd);
+    svg += this._path(target, x, y, true, "target", seriesEnd);
     svg += this._path(saved, x, y, false, "saved");
-    svg += `</svg>`;
+    svg += `<line id="hover-line" class="hover-line" x1="0" y1="${margin.top}" x2="0" y2="${height - margin.bottom}" visibility="hidden"></line>`;
+    svg += `<circle id="hover-actual" class="hover-marker" r="5" fill="#2196F3" display="none"></circle>`;
+    svg += `<circle id="hover-dynamic" class="hover-marker" r="5" fill="#009B21" display="none"></circle>`;
+    svg += `<circle id="hover-target" class="hover-marker" r="5" fill="#FF6A00" display="none"></circle>`;
+    svg += `<circle id="hover-saved" class="hover-marker" r="5" fill="#FFD800" display="none"></circle>`;
+    svg += `<rect id="hitbox" class="hitbox" x="${margin.left}" y="${margin.top}" width="${plotW}" height="${plotH}"></rect>`;
+    svg += `</svg><div class="tooltip" id="tooltip"></div>`;
     chart.innerHTML = svg;
 
     const legendItems = [];
@@ -376,6 +391,23 @@ class NoahSocHistoryCard extends HTMLElement {
     if (target.length) legendItems.push(this._legend("#FF6A00", labels.targetSoc));
     if (saved.length) legendItems.push(this._legend("#FFD800", labels.savedPlan));
     legend.innerHTML = legendItems.join("");
+
+    this._installTooltip(chart, {
+      start,
+      end,
+      width,
+      height,
+      margin,
+      plotW,
+      plotH,
+      seriesEnd,
+      actual,
+      dynamic,
+      target,
+      saved,
+      labels,
+      y,
+    });
     this._renderMeta(meta, snapshot, labels);
   }
 
@@ -437,6 +469,178 @@ class NoahSocHistoryCard extends HTMLElement {
     return `<path class="line ${cls}" d="${d}"></path>`;
   }
 
+  _valueAt(points, time, step = false, extendTo = null) {
+    if (!points.length || time < points[0][0]) return null;
+    const last = points[points.length - 1];
+    if (time > last[0]) {
+      return extendTo !== null && time <= extendTo ? last[1] : null;
+    }
+
+    let low = 0;
+    let high = points.length - 1;
+    while (low <= high) {
+      const mid = Math.floor((low + high) / 2);
+      if (points[mid][0] <= time) low = mid + 1;
+      else high = mid - 1;
+    }
+
+    const index = Math.max(0, high);
+    const current = points[index];
+    if (step || index >= points.length - 1 || current[0] === time) {
+      return current[1];
+    }
+
+    const next = points[index + 1];
+    const span = next[0] - current[0];
+    if (span <= 0) return current[1];
+    const fraction = Math.max(0, Math.min(1, (time - current[0]) / span));
+    return current[1] + (next[1] - current[1]) * fraction;
+  }
+
+  _formatTooltipTime(time) {
+    const locale = this._hass?.language || navigator.language;
+    const date = new Date(time);
+    return new Intl.DateTimeFormat(locale, {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    }).format(date);
+  }
+
+  _installTooltip(chart, context) {
+    const svg = chart.querySelector("svg");
+    const hitbox = chart.querySelector("#hitbox");
+    const tooltip = chart.querySelector("#tooltip");
+    const hoverLine = chart.querySelector("#hover-line");
+    if (!svg || !hitbox || !tooltip || !hoverLine) return;
+
+    const markerIds = {
+      actual: "#hover-actual",
+      dynamic: "#hover-dynamic",
+      target: "#hover-target",
+      saved: "#hover-saved",
+    };
+    const hide = () => {
+      tooltip.style.display = "none";
+      hoverLine.setAttribute("visibility", "hidden");
+      for (const selector of Object.values(markerIds)) {
+        const marker = chart.querySelector(selector);
+        if (marker) marker.setAttribute("display", "none");
+      }
+    };
+
+    const update = (event) => {
+      const svgRect = svg.getBoundingClientRect();
+      const chartRect = chart.getBoundingClientRect();
+      if (!svgRect.width || !chartRect.width) return;
+
+      const rawSvgX = (event.clientX - svgRect.left) * context.width / svgRect.width;
+      const svgX = Math.max(
+        context.margin.left,
+        Math.min(context.width - context.margin.right, rawSvgX),
+      );
+      const fraction = (svgX - context.margin.left) / context.plotW;
+      const time = context.start + fraction * (context.end - context.start);
+
+      const values = [
+        {
+          key: "actual",
+          color: "#2196F3",
+          label: context.labels.actualSoc,
+          value: this._valueAt(context.actual, time, false, context.seriesEnd),
+        },
+        {
+          key: "dynamic",
+          color: "#009B21",
+          label: context.labels.dynamicTarget,
+          value: this._valueAt(context.dynamic, time, true, context.seriesEnd),
+        },
+        {
+          key: "target",
+          color: "#FF6A00",
+          label: context.labels.targetSoc,
+          value: this._valueAt(context.target, time, true, context.seriesEnd),
+        },
+        {
+          key: "saved",
+          color: "#FFD800",
+          label: context.labels.savedPlan,
+          value: this._valueAt(context.saved, time),
+        },
+      ];
+
+      const visible = values.filter((item) => Number.isFinite(item.value));
+      if (!visible.length) {
+        hide();
+        return;
+      }
+
+      hoverLine.setAttribute("x1", svgX.toFixed(2));
+      hoverLine.setAttribute("x2", svgX.toFixed(2));
+      hoverLine.setAttribute("visibility", "visible");
+
+      for (const item of values) {
+        const marker = chart.querySelector(markerIds[item.key]);
+        if (!marker) continue;
+        if (!Number.isFinite(item.value)) {
+          marker.setAttribute("display", "none");
+          continue;
+        }
+        marker.setAttribute("cx", svgX.toFixed(2));
+        marker.setAttribute("cy", context.y(item.value).toFixed(2));
+        marker.setAttribute("display", "block");
+      }
+
+      const rows = visible.map((item) => `
+        <div class="tooltip-row">
+          <i class="dot" style="background:${item.color}"></i>
+          <span class="name">${this._escape(item.label)}:</span>
+          <span class="value">${Number(item.value).toFixed(1)} %</span>
+        </div>
+      `).join("");
+      tooltip.innerHTML = `<div class="tooltip-time">${this._escape(this._formatTooltipTime(time))}</div>${rows}`;
+      tooltip.style.display = "block";
+
+      const pointerX = event.clientX - chartRect.left;
+      const pointerY = event.clientY - chartRect.top;
+      const tooltipWidth = tooltip.offsetWidth;
+      const tooltipHeight = tooltip.offsetHeight;
+      let left = pointerX + 12;
+      if (left + tooltipWidth > chart.clientWidth - 8) {
+        left = pointerX - tooltipWidth - 12;
+      }
+      left = Math.max(8, Math.min(left, chart.clientWidth - tooltipWidth - 8));
+
+      let top = pointerY - tooltipHeight - 12;
+      if (top < 8) top = pointerY + 12;
+      top = Math.max(8, Math.min(top, chart.clientHeight - tooltipHeight - 8));
+      tooltip.style.left = `${left}px`;
+      tooltip.style.top = `${top}px`;
+    };
+
+    hitbox.addEventListener("pointermove", (event) => {
+      if (event.pointerType === "mouse" && !this._tooltipPinned) update(event);
+    });
+    hitbox.addEventListener("pointerleave", (event) => {
+      if (event.pointerType === "mouse" && !this._tooltipPinned) hide();
+    });
+    hitbox.addEventListener("pointerup", (event) => {
+      if (event.pointerType !== "mouse") {
+        this._tooltipPinned = true;
+        update(event);
+      }
+    });
+    hitbox.addEventListener("click", (event) => {
+      if (!event.pointerType || event.pointerType === "mouse") {
+        this._tooltipPinned = false;
+        update(event);
+      }
+    });
+  }
+
   _legend(color, text) {
     return `<span><i class="dot" style="background:${color}"></i>${this._escape(text)}</span>`;
   }
@@ -458,6 +662,7 @@ class NoahSocHistoryCard extends HTMLElement {
     container.innerHTML = `<label for="snapshot">${this._escape(labels.planSnapshot)}</label><select id="snapshot">${options}</select>`;
     container.querySelector("#snapshot").addEventListener("change", (ev) => {
       this._snapshotIndex = Number(ev.target.value);
+      this._tooltipPinned = false;
       this._renderData();
     });
   }

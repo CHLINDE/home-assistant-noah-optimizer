@@ -2,7 +2,7 @@
 
 Stable release: `2.0.0`
 
-Current pre-release: `2.1.0-beta.11`
+Current pre-release: `2.1.0-beta.12`
 
 The `2.1.0-beta.1` pre-release adds passive, persistent PV learning. Applying
 the learned correction is opt-in and disabled by default. `2.1.0-beta.2` keeps
@@ -13,6 +13,22 @@ dynamic SOC schedule from the time-resolved forecast without making extra
 Forecast.Solar API calls.
 `2.1.0-beta.4` adds date-selectable SOC schedule history and persistent
 forecast/plan snapshots for reviewing older days and individual plan versions.
+
+## 2.1.0-beta.12 – History tooltip and smarter offline notifications
+
+Beta 12 adds a shared hover/tap tooltip to the historical SOC schedule card,
+including timestamp and all available SOC series. The bundled frontend cache is
+raised to `v9`.
+
+Offline notification handling is refined without weakening safety:
+
+- 90-second notification grace for temporary startup `unknown` / `unavailable`
+  states
+- no persistent warning for the expected minimum-SOC shutdown at night / early
+  dawn below 3° sun elevation
+- all source-update and output-command blocking remains active
+
+No dashboard-template migration is required.
 
 ## 2.1.0-beta.11 – Connectivity timestamp fix
 
@@ -1106,7 +1122,7 @@ First stable 2.x release:
 
 ## Current limitations 
 
-The current `2.1.0-beta.11` pre-release does not yet include:
+The current `2.1.0-beta.12` pre-release does not yet include:
 
 - learned household load
 - multiple independent NOAH systems

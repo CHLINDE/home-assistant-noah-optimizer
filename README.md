@@ -4,7 +4,7 @@ Prognosebasierte Steuerung der Ausgangsleistung eines Growatt NOAH 2000
 über Home Assistant und Noah-MQTT.
 
 > **Status:** Stabiler Release `2.0.0`. Aktueller Pre-Release:
-> `2.1.0-beta.11`.
+> `2.1.0-beta.12`.
 >
 > Die aktive Steuerung kann die NOAH-Ausgangsleistung verändern. Vor der
 > Aktivierung sollten Quellwerte, Netzvorzeichen und Stellgröße geprüft werden.
@@ -25,10 +25,12 @@ Prognosebasierte Steuerung der Ausgangsleistung eines Growatt NOAH 2000
 - gleichzeitig vorhandene Akkuladung bei Netzbezug zum Haus umlenken
 - Regelzustand, Prognose und Energiefluss im Dashboard darstellen
 - historische SOC-Ladepläne und gespeicherte Forecast-Stände nachvollziehen
+- gemeinsame Hover-/Tap-Werte im historischen SOC-Ladeplan anzeigen
 - konsistente Farben in allen NOAH-Standarddiagrammen verwenden
 - einen von Noah-MQTT als offline oder nicht verfügbar gemeldeten NOAH erkennen
 - Stellbefehle und PV-Learning gegen gecachte Offline-Daten absichern
-- bei NOAH-Offline-Zustand eine persistente Home-Assistant-Benachrichtigung anzeigen
+- bei unerwartetem NOAH-Offline-Zustand eine persistente Home-Assistant-Benachrichtigung anzeigen
+- erwartete Mindest-SOC-Nachtabschaltung ohne Fehlalarm behandeln
 
 ## HACS-Integration
 
@@ -41,7 +43,7 @@ Aktuelle stabile Version:
 Aktueller Pre-Release:
 
 ```text
-2.1.0-beta.11
+2.1.0-beta.12
 ```
 
 ### 2.1.0-beta.1 – PV-Learning
@@ -246,6 +248,34 @@ Zeitstempelprüfung über `last_reported` findet nicht mehr statt.
 
 Keine Dashboard-Migration erforderlich.
 
+### 2.1.0-beta.12 – Historien-Tooltip und Offline-Benachrichtigungen
+
+Beta 12 erweitert die historische SOC-Karte um einen gemeinsamen Tooltip. Auf
+dem Desktop zeigt Hover, auf Mobilgeräten ein Tap den ausgewählten Zeitpunkt
+und die Werte aller verfügbaren Serien:
+
+- Ist-SOC
+- Dynamisches SOC-Soll
+- Ziel-SOC
+- Gespeicherter Plan
+
+Der Frontend-Cache der ausgelieferten History-Card steigt auf `v9`.
+
+Die Offline-Sicherheit wird beibehalten, die Benachrichtigung aber gezielter
+ausgelöst:
+
+- `unknown`, `unavailable` und kurzzeitig fehlende Connectivity-States werden
+  nach Home-Assistant-Start für 90 Sekunden ohne persistente Warnung toleriert;
+  die Stellbefehls-Sperre greift trotzdem sofort.
+- Eine erwartete Abschaltung bei erreichtem Mindest-SOC in der Nacht bzw.
+  frühen Dämmerung erzeugt keine Offline-Benachrichtigung.
+- Bleibt der NOAH nach der frühen Dämmerung weiterhin nicht erreichbar, wird
+  die normale Offline-Warnung wieder aktiv.
+- Ein explizites `Connectivity = off` bleibt außerhalb der erwarteten
+  Mindest-SOC-Nachtabschaltung sofort meldepflichtig.
+
+Keine Dashboard-Template-Migration erforderlich.
+
 ## Voraussetzungen
 
 - Home Assistant
@@ -290,7 +320,7 @@ Typ:
 Integration
 ```
 
-Für `2.1.0-beta.11` müssen in HACS Vorabversionen für dieses Repository
+Für `2.1.0-beta.12` müssen in HACS Vorabversionen für dieses Repository
 angezeigt werden.
 
 Nach Installation oder Update Home Assistant vollständig neu starten.
@@ -638,9 +668,10 @@ DE: Warte auf Stellwertübernahme
 EN: Waiting for setpoint confirmation
 ```
 
-Bei einem erkannten NOAH-Offline-Zustand verwendet Beta 10 den bestehenden
-Status `actuator_unavailable`; die persistente Benachrichtigung nennt die
-Ursache ausdrücklich als **NOAH offline**.
+Bei einem nicht sicheren NOAH-Connectivity-Zustand verwendet der Guard den
+bestehenden Status `actuator_unavailable`. Die Stellbefehls-Sperre greift immer
+sofort. Beta 12 unterdrückt lediglich die persistente Benachrichtigung während
+der Startup-Grace sowie bei der erwarteten Mindest-SOC-Nachtabschaltung.
 
 ## Automatisches Dashboard
 
@@ -811,6 +842,15 @@ Prüfen:
 Danach aktive Steuerung wieder freigeben.
 
 ## Versionshistorie
+
+### 2.1.0-beta.12
+
+- gemeinsamer Hover-/Tap-Tooltip im historischen SOC-Ladeplan
+- History-Card-Cache `v9`
+- 90 Sekunden Startup-Grace für vorläufige Connectivity-Zustände
+- keine Offline-Benachrichtigung bei erwarteter Nachtabschaltung am Mindest-SOC
+- Stellbefehls-, Failsafe-, Coordinator- und PV-Learning-Schutz bleiben aktiv
+- keine neue Dashboard-Template-Version
 
 ### 2.1.0-beta.11
 

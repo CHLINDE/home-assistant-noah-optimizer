@@ -1,7 +1,7 @@
 # Installation
 
 Diese Anleitung beschreibt die Installation und das Update des **Home
-Assistant Growatt NOAH Optimizers** für den aktuellen Pre-Release `2.1.0-beta.11`.
+Assistant Growatt NOAH Optimizers** für den aktuellen Pre-Release `2.1.0-beta.12`.
 
 Für neue Installationen wird die HACS-Integration empfohlen.
 
@@ -102,16 +102,16 @@ Typ:
 Integration
 ```
 
-## 5. Version 2.1.0-beta.11 installieren
+## 5. Version 2.1.0-beta.12 installieren
 
 Zu installierende Version:
 
 ```text
-2.1.0-beta.11
+2.1.0-beta.12
 ```
 
 In HACS müssen für dieses Repository Vorabversionen angezeigt beziehungsweise
-berücksichtigt werden. Danach `2.1.0-beta.11` auswählen und installieren.
+berücksichtigt werden. Danach `2.1.0-beta.12` auswählen und installieren.
 
 Nach der Installation Home Assistant vollständig neu starten.
 
@@ -727,3 +727,15 @@ weiterhin Stellbefehle, Failsafe-Schreibbefehle und die Verarbeitung gecachter
 Noah-MQTT-Messwerte.
 
 Keine Dashboard-Migration erforderlich.
+## Update von 2.1.0-beta.11 auf beta.12
+
+Nach Installation Home Assistant vollständig neu starten. Beta 12 erhöht den
+Frontend-Cache der historischen SOC-Karte auf `v9` und ergänzt den gemeinsamen
+Hover-/Tap-Tooltip.
+
+Die Offline-Sperre bleibt unverändert sicher, erzeugt aber keine persistente
+Warnung während der 90-sekündigen Startup-Grace oder bei der erwarteten
+Mindest-SOC-Nachtabschaltung.
+
+Keine Dashboard-Migration erforderlich.
+
