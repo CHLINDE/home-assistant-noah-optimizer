@@ -22,8 +22,13 @@ from .const import (
     CONF_SYSTEM_OUTPUT_POWER,
     CONTROL_STATUS_ACTUATOR_UNAVAILABLE,
     DATA_ACTUATOR_AVAILABLE,
+    DATA_DYNAMIC_REQUIRED_CHARGE_POWER,
+    DATA_DYNAMIC_SOC_STATUS,
+    DATA_DYNAMIC_SOC_TARGET,
     DATA_SOC,
+    DATA_SOC_DEVIATION,
     DATA_STATUS,
+    DYNAMIC_SOC_NIGHT,
     OPT_MIN_SOC,
     STATUS_ACTUATOR_UNAVAILABLE,
 )
@@ -375,6 +380,29 @@ class NoahOfflineGuard:
         # status after each normal coordinator refresh.
         self.coordinator.data[DATA_ACTUATOR_AVAILABLE] = False
         self.coordinator.data[DATA_STATUS] = STATUS_ACTUATOR_UNAVAILABLE
+
+        # A minimum-SOC night shutdown is expected and intentionally blocks
+        # all Noah-MQTT source updates. Do not let the dynamic SOC target stay
+        # frozen at the previous day's final value (often 100 %). Publishing
+        # the configured minimum SOC here keeps the historical plan truthful
+        # without consuming any cached device measurement.
+        if suppression_reason == "expected_min_soc_night_shutdown":
+            try:
+                min_soc = float(self.coordinator.get_option(OPT_MIN_SOC))
+            except (TypeError, ValueError):
+                min_soc = None
+
+            if min_soc is not None:
+                soc = self._last_known_soc()
+                self.coordinator.data[DATA_DYNAMIC_SOC_TARGET] = round(
+                    min_soc,
+                    1,
+                )
+                self.coordinator.data[DATA_DYNAMIC_SOC_STATUS] = DYNAMIC_SOC_NIGHT
+                self.coordinator.data[DATA_DYNAMIC_REQUIRED_CHARGE_POWER] = 0
+                self.coordinator.data[DATA_SOC_DEVIATION] = (
+                    round(soc - min_soc, 1) if soc is not None else None
+                )
 
         await self._async_reset_failsafe_for_offline()
 

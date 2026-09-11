@@ -2,7 +2,7 @@
 
 Diese Anleitung beschreibt Installation und Update des **Home Assistant
 Growatt NOAH Optimizers** für den stabilen Release `2.0.0` und den aktuellen
-Pre-Release `2.1.0-beta.12`.
+Pre-Release `2.1.0-beta.13`.
 
 ## 1. Voraussetzungen
 
@@ -80,7 +80,7 @@ HACS-Vorabversionen aktivieren.
 Installieren:
 
 ```text
-2.1.0-beta.12
+2.1.0-beta.13
 ```
 
 Home Assistant vollständig neu starten.
@@ -113,7 +113,7 @@ Gelernte PV-Korrektur verwenden = Aus
 Betriebsart = Automatik
 ```
 
-## 8. Update von 2.0.0 auf 2.1.0-beta.12
+## 8. Update von 2.0.0 auf 2.1.0-beta.13
 
 Vor dem Update:
 
@@ -121,9 +121,9 @@ Vor dem Update:
 NOAH-Steuerung aktiv = Aus
 ```
 
-Dann Beta 12 installieren und neu starten.
+Dann Beta 13 installieren und neu starten.
 
-Beta 12 enthält gegenüber dem stabilen 2.0.0 zusätzlich:
+Beta 13 enthält gegenüber dem stabilen 2.0.0 zusätzlich:
 
 - PV-Learning
 - SOC-Ladeplan halten
@@ -140,6 +140,9 @@ Beta 12 enthält gegenüber dem stabilen 2.0.0 zusätzlich:
 - Schutz des PV-Learnings vor gecachten Offline-Messwerten
 - gemeinsamer Hover-/Tap-Tooltip im historischen SOC-Ladeplan
 - Startup-Grace und erwartete Mindest-SOC-Nachtabschaltung ohne Fehlalarm
+- dynamisches SOC-Soll auf Mindest-SOC während erwarteter Nachtabschaltung
+- kurzzeitiger Forecast.Solar-Kurvencache statt 100-%-Daylight-Sprung
+- Hysterese zwischen SOC-Freigabe und SOC-Ladeplan halten
 
 ## Update von 2.1.0-beta.10 auf beta.11
 
@@ -180,6 +183,25 @@ Prüfen:
    persistente Offline-Warnung erscheinen.
 4. Bleibt der NOAH später am Morgen oberhalb von etwa 3° Sonnenhöhe weiterhin
    nicht erreichbar, muss die normale Offline-Warnung wieder erscheinen.
+
+## Update von 2.1.0-beta.12 auf beta.13
+
+Beta 13 benötigt keine Dashboard- oder Translation-Migration. Nach dem Update
+Home Assistant vollständig neu starten.
+
+Prüfen:
+
+1. Bei einem Akku deutlich vor dem Ladeplan und Netzbezug oberhalb des
+   konfigurierten Rest-Netzbezugs muss **SOC-Freigabe** aktiv werden. Eine
+   kleine Einspeiseüberschwingung darf nicht sofort zu **SOC-Ladeplan halten**
+   zurückschalten.
+2. Fällt die native Forecast.Solar-Kurve kurzzeitig aus, muss das dynamische
+   SOC-Soll dem letzten gültigen Tagesplan folgen und darf nicht gegen
+   Sonnenuntergang plötzlich auf 100 % springen.
+3. Schaltet der NOAH nachts am Mindest-SOC erwartungsgemäß ab, muss das
+   dynamische SOC-Soll während dieser Phase dem Mindest-SOC entsprechen.
+4. Die bestehende Offline-Sperre muss weiterhin alle Stellbefehle und
+   Noah-MQTT-Quellupdates blockieren, solange Connectivity nicht online ist.
 
 ## 9. Update von 2.1.0-beta.4 bis beta.7
 
@@ -406,7 +428,7 @@ Nicht gleichzeitig aktiv verwenden.
 19  Reglerverhalten 5-/6-Serien-Migration
 ```
 
-Beta 12 benötigt keine weitere Dashboard-Migration.
+Beta 13 benötigt keine weitere Dashboard-Migration.
 
 ## Feste Dashboard-Farbpalette
 

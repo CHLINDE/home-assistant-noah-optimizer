@@ -47,6 +47,15 @@ Steht die Sonne anschließend höher als etwa 3° und der NOAH bleibt weiterhin
 nicht erreichbar, wird die Situation wieder als unerwartet behandelt und die
 Warnung erscheint.
 
+## Historischer SOC-Ladeplan zeigt nachts noch den letzten Sollwert des Vorabends
+
+Bis Beta 12 konnte das dynamische SOC-Soll bei einer erwarteten Nachtabschaltung
+am Mindest-SOC auf dem letzten Wert des Vorabends stehen bleiben. Grund war die
+absichtlich gesperrte Übernahme gecachter NOAH-Messwerte.
+
+Ab `2.1.0-beta.13` wird während dieser erwarteten Abschaltung stattdessen der
+konfigurierte Mindest-SOC als dynamisches Soll veröffentlicht.
+
 ## Datenstatus zeigt „Stellgröße nicht verfügbar“, Connectivity ist aber `on`
 
 Unter `2.1.0-beta.10` konnte dies durch die fehlerhafte 3-Minuten-Prüfung von

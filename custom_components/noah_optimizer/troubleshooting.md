@@ -17,7 +17,7 @@ Zusätzlich prüfen:
 
 - HACS-Installation vollständig
 - Home Assistant nach dem Update neu gestartet
-- `manifest.json` auf `2.0.0` (stabil) oder `2.1.0-beta.12` (aktueller Pre-Release)
+- `manifest.json` auf `2.0.0` (stabil) oder `2.1.0-beta.13` (aktueller Pre-Release)
 - alle Quell-Entitäten vorhanden
 - keine Python-Fehler im Protokoll
 
@@ -987,4 +987,28 @@ Schaltet sich der NOAH nachts nach Erreichen des Mindest-SOC erwartungsgemäß
 ab, wird ebenfalls keine persistente Offline-Meldung erzeugt. Sobald die
 Sonnenhöhe über etwa 3° steigt, wird ein weiterhin nicht erreichbarer NOAH
 wieder normal gemeldet.
+## 2.1.0-beta.13: SOC-Freigabe pendelt um den Netz-Nullpunkt
+
+Beta 12 konnte bei einem sicheren SOC-Vorsprung zwischen **SOC-Freigabe** und
+**SOC-Ladeplan halten** pendeln: positiver Netzbezug aktivierte die Freigabe,
+eine kleine Einspeisung beendete sie sofort wieder.
+
+Beta 13 behält den Eintritt bei positivem Netzbezug bei und hält eine aktive
+SOC-Freigabe über eine kleine Export-Hysterese. Deren Breite berücksichtigt den
+Rest-Netzbezug und das Stellgrößenraster. Währenddessen wird mit
+vorzeichenbehafteter Netzleistung in Richtung 0 W nachgeregelt.
+
+## 2.1.0-beta.13: Dynamisches SOC-Soll springt abends auf 100 %
+
+Wenn nur die native Forecast.Solar-Runtime-Kurve vorübergehend fehlt, hält Beta
+13 den letzten gültigen Plan desselben Tages bis zu drei Stunden. Der alte
+Tageslicht-Fallback wird erst nach Ablauf des Caches, bei geändertem
+Planparameter oder nach einem Tageswechsel verwendet.
+
+## 2.1.0-beta.13: Historisches dynamisches Soll bleibt nachts auf dem Vorabendwert
+
+Während der erwarteten Abschaltung am Mindest-SOC veröffentlicht Beta 13 den
+konfigurierten Mindest-SOC als dynamisches Soll. Die Noah-MQTT-Quellwerte
+bleiben dabei weiterhin gesperrt und werden nicht für PV-Learning oder Regelung
+verwendet.
 

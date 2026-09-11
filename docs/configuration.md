@@ -2,7 +2,7 @@
 
 Dieses Dokument beschreibt die HACS-Integration **Growatt NOAH Optimizer**
 für den stabilen Release `2.0.0` und den aktuellen Pre-Release
-`2.1.0-beta.12`.
+`2.1.0-beta.13`.
 
 Die tatsächlichen Entity-IDs können durch Bereichsnamen oder manuelle
 Umbenennungen abweichen. Die Integration und das automatische Dashboard lösen
@@ -618,6 +618,56 @@ getrennt:
 
 Diese Ausnahmen unterdrücken nur die Benachrichtigung, niemals die
 Stellbefehls-Sperre.
+
+## 13.1 Beta 13: Planstabilität und SOC-Freigabe-Hysterese
+
+Beta 13 ergänzt drei Korrekturen ohne neue Benutzeroptionen.
+
+### Forecast.Solar-Kurve kurzzeitig nicht verfügbar
+
+Wenn die native zeitaufgelöste Forecast.Solar-Kurve vorübergehend nicht aus
+den Runtime-Daten gelesen werden kann, verwendet der Optimizer den letzten
+gültigen Plan desselben Kalendertages bis zu **drei Stunden** weiter.
+
+Der Cache wird nur verwendet, wenn die planungsrelevanten Parameter
+(Prognosefaktor inklusive Learning, Energiereserve, Akkukapazität,
+Ladewirkungsgrad, Mindest-SOC und Ziel-SOC) unverändert sind. Ein Cache wird
+nie über einen Tageswechsel hinweg benutzt. Danach greift wieder der bestehende
+Tageslicht-Fallback, falls weiterhin keine native Kurve vorliegt.
+
+Damit kann ein kurzer Forecast.Solar-Runtime-Ausfall gegen Sonnenuntergang das
+dynamische SOC-Soll nicht mehr künstlich in Richtung 100 % springen lassen.
+
+### Erwartete Nachtabschaltung am Mindest-SOC
+
+Während einer erwarteten NOAH-Abschaltung am Mindest-SOC bleiben alle
+Noah-MQTT-Quellupdates aus Sicherheitsgründen gesperrt. Beta 13 setzt in diesem
+Zustand das **dynamische SOC-Soll auf den konfigurierten Mindest-SOC** und den
+dynamischen Status auf Nacht. So bleibt die historische Sollkurve nicht auf
+dem letzten Wert des Vorabends stehen. Es werden dabei keine gecachten
+NOAH-Messwerte übernommen.
+
+### Hysterese der vorausschauenden SOC-Freigabe
+
+Der Eintritt in die SOC-Freigabe bleibt wie bisher bei positivem Netzbezug.
+Ist die SOC-Freigabe bereits aktiv, bleibt sie bei einer kleinen
+Einspeiseüberschwingung aktiv. Der konfigurierte **Rest-Netzbezug** wird dabei
+für die Breite der Ausschalt-Hysterese berücksichtigt.
+
+Die Ausschaltschwelle entspricht dem größten Wert aus:
+
+```text
+50 W
+Rest-Netzbezug
+2 × Stellgrößenraster
+```
+
+Innerhalb dieser Hysterese verwendet das SOC-Freigabe-Soll die
+vorzeichenbehaftete Netzleistung. Kleine Einspeisung reduziert deshalb den
+NOAH-Ausgang in Richtung 0 W Netzleistung, statt sofort auf
+**SOC-Ladeplan halten** umzuschalten. Sobald keine sichere freigebbare
+Akkuenergie mehr vorhanden ist, endet die SOC-Freigabe unabhängig von der
+Hysterese.
 
 ## 14. Legacy-Sperre
 
