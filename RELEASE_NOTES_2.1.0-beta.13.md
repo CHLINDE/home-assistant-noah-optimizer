@@ -25,6 +25,7 @@ Beta 13 adds hysteresis:
   of immediately switching modes.
 - Release still stops immediately when safe releasable battery headroom is no
   longer available.
+- Disabling predictive SOC release takes effect immediately; the hysteresis never keeps a disabled release mode latched.
 
 No new user option is required.
 

@@ -27,6 +27,7 @@ from .const import (
     OPT_COMMAND_STEP,
     OPT_GRID_RESERVE,
     OPT_MAX_OUTPUT,
+    OPT_SOC_RELEASE_ENABLED,
     STATUS_ACTUATOR_UNAVAILABLE,
 )
 from .coordinator import NoahOptimizerCoordinator
@@ -199,7 +200,8 @@ class NoahOfflineAwareCoordinator(NoahOptimizerCoordinator):
             max(command_step, 0.0) * 2.0,
         )
         retain_release = (
-            previous_mode == CONTROLLER_SOC_RELEASE
+            bool(self.get_option(OPT_SOC_RELEASE_ENABLED))
+            and previous_mode == CONTROLLER_SOC_RELEASE
             and mode == CONTROLLER_SOC_HOLD
             and release_headroom
             and grid_power >= -export_hysteresis

@@ -289,7 +289,8 @@ halten**. Der Eintritt bleibt wie bisher bei positivem Netzbezug. Ist die
 SOC-Freigabe aktiv, bleibt sie über eine kleine Einspeise-Hysterese erhalten.
 Deren Breite berücksichtigt den konfigurierten Rest-Netzbezug und das
 Stellgrößenraster. Innerhalb der Freigabe wird die vorzeichenbehaftete Netzleistung
-um den Sollwert wieder in Richtung 0 W Netzleistung zu korrigieren.
+verwendet, um den Sollwert wieder in Richtung 0 W Netzleistung zu korrigieren.
+Wird die vorausschauende SOC-Freigabe deaktiviert, endet die Hysterese sofort.
 
 **Forecast.Solar:** Fällt die native Forecast.Solar-Kurve kurzfristig aus, wird
 der letzte gültige Plan desselben Tages bis zu drei Stunden weiterverwendet.

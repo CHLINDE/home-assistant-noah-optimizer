@@ -1358,6 +1358,7 @@ Diese ist der größte Wert aus
 Während die Freigabe aktiv bleibt, wird die vorzeichenbehaftete Netzleistung
 für das Soll verwendet. Eine kleine Einspeisung reduziert daher den Ausgang in
 Richtung Netz-Nullpunkt, statt sofort auf **SOC-Ladeplan halten** umzuschalten.
+Wird die vorausschauende SOC-Freigabe deaktiviert, wird die Freigabe nicht durch die Hysterese gehalten.
 
 Keine Dashboard- oder Translation-Migration erforderlich.
 
