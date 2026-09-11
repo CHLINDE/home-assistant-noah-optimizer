@@ -74,6 +74,16 @@ als unerwarteter Offline-Zustand behandelt und die Warnung erscheint. Dadurch
 bleibt ein Gerät, das morgens trotz ausreichender Tageszeit nicht wiederkehrt,
 erkennbar.
 
+### Beta 13: dynamisches SOC-Soll während erwarteter Nachtabschaltung
+
+Während der erwarteten Mindest-SOC-Nachtabschaltung bleiben die Quellwerte des
+NOAH weiterhin gesperrt. Zusätzlich setzt der Optimizer das dynamische SOC-Soll
+auf den konfigurierten Mindest-SOC und den dynamischen Status auf Nacht.
+
+Damit zeigt die historische SOC-Karte am Tagesanfang nicht mehr den eingefrorenen
+letzten Sollwert des Vorabends. Diese Korrektur verwendet ausschließlich die
+Optimizer-Konfiguration und übernimmt keine gecachten Noah-MQTT-Messwerte.
+
 ## Warum keine `last_reported`-Zeitstempelprüfung verwendet wird
 
 Beta 10 verwendete `State.last_reported`, um einen unverändert auf `on`

@@ -1,7 +1,7 @@
 # Konfiguration
 
 Dieses Dokument beschreibt die HACS-Integration **Growatt NOAH Optimizer**
-für den aktuellen Pre-Release `2.1.0-beta.12`.
+für den aktuellen Pre-Release `2.1.0-beta.13`.
 
 `2.1.0-beta.1` ergänzt auf Basis des stabilen Stands `2.0.0` passives,
 persistentes PV-Learning. `2.1.0-beta.2` korrigiert zusätzlich die Automatik
@@ -1325,4 +1325,39 @@ Mindest-SOC (Sonnenhöhe unter 3°).
 
 Die Stellbefehls-, Failsafe-, Coordinator- und PV-Learning-Sperren bleiben
 dabei vollständig aktiv.
+## 2.1.0-beta.13 – Planstabilität und SOC-Freigabe-Hysterese
+
+Beta 13 ergänzt drei Laufzeitkorrekturen ohne neue Benutzeroptionen.
+
+### Forecast.Solar-Kurve zwischenspeichern
+
+Kann die native Forecast.Solar-Kurve vorübergehend nicht aus den Runtime-Daten
+gelesen werden, hält der Optimizer den letzten gültigen Plan desselben lokalen
+Kalendertages für maximal drei Stunden. Der Cache gilt nur bei unveränderten
+planungsrelevanten Parametern und wird nie über Mitternacht verwendet.
+
+Damit wechselt das dynamische SOC-Soll bei einem kurzen Forecast-Ausfall nicht
+mehr gegen Sonnenuntergang auf den alten Tageslicht-Fallback und springt nicht
+künstlich in Richtung 100 %.
+
+### Dynamisches Soll bei erwarteter Nachtabschaltung
+
+Wenn der NOAH am Mindest-SOC nachts erwartungsgemäß abschaltet, bleiben die
+Noah-MQTT-Quellwerte weiterhin gesperrt. Der Optimizer veröffentlicht für die
+Historie aber den konfigurierten Mindest-SOC als dynamisches Soll und markiert
+den dynamischen Status als Nacht.
+
+### Hysterese der SOC-Freigabe
+
+Der Eintritt in die SOC-Freigabe bleibt wie bisher bei positivem Netzbezug.
+Nach dem Eintritt bleibt sie bei einer kleinen Einspeiseüberschwingung aktiv.
+Der Rest-Netzbezug wird für die Breite der Export-Hysterese berücksichtigt.
+Diese ist der größte Wert aus
+`50 W`, `Rest-Netzbezug` und `2 × Stellgrößenraster`.
+
+Während die Freigabe aktiv bleibt, wird die vorzeichenbehaftete Netzleistung
+für das Soll verwendet. Eine kleine Einspeisung reduziert daher den Ausgang in
+Richtung Netz-Nullpunkt, statt sofort auf **SOC-Ladeplan halten** umzuschalten.
+
+Keine Dashboard- oder Translation-Migration erforderlich.
 

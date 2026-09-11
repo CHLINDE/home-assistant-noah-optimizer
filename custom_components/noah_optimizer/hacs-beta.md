@@ -2,7 +2,7 @@
 
 Stable release: `2.0.0`
 
-Current pre-release: `2.1.0-beta.12`
+Current pre-release: `2.1.0-beta.13`
 
 The `2.1.0-beta.1` pre-release adds passive, persistent PV learning. Applying
 the learned correction is opt-in and disabled by default. `2.1.0-beta.2` keeps
@@ -13,6 +13,24 @@ dynamic SOC schedule from the time-resolved forecast without making extra
 Forecast.Solar API calls.
 `2.1.0-beta.4` adds date-selectable SOC schedule history and persistent
 forecast/plan snapshots for reviewing older days and individual plan versions.
+
+## 2.1.0-beta.13 – Stable SOC release and resilient forecast planning
+
+Beta 13 fixes three observed runtime edge cases:
+
+- predictive SOC release uses entry/exit hysteresis around the grid zero point
+- signed grid power corrects small export overshoots without immediately
+  leaving SOC release
+- the last valid same-day native Forecast.Solar curve is reused for up to three
+  hours when runtime curve data temporarily disappears
+- an expected minimum-SOC night shutdown publishes minimum SOC as the dynamic
+  target instead of leaving the previous evening's value frozen
+
+The forecast cache is discarded after three hours, at the local day change, or
+when plan-defining parameters change. Existing offline safety and PV-learning
+guards stay active.
+
+No dashboard-template or translation migration is required.
 
 ## 2.1.0-beta.12 – History tooltip and smarter offline notifications
 
@@ -1122,7 +1140,7 @@ First stable 2.x release:
 
 ## Current limitations 
 
-The current `2.1.0-beta.12` pre-release does not yet include:
+The current `2.1.0-beta.13` pre-release does not yet include:
 
 - learned household load
 - multiple independent NOAH systems

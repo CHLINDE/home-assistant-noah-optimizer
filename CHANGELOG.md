@@ -1,3 +1,37 @@
+## [2.1.0-beta.13]
+
+### Fixed
+
+- Added hysteresis between predictive SOC release and SOC schedule hold to prevent
+  repeated mode switching around zero grid power
+- SOC release keeps its existing positive-grid-import entry behavior but now
+  remains active across a small export overshoot while safe battery headroom
+  still exists
+- Predictive SOC release now uses signed grid power while active so a small
+  export reduces the target toward zero instead of immediately leaving release
+- Keeps the last valid same-day Forecast.Solar curve for up to three hours when
+  Forecast.Solar runtime curve data temporarily disappears
+- Prevents a short Forecast.Solar runtime interruption from switching to the
+  daylight fallback and artificially driving the dynamic SOC target toward 100 %
+  near sunset
+- During an expected minimum-SOC night shutdown, publishes the configured
+  minimum SOC as the dynamic SOC target instead of leaving the previous day's
+  final target frozen
+
+### Safety
+
+- Existing NOAH offline command and PV-learning guards remain unchanged
+- Forecast-curve reuse is limited to the same local day, three hours and
+  unchanged planning parameters
+- Predictive release still requires forecast-based releasable battery headroom
+
+### Changed version
+
+- Integration version updated to `2.1.0-beta.13`
+- No dashboard-template or translation migration is required
+
+---
+
 ## [2.1.0-beta.12]
 
 ### Added

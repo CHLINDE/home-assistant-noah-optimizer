@@ -4,7 +4,7 @@ Prognosebasierte Steuerung der Ausgangsleistung eines Growatt NOAH 2000
 über Home Assistant und Noah-MQTT.
 
 > **Status:** Stabiler Release `2.0.0`. Aktueller Pre-Release:
-> `2.1.0-beta.12`.
+> `2.1.0-beta.13`.
 >
 > Die aktive Steuerung kann die NOAH-Ausgangsleistung verändern. Vor der
 > Aktivierung sollten Quellwerte, Netzvorzeichen und Stellgröße geprüft werden.
@@ -31,6 +31,9 @@ Prognosebasierte Steuerung der Ausgangsleistung eines Growatt NOAH 2000
 - Stellbefehle und PV-Learning gegen gecachte Offline-Daten absichern
 - bei unerwartetem NOAH-Offline-Zustand eine persistente Home-Assistant-Benachrichtigung anzeigen
 - erwartete Mindest-SOC-Nachtabschaltung ohne Fehlalarm behandeln
+- dynamisches SOC-Soll während erwarteter Nachtabschaltung am Mindest-SOC halten
+- kurzfristige Forecast.Solar-Kurvenausfälle ohne Sprung auf den Tageslicht-Fallback überbrücken
+- SOC-Freigabe mit Hysterese stabil um den Netz-Nullpunkt regeln
 
 ## HACS-Integration
 
@@ -43,7 +46,7 @@ Aktuelle stabile Version:
 Aktueller Pre-Release:
 
 ```text
-2.1.0-beta.12
+2.1.0-beta.13
 ```
 
 ### 2.1.0-beta.1 – PV-Learning
@@ -276,6 +279,33 @@ ausgelöst:
 
 Keine Dashboard-Template-Migration erforderlich.
 
+### 2.1.0-beta.13 – stabile SOC-Freigabe und robuster Ladeplan
+
+Beta 13 korrigiert drei im realen Betrieb sichtbare Randfälle.
+
+**SOC-Freigabe:** Die Regelung wechselt nicht mehr bei jeder kleinen
+Netzleistungsänderung um 0 W zwischen **SOC-Freigabe** und **SOC-Ladeplan
+halten**. Der Eintritt bleibt wie bisher bei positivem Netzbezug. Ist die
+SOC-Freigabe aktiv, bleibt sie über eine kleine Einspeise-Hysterese erhalten.
+Deren Breite berücksichtigt den konfigurierten Rest-Netzbezug und das
+Stellgrößenraster. Innerhalb der Freigabe wird die vorzeichenbehaftete Netzleistung
+um den Sollwert wieder in Richtung 0 W Netzleistung zu korrigieren.
+
+**Forecast.Solar:** Fällt die native Forecast.Solar-Kurve kurzfristig aus, wird
+der letzte gültige Plan desselben Tages bis zu drei Stunden weiterverwendet.
+Damit springt das dynamische SOC-Soll gegen Sonnenuntergang nicht mehr
+künstlich auf den alten Tageslicht-Fallback mit bis zu 100 %. Der Cache wird
+nur bei unveränderten planungsrelevanten Parametern genutzt und nie über einen
+Tageswechsel hinweg.
+
+**Nachtabschaltung:** Schaltet sich der NOAH nachts erwartungsgemäß am
+Mindest-SOC ab, wird das dynamische SOC-Soll auf den konfigurierten Mindest-SOC
+gesetzt. Dadurch bleibt die historische grüne Sollkurve nicht mehr auf dem
+letzten Wert des Vorabends stehen. Gecachte NOAH-Messwerte werden dabei
+weiterhin nicht verarbeitet.
+
+Keine Dashboard-Template- oder Translation-Migration erforderlich.
+
 ## Voraussetzungen
 
 - Home Assistant
@@ -320,7 +350,7 @@ Typ:
 Integration
 ```
 
-Für `2.1.0-beta.12` müssen in HACS Vorabversionen für dieses Repository
+Für `2.1.0-beta.13` müssen in HACS Vorabversionen für dieses Repository
 angezeigt werden.
 
 Nach Installation oder Update Home Assistant vollständig neu starten.
@@ -842,6 +872,19 @@ Prüfen:
 Danach aktive Steuerung wieder freigeben.
 
 ## Versionshistorie
+
+### 2.1.0-beta.13
+
+- Hysterese zwischen SOC-Freigabe und SOC-Ladeplan halten
+- Ausschalt-Hysterese berücksichtigt Rest-Netzbezug und Stellgrößenraster
+- kleine Einspeiseüberschwinger werden innerhalb der SOC-Freigabe ausgeregelt
+- letzter gültiger Forecast.Solar-Tagesplan wird bei kurzen Kurvenausfällen bis
+  zu drei Stunden gehalten
+- kein künstlicher 100-%-Sprung des dynamischen SOC-Solls bei temporärem
+  Forecast-Kurvenverlust
+- dynamisches SOC-Soll wird bei erwarteter Mindest-SOC-Nachtabschaltung auf den
+  Mindest-SOC gesetzt
+- keine neue Dashboard-Template- oder Translation-Version
 
 ### 2.1.0-beta.12
 

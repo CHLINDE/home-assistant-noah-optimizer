@@ -1,7 +1,7 @@
 # Installation
 
 Diese Anleitung beschreibt die Installation und das Update des **Home
-Assistant Growatt NOAH Optimizers** für den aktuellen Pre-Release `2.1.0-beta.12`.
+Assistant Growatt NOAH Optimizers** für den aktuellen Pre-Release `2.1.0-beta.13`.
 
 Für neue Installationen wird die HACS-Integration empfohlen.
 
@@ -102,16 +102,16 @@ Typ:
 Integration
 ```
 
-## 5. Version 2.1.0-beta.12 installieren
+## 5. Version 2.1.0-beta.13 installieren
 
 Zu installierende Version:
 
 ```text
-2.1.0-beta.12
+2.1.0-beta.13
 ```
 
 In HACS müssen für dieses Repository Vorabversionen angezeigt beziehungsweise
-berücksichtigt werden. Danach `2.1.0-beta.12` auswählen und installieren.
+berücksichtigt werden. Danach `2.1.0-beta.13` auswählen und installieren.
 
 Nach der Installation Home Assistant vollständig neu starten.
 
@@ -738,4 +738,17 @@ Warnung während der 90-sekündigen Startup-Grace oder bei der erwarteten
 Mindest-SOC-Nachtabschaltung.
 
 Keine Dashboard-Migration erforderlich.
+## Update von 2.1.0-beta.12 auf beta.13
+
+Beta 13 benötigt keine Dashboard- oder Translation-Migration. Nach Installation
+Home Assistant vollständig neu starten.
+
+Zu prüfen:
+
+1. SOC-Freigabe darf bei kleinen Netzleistungsüberschwingern nicht mehr
+   zyklisch zwischen **SOC-Freigabe** und **SOC-Ladeplan halten** wechseln.
+2. Ein kurzfristig fehlender nativer Forecast.Solar-Plan darf das dynamische
+   Soll nicht gegen Sonnenuntergang auf 100 % springen lassen.
+3. Bei erwarteter Nachtabschaltung am Mindest-SOC muss das dynamische Soll auf
+   dem Mindest-SOC liegen, während alle Offline-Sicherheitssperren aktiv bleiben.
 

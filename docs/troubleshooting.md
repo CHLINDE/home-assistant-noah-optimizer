@@ -1,7 +1,7 @@
 # Fehlerbehebung
 
 Dieses Dokument bezieht sich auf die HACS-Integration **Growatt NOAH
-Optimizer**, insbesondere `2.1.0-beta.12`.
+Optimizer**, insbesondere `2.1.0-beta.13`.
 
 ## 1. Integration wird nicht geladen
 
@@ -16,7 +16,7 @@ suchen.
 Prüfen:
 
 - Home Assistant neu gestartet
-- `manifest.json` auf `2.1.0-beta.12`
+- `manifest.json` auf `2.1.0-beta.13`
 - Quell-Entitäten vorhanden
 - keine Python-Fehler
 
@@ -360,7 +360,7 @@ vorgeschaltet sein.
 Prüfen:
 
 - aktuelle `dashboard_migration_v18.py`
-- Version `2.1.0-beta.12`
+- Version `2.1.0-beta.13`
 - Neustart
 
 ## 43. Migration läuft immer wieder
@@ -433,7 +433,7 @@ Die Prognose ist keine Garantie. Reale PV und Last können abweichen.
 HACS und `manifest.json` prüfen:
 
 ```text
-2.1.0-beta.12
+2.1.0-beta.13
 ```
 
 ## 53. Was ändert Beta 9 an der Regelung?
@@ -473,12 +473,51 @@ obwohl weiterhin aktuelle MQTT-Daten vorlagen.
 Lösung:
 
 ```text
-2.1.0-beta.12 oder neuer installieren
+2.1.0-beta.13 oder neuer installieren
 Home Assistant vollständig neu starten
 ```
 
 Beta 11 verwendet für die Offline-Entscheidung ausschließlich den tatsächlichen
 Connectivity-Zustand.
+
+## Beta 13: SOC-Freigabe pendelt zwischen Netzbezug und Einspeisung
+
+Bis Beta 12 konnte die SOC-Freigabe bei einem Akku vor dem Ladeplan um den
+Netz-Nullpunkt pendeln: positiver Netzbezug aktivierte SOC-Freigabe, eine kleine
+Einspeisung deaktivierte sie sofort wieder und **SOC-Ladeplan halten** senkte
+den Ausgang deutlich.
+
+Ab Beta 13 gilt eine Hysterese. Der Eintritt bleibt bei positivem Netzbezug.
+Ist die SOC-Freigabe aktiv, bleibt sie über eine kleine
+Einspeiseüberschwingung erhalten. Die Ausschalt-Hysterese berücksichtigt
+Rest-Netzbezug und Stellgrößenraster; innerhalb der Freigabe wird mit
+vorzeichenbehafteter Netzleistung zurück Richtung 0 W geregelt.
+
+Wenn weiterhin starkes Pendeln sichtbar ist, prüfen:
+
+- `Rest-Netzbezug`
+- `Stellgrößenraster`
+- Aktualisierungsrate und Verzögerung des Netzleistungssensors
+- ob `System Output Power` Stellbefehle zeitnah übernimmt
+
+## Beta 13: Dynamisches SOC-Soll springt abends plötzlich auf 100 %
+
+Wenn der Restprognose-Sensor verfügbar bleibt, die native zeitaufgelöste
+Forecast.Solar-Kurve aber kurzzeitig aus den Runtime-Daten verschwindet, konnte
+Beta 12 auf den alten Tageslicht-Fallback wechseln. Gegen Sonnenuntergang liegt
+dieser Fallback nahe dem Ziel-SOC und konnte deshalb einen künstlichen
+100-%-Sprung erzeugen.
+
+Beta 13 hält den letzten gültigen Forecast.Solar-Plan desselben Tages bis zu
+drei Stunden. Der Cache verfällt bei geändertem Planparameter, nach drei
+Stunden oder spätestens beim Tageswechsel.
+
+## Beta 13: Dynamisches Soll ist nachts 100 %, obwohl der NOAH bei Mindest-SOC aus ist
+
+Bei der erwarteten Nachtabschaltung werden NOAH-Quellwerte bewusst nicht
+weiterverarbeitet. Bis Beta 12 konnte dadurch der letzte Sollwert des Vorabends
+im Recorder stehen bleiben. Beta 13 veröffentlicht für diese Phase den
+konfigurierten Mindest-SOC als dynamisches SOC-Soll.
 
 ## 54. Home Assistant meldet „NOAH Optimizer: NOAH offline“
 
@@ -507,7 +546,7 @@ behandelt.
 
 Wenn dieses Verhalten noch auftritt:
 
-1. Prüfen, ob tatsächlich `2.1.0-beta.12` oder neuer installiert ist.
+1. Prüfen, ob tatsächlich `2.1.0-beta.13` oder neuer installiert ist.
 2. Home Assistant vollständig neu starten.
 3. Den Rohzustand des Noah-MQTT-Connectivity-Sensors unter
    **Werkzeuge → Zustände** prüfen.

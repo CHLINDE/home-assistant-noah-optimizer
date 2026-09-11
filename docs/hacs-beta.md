@@ -9,7 +9,7 @@ Stable release:
 Current pre-release:
 
 ```text
-2.1.0-beta.12
+2.1.0-beta.13
 ```
 
 ## Direct HACS repository button
@@ -94,6 +94,25 @@ Dashboard template 18 -> 19
 
 The version bump forces the corrected migration to run on installations that
 have already stored template version 18.
+
+### Beta 13 - Stable SOC release and resilient forecast planning
+
+Beta 13 fixes three runtime edge cases without adding new entities or options:
+
+- predictive SOC release now uses entry/exit hysteresis instead of switching
+  immediately around 0 W grid power
+- while SOC release remains active, signed grid power corrects small export
+  overshoots back toward zero
+- the last valid same-day Forecast.Solar curve is kept for up to three hours
+  when the native runtime curve temporarily disappears
+- expected minimum-SOC night shutdowns publish the configured minimum SOC as
+  the dynamic target instead of leaving the previous evening's target frozen
+
+The forecast cache never crosses a local day boundary and is discarded when
+plan-defining parameters change. Existing offline command/PV-learning guards
+remain unchanged.
+
+No dashboard-template or translation migration is required.
 
 ### Beta 12 - History tooltip and offline notification handling
 
