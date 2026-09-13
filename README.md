@@ -4,7 +4,7 @@ Prognosebasierte Steuerung der Ausgangsleistung eines Growatt NOAH 2000
 über Home Assistant und Noah-MQTT.
 
 > **Status:** Stabiler Release `2.0.0`. Aktueller Pre-Release:
-> `2.1.0-beta.13`.
+> `2.1.0-beta.14`.
 >
 > Die aktive Steuerung kann die NOAH-Ausgangsleistung verändern. Vor der
 > Aktivierung sollten Quellwerte, Netzvorzeichen und Stellgröße geprüft werden.
@@ -34,6 +34,7 @@ Prognosebasierte Steuerung der Ausgangsleistung eines Growatt NOAH 2000
 - dynamisches SOC-Soll während erwarteter Nachtabschaltung am Mindest-SOC halten
 - kurzfristige Forecast.Solar-Kurvenausfälle ohne Sprung auf den Tageslicht-Fallback überbrücken
 - SOC-Freigabe mit Hysterese stabil um den Netz-Nullpunkt regeln
+- SOC-Ladeplan bei neuen Forecast.Solar-Kurven auf Ist-SOC und verbleibende Prognose neu verankern
 
 ## HACS-Integration
 
@@ -46,7 +47,7 @@ Aktuelle stabile Version:
 Aktueller Pre-Release:
 
 ```text
-2.1.0-beta.13
+2.1.0-beta.14
 ```
 
 ### 2.1.0-beta.1 – PV-Learning
@@ -307,6 +308,36 @@ weiterhin nicht verarbeitet.
 
 Keine Dashboard-Template- oder Translation-Migration erforderlich.
 
+### 2.1.0-beta.14 – Intraday-Rebasing des SOC-Ladeplans
+
+Beta 14 korrigiert die Behandlung bereits vergangener Forecast-Energie.
+Forecast.Solar liefert eine vollständige Tageskurve, deren vergangene Zeitfenster
+weiter Forecastwerte enthalten. Bisher wurde daraus auch am Nachmittag noch ein
+SOC-Plan ab Mindest-SOC für den kompletten Tag aufgebaut. Damit konnte Energie,
+die am Vormittag wegen Regen tatsächlich nicht erzeugt wurde, rechnerisch weiter
+im Tagesplan enthalten sein.
+
+Sobald Forecast.Solar einen neuen Stand meldet oder sich die native
+zeitaufgelöste Leistungskurve ändert, setzt Beta 14 deshalb einen neuen
+Plan-Anker:
+
+```text
+Anker = aktueller Ist-SOC zum Forecast-Update
+Plan ab Anker = nur noch zukünftige Forecast.Solar-Leistung
+End-SOC = aus Ist-SOC + verbleibender nutzbarer Prognose
+```
+
+Normale Coordinator-Aktualisierungen verschieben diesen Anker ausdrücklich
+nicht. Der Regler kann einen Rückstand zwischen zwei echten Forecast-Updates
+also weiterhin erkennen und nachladen. Beim nächsten Forecast-Update wird nur
+die Zukunft neu geplant; der bereits vergangene Planabschnitt bleibt in den
+Historien-Snapshots sichtbar.
+
+Prognose-Sicherheitsreserve, Ladeeffizienz, Mindest-SOC, Ziel-SOC sowie die
+Beta-13-Cache- und Offline-Schutzmechanismen bleiben erhalten.
+
+Keine Dashboard-Template- oder Translation-Migration erforderlich.
+
 ## Voraussetzungen
 
 - Home Assistant
@@ -351,7 +382,7 @@ Typ:
 Integration
 ```
 
-Für `2.1.0-beta.13` müssen in HACS Vorabversionen für dieses Repository
+Für `2.1.0-beta.14` müssen in HACS Vorabversionen für dieses Repository
 angezeigt werden.
 
 Nach Installation oder Update Home Assistant vollständig neu starten.
@@ -873,6 +904,17 @@ Prüfen:
 Danach aktive Steuerung wieder freigeben.
 
 ## Versionshistorie
+
+### 2.1.0-beta.14
+
+- Intraday-Rebasing bei tatsächlich geänderter nativer Forecast.Solar-Kurve
+- aktueller Ist-SOC wird zum neuen Ladeplan-Anker
+- bereits vergangene Forecast-Energie wird nicht mehr als verfügbare Ladeenergie
+  des weiteren Tages behandelt
+- End-SOC wird aus aktuellem SOC und verbleibender Prognose neu berechnet
+- kein permanentes Rebasing bei normalen NOAH-Coordinator-Updates
+- vergangene Planabschnitte bleiben in den History-Snapshots sichtbar
+- keine neue Dashboard-Template- oder Translation-Version
 
 ### 2.1.0-beta.13
 

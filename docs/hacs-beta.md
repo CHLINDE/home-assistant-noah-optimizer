@@ -9,8 +9,19 @@ Stable release:
 Current pre-release:
 
 ```text
-2.1.0-beta.13
+2.1.0-beta.14
 ```
+
+
+## Beta 14 – Intraday SOC plan rebasing
+
+When Forecast.Solar publishes a new source update or its native time-resolved power curve changes,
+the current measured SOC becomes the new actionable plan anchor. Only forecast
+PV energy after that timestamp contributes to the future SOC gain. Normal
+coordinator refreshes do not move the anchor.
+
+This prevents already elapsed forecast energy from keeping an afternoon plan
+too optimistic on days where actual production was lower than forecast.
 
 ## Direct HACS repository button
 

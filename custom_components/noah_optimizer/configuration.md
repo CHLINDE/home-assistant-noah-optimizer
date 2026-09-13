@@ -1,7 +1,7 @@
 # Konfiguration
 
 Dieses Dokument beschreibt die HACS-Integration **Growatt NOAH Optimizer**
-für den aktuellen Pre-Release `2.1.0-beta.13`.
+für den aktuellen Pre-Release `2.1.0-beta.14`.
 
 `2.1.0-beta.1` ergänzt auf Basis des stabilen Stands `2.0.0` passives,
 persistentes PV-Learning. `2.1.0-beta.2` korrigiert zusätzlich die Automatik
@@ -1362,3 +1362,23 @@ Wird die vorausschauende SOC-Freigabe deaktiviert, wird die Freigabe nicht durch
 
 Keine Dashboard- oder Translation-Migration erforderlich.
 
+
+
+## 2.1.0-beta.14 – Intraday-Rebasing des Ladeplans
+
+Die vollständige native Forecast.Solar-Tageskurve enthält auch für bereits
+vergangene Zeiträume weiterhin Prognosewerte. Beta 14 verwendet diese vergangene
+Prognoseenergie nicht mehr so, als wäre sie tatsächlich erzeugt worden.
+
+Meldet Forecast.Solar einen neuen Stand oder ändert sich die native zeitaufgelöste Leistungskurve, wird der
+aktuelle Ist-SOC zusammen mit dem Aktualisierungszeitpunkt als neuer
+Ladeplan-Anker gespeichert. Ab diesem Zeitpunkt wird nur noch die zukünftige
+Forecast-Leistung integriert. Daraus ergibt sich ein neuer, physikalisch
+erreichbarer prognostizierter End-SOC.
+
+Der Anker wird **nicht** bei jedem Coordinator-Update verschoben. Zwischen zwei
+echten Forecast-Änderungen bleibt der Plan stabil, sodass ein SOC-Rückstand
+weiterhin erkannt und durch SOC-Nachladung ausgeglichen werden kann.
+
+Die Prognose-Sicherheitsreserve, Ladeeffizienz, Mindest- und Ziel-SOC bleiben
+unverändert wirksam. Beta-13-Forecast-Cache und Offline-Schutz bleiben erhalten.

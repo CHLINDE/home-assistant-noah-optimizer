@@ -17,7 +17,7 @@ Zusätzlich prüfen:
 
 - HACS-Installation vollständig
 - Home Assistant nach dem Update neu gestartet
-- `manifest.json` auf `2.0.0` (stabil) oder `2.1.0-beta.13` (aktueller Pre-Release)
+- `manifest.json` auf `2.0.0` (stabil) oder `2.1.0-beta.14` (aktueller Pre-Release)
 - alle Quell-Entitäten vorhanden
 - keine Python-Fehler im Protokoll
 
@@ -1012,3 +1012,16 @@ konfigurierten Mindest-SOC als dynamisches Soll. Die Noah-MQTT-Quellwerte
 bleiben dabei weiterhin gesperrt und werden nicht für PV-Learning oder Regelung
 verwendet.
 
+
+
+## 2.1.0-beta.14: SOC-Plan ist an einem schlechten Tag zu optimistisch
+
+Bis Beta 13 wurde der zeitaufgelöste SOC-Plan aus der vollständigen
+Forecast.Solar-Tageskurve ab Mindest-SOC aufgebaut. Bereits vergangene
+Forecast-Zeitfenster blieben dadurch rechnerisch im Tagesplan, auch wenn deren
+Energie wegen schlechtem Wetter tatsächlich nicht erzeugt wurde.
+
+Beta 14 verankert den zukünftigen Plan bei einem neuen Forecast.Solar-Stand oder einer geänderten nativen
+Forecast.Solar-Kurve am dann gemessenen Ist-SOC und berücksichtigt für den
+weiteren SOC-Anstieg nur die noch zukünftige Forecast-Leistung. Dadurch wird der
+prognostizierte End-SOC intraday realistisch nachgeführt.
