@@ -17,7 +17,7 @@ Zusätzlich prüfen:
 
 - HACS-Installation vollständig
 - Home Assistant nach dem Update neu gestartet
-- `manifest.json` auf `2.0.0` (stabil) oder `2.1.0-beta.14` (aktueller Pre-Release)
+- `manifest.json` auf `2.0.0` (stabil) oder `2.1.0-beta.15` (aktueller Pre-Release)
 - alle Quell-Entitäten vorhanden
 - keine Python-Fehler im Protokoll
 
@@ -1025,3 +1025,18 @@ Beta 14 verankert den zukünftigen Plan bei einem neuen Forecast.Solar-Stand ode
 Forecast.Solar-Kurve am dann gemessenen Ist-SOC und berücksichtigt für den
 weiteren SOC-Anstieg nur die noch zukünftige Forecast-Leistung. Dadurch wird der
 prognostizierte End-SOC intraday realistisch nachgeführt.
+
+
+## 2.1.0-beta.15: Restprognose positiv, SOC-Plan bleibt trotzdem flach
+
+Beta 14 konnte nach einem Intraday-Rebase eine andere Restenergiemenge aus der
+nativen Leistungskurve integrieren als der Forecast.Solar-Sensor
+`energy_production_today_remaining` meldete. War die integrierte Kurvenfläche
+kleiner als die konfigurierte Prognose-Sicherheitsreserve, blieb der Plan am
+aktuellen SOC stehen, obwohl die Restprognose noch positive nutzbare Energie
+zeigte.
+
+Beta 15 verwendet die Restprognose als maßgebliche Energiemenge und normiert die
+verbleibende native Kurvenfläche darauf. Die Kurve bestimmt nur noch die
+zeitliche Verteilung. Dadurch sind **Restprognose wirksam** und
+**Prognostizierter End-SOC** energetisch konsistent.

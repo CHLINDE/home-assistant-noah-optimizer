@@ -1,7 +1,7 @@
 # Installation
 
 Diese Anleitung beschreibt die Installation und das Update des **Home
-Assistant Growatt NOAH Optimizers** für den aktuellen Pre-Release `2.1.0-beta.14`.
+Assistant Growatt NOAH Optimizers** für den aktuellen Pre-Release `2.1.0-beta.15`.
 
 Für neue Installationen wird die HACS-Integration empfohlen.
 
@@ -102,16 +102,16 @@ Typ:
 Integration
 ```
 
-## 5. Version 2.1.0-beta.14 installieren
+## 5. Version 2.1.0-beta.15 installieren
 
 Zu installierende Version:
 
 ```text
-2.1.0-beta.14
+2.1.0-beta.15
 ```
 
 In HACS müssen für dieses Repository Vorabversionen angezeigt beziehungsweise
-berücksichtigt werden. Danach `2.1.0-beta.14` auswählen und installieren.
+berücksichtigt werden. Danach `2.1.0-beta.15` auswählen und installieren.
 
 Nach der Installation Home Assistant vollständig neu starten.
 
@@ -762,3 +762,15 @@ aktuellen Ist-SOC neu verankert. Der zukünftige Plan darf nur noch aus der nach
 diesem Zeitpunkt verbleibenden Forecast-Leistung ansteigen. Normale
 Coordinator-Aktualisierungen ohne geänderte Forecast-Kurve dürfen den Anker
 nicht verschieben.
+
+
+## Beta 15 prüfen
+
+Nach einem Forecast.Solar-Update müssen **Restprognose wirksam** und der
+prognostizierte End-SOC des aktuellen Planstands zueinander passen. Die gelbe
+Planlinie verwendet weiterhin die Form der nativen Forecast.Solar-Kurve, ihr
+verbleibender Energieinhalt wird jedoch auf die wirksame Restprognose normiert.
+
+Bei einem niedrigen Ist-SOC und noch positiver Restprognose darf der Plan deshalb
+nicht allein wegen einer zu kleinen integrierten Restfläche der nativen Kurve
+flach auf dem Ist-SOC stehen bleiben.

@@ -1,7 +1,7 @@
 # Konfiguration
 
 Dieses Dokument beschreibt die HACS-Integration **Growatt NOAH Optimizer**
-für den aktuellen Pre-Release `2.1.0-beta.14`.
+für den aktuellen Pre-Release `2.1.0-beta.15`.
 
 `2.1.0-beta.1` ergänzt auf Basis des stabilen Stands `2.0.0` passives,
 persistentes PV-Learning. `2.1.0-beta.2` korrigiert zusätzlich die Automatik
@@ -1382,3 +1382,25 @@ weiterhin erkannt und durch SOC-Nachladung ausgeglichen werden kann.
 
 Die Prognose-Sicherheitsreserve, Ladeeffizienz, Mindest- und Ziel-SOC bleiben
 unverändert wirksam. Beta-13-Forecast-Cache und Offline-Schutz bleiben erhalten.
+
+
+## 2.1.0-beta.15 – Normierung der verbleibenden Forecast-Energie
+
+Beta 15 verwendet für das Intraday-Rebasing zwei Forecast.Solar-Darstellungen
+mit klar getrennter Aufgabe:
+
+- `energy_production_today_remaining` bestimmt die noch verfügbare Energiemenge.
+- Die native zeitaufgelöste Leistungskurve bestimmt die zeitliche Verteilung
+  dieser Energie bis zum Tagesende.
+
+Nach einem neuen Forecast-Anker wird die integrierte zukünftige Kurvenfläche auf
+die wirksame Restprognose normiert. Erst danach werden Prognose-Sicherheitsreserve
+und Ladeeffizienz angewendet. So verwenden dynamisches SOC-Soll, gespeicherter
+Plan und prognostizierter End-SOC dieselbe Restenergiemenge wie die normale
+Reglerberechnung.
+
+Ist die Restprognose vorübergehend nicht verfügbar, bleibt die native
+Beta-14-Kurvenintegration als Fallback erhalten. Existiert keine nutzbare
+zukünftige Kurvenform, wird kein künstlicher Verlauf erzeugt.
+
+Keine Dashboard- oder Translation-Migration erforderlich.

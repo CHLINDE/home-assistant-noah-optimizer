@@ -9,9 +9,19 @@ Stable release:
 Current pre-release:
 
 ```text
-2.1.0-beta.14
+2.1.0-beta.15
 ```
 
+
+## Beta 15 – Forecast remaining-energy normalization
+
+The remaining-energy sensor now defines the total energy budget of the rebased
+SOC plan. The native Forecast.Solar curve continues to define when that energy
+is expected during the rest of the day. The remaining curve area is normalized
+to the effective `energy_production_today_remaining` value before safety reserve
+and charging efficiency are applied.
+
+This keeps the displayed remaining forecast and planned end SOC consistent.
 
 ## Beta 14 – Intraday SOC plan rebasing
 

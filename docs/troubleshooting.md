@@ -1,7 +1,7 @@
 # Fehlerbehebung
 
 Dieses Dokument bezieht sich auf die HACS-Integration **Growatt NOAH
-Optimizer**, insbesondere `2.1.0-beta.13`.
+Optimizer**, insbesondere `2.1.0-beta.15`.
 
 ## 1. Integration wird nicht geladen
 
@@ -16,7 +16,7 @@ suchen.
 Prüfen:
 
 - Home Assistant neu gestartet
-- `manifest.json` auf `2.1.0-beta.13`
+- `manifest.json` auf `2.1.0-beta.15`
 - Quell-Entitäten vorhanden
 - keine Python-Fehler
 
@@ -645,3 +645,11 @@ Beta 14 verankert den zukünftigen Plan bei einem neuen Forecast.Solar-Stand ode
 Forecast.Solar-Kurve am dann gemessenen Ist-SOC und berücksichtigt für den
 weiteren SOC-Anstieg nur die noch zukünftige Forecast-Leistung. Dadurch wird der
 prognostizierte End-SOC intraday realistisch nachgeführt.
+
+
+## 2.1.0-beta.15: Restprognose positiv, SOC-Plan bleibt flach
+
+Beta 15 normiert die nach dem Intraday-Anker verbleibende native
+Forecast.Solar-Kurvenfläche auf `energy_production_today_remaining`. Dadurch
+verwendet der SOC-Plan dieselbe Restenergiemenge wie die Reglerberechnung. Die
+native Kurve liefert weiterhin nur die zeitliche Form.

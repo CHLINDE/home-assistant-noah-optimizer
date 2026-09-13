@@ -1,3 +1,35 @@
+## [2.1.0-beta.15]
+
+### Fixed
+
+- Normalize the rebased future Forecast.Solar power-curve energy to the
+  authoritative `energy_production_today_remaining` sensor value
+- Keep the native Forecast.Solar curve only as the time-distribution shape
+  while using the remaining-energy sensor as the total energy budget
+- Make the rebased SOC plan and forecast-based end SOC use the same effective
+  remaining forecast as the normal optimizer calculations
+- Prevent a rebased plan from staying flat at the current SOC merely because
+  the remaining native power-curve area is smaller than the remaining-energy
+  sensor value
+
+### Safety
+
+- Forecast safety reserve, charging efficiency, minimum SOC and target SOC are
+  applied after normalization exactly as before
+- If the remaining-energy sensor is unavailable, Beta 14 native-curve behavior
+  remains the fallback
+- If no usable future native curve shape exists, no artificial charging profile
+  is invented
+- Existing Forecast.Solar cache, NOAH offline guards and SOC-release hysteresis
+  remain unchanged
+
+### Changed version
+
+- Integration version updated to `2.1.0-beta.15`
+- No dashboard-template or translation migration is required
+
+---
+
 ## [2.1.0-beta.14]
 
 ### Fixed
