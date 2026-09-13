@@ -2,7 +2,7 @@
 
 Dieses Dokument beschreibt die HACS-Integration **Growatt NOAH Optimizer**
 für den stabilen Release `2.0.0` und den aktuellen Pre-Release
-`2.1.0-beta.13`.
+`2.1.0-beta.15`.
 
 Die tatsächlichen Entity-IDs können durch Bereichsnamen oder manuelle
 Umbenennungen abweichen. Die Integration und das automatische Dashboard lösen
@@ -836,3 +836,15 @@ weiterhin erkannt und durch SOC-Nachladung ausgeglichen werden kann.
 
 Die Prognose-Sicherheitsreserve, Ladeeffizienz, Mindest- und Ziel-SOC bleiben
 unverändert wirksam. Beta-13-Forecast-Cache und Offline-Schutz bleiben erhalten.
+
+
+## 2.1.0-beta.15 – Normierung der verbleibenden Forecast-Energie
+
+Beim Intraday-Rebasing ist `energy_production_today_remaining` ab Beta 15 die
+maßgebliche noch verfügbare Energiemenge. Die native Forecast.Solar-Leistungskurve
+wird weiterhin für die zeitliche Form des SOC-Plans verwendet. Ihre verbleibende
+Fläche wird auf die wirksame Restprognose normiert.
+
+Prognose-Sicherheitsreserve und Ladeeffizienz werden anschließend unverändert
+angewendet. Ist die Restprognose nicht verfügbar, bleibt die native
+Kurvenintegration als Fallback aktiv.

@@ -10,6 +10,7 @@ from homeassistant.util import dt as dt_util
 
 from .const import (
     CONF_BATTERY_SOC,
+    CONF_FORECAST_REMAINING,
     CONTROLLER_OFF,
     CONTROLLER_SOC_HOLD,
     CONTROLLER_SOC_RELEASE,
@@ -152,6 +153,7 @@ class NoahOfflineAwareCoordinator(NoahOptimizerCoordinator):
         *,
         anchor_at: datetime,
         anchor_soc: float,
+        effective_remaining_forecast_kwh: float | None,
         forecast_safety_kwh: float,
         battery_capacity_kwh: float,
         efficiency: float,
@@ -202,7 +204,36 @@ class NoahOfflineAwareCoordinator(NoahOptimizerCoordinator):
             previous_time = current_time
             previous_power = current_power
 
-        total_input_kwh = cumulative[-1][1]
+        # Forecast.Solar exposes both a time-resolved power curve and the
+        # authoritative ``energy_production_today_remaining`` value. Small
+        # numerical/resolution differences between these representations can
+        # otherwise make the rebased SOC plan disagree with the rest-forecast
+        # value used by the normal optimizer calculations. Keep the native
+        # curve shape, but normalize its remaining integrated energy to the
+        # effective remaining-energy sensor value when that value is available.
+        curve_remaining_kwh = cumulative[-1][1]
+        if effective_remaining_forecast_kwh is not None:
+            normalized_remaining_kwh = max(
+                float(effective_remaining_forecast_kwh),
+                0.0,
+            )
+            if curve_remaining_kwh > 0.0:
+                normalization_factor = (
+                    normalized_remaining_kwh / curve_remaining_kwh
+                )
+                cumulative = [
+                    (timestamp, energy_kwh * normalization_factor)
+                    for timestamp, energy_kwh in cumulative
+                ]
+                total_input_kwh = normalized_remaining_kwh
+            else:
+                # No usable future curve shape exists. Do not invent a charging
+                # profile merely from an energy total; keep the plan flat until
+                # Forecast.Solar provides a usable native curve again.
+                total_input_kwh = 0.0
+        else:
+            total_input_kwh = curve_remaining_kwh
+
         total_storable_kwh = total_input_kwh * safe_efficiency
         safe_input_kwh = max(
             total_input_kwh - max(float(forecast_safety_kwh), 0.0),
@@ -325,12 +356,24 @@ class NoahOfflineAwareCoordinator(NoahOptimizerCoordinator):
 
             anchor_at = self._forecast_plan_anchor_at
             anchor_soc = self._forecast_plan_anchor_soc
+            forecast_remaining = self._read_energy_kwh(
+                self.entry.data[CONF_FORECAST_REMAINING]
+            )
+            effective_remaining_forecast_kwh = (
+                max(float(forecast_remaining), 0.0)
+                * max(float(effective_factor), 0.0)
+                if forecast_remaining is not None
+                else None
+            )
 
             if anchor_at is not None and anchor_soc is not None:
                 curve = self._rebase_forecast_curve(
                     native_curve,
                     anchor_at=anchor_at,
                     anchor_soc=anchor_soc,
+                    effective_remaining_forecast_kwh=(
+                        effective_remaining_forecast_kwh
+                    ),
                     forecast_safety_kwh=forecast_safety_kwh,
                     battery_capacity_kwh=battery_capacity_kwh,
                     efficiency=efficiency,

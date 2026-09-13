@@ -4,7 +4,7 @@ Prognosebasierte Steuerung der Ausgangsleistung eines Growatt NOAH 2000
 über Home Assistant und Noah-MQTT.
 
 > **Status:** Stabiler Release `2.0.0`. Aktueller Pre-Release:
-> `2.1.0-beta.14`.
+> `2.1.0-beta.15`.
 >
 > Die aktive Steuerung kann die NOAH-Ausgangsleistung verändern. Vor der
 > Aktivierung sollten Quellwerte, Netzvorzeichen und Stellgröße geprüft werden.
@@ -35,6 +35,7 @@ Prognosebasierte Steuerung der Ausgangsleistung eines Growatt NOAH 2000
 - kurzfristige Forecast.Solar-Kurvenausfälle ohne Sprung auf den Tageslicht-Fallback überbrücken
 - SOC-Freigabe mit Hysterese stabil um den Netz-Nullpunkt regeln
 - SOC-Ladeplan bei neuen Forecast.Solar-Kurven auf Ist-SOC und verbleibende Prognose neu verankern
+- verbleibende Forecast-Kurvenenergie auf die Forecast.Solar-Restprognose normieren
 
 ## HACS-Integration
 
@@ -47,7 +48,7 @@ Aktuelle stabile Version:
 Aktueller Pre-Release:
 
 ```text
-2.1.0-beta.14
+2.1.0-beta.15
 ```
 
 ### 2.1.0-beta.1 – PV-Learning
@@ -338,6 +339,29 @@ Beta-13-Cache- und Offline-Schutzmechanismen bleiben erhalten.
 
 Keine Dashboard-Template- oder Translation-Migration erforderlich.
 
+### 2.1.0-beta.15 – Restenergie und Forecast-Kurve konsistent
+
+Beta 15 korrigiert die in Beta 14 sichtbar gewordene Differenz zwischen der
+separaten Forecast.Solar-Restprognose und der integrierten Restfläche der nativen
+Leistungskurve. Für den SOC-Ladeplan ist ab Beta 15 die Entität
+`energy_production_today_remaining` die maßgebliche Restenergiemenge.
+
+Die native Forecast.Solar-Leistungskurve bestimmt weiterhin die zeitliche Form
+des Ladeplans. Ihre nach dem Intraday-Anker verbleibende Fläche wird jedoch auf
+die wirksame Restprognose normiert. Anschließend werden wie bisher
+Prognose-Sicherheitsreserve und Ladeeffizienz angewendet.
+
+Damit verwenden Reglerberechnung, Restprognose und prognostizierter End-SOC
+dieselbe verbleibende Energiemenge. Ein verregneter Nachmittag kann dadurch
+nicht mehr zu einem flachen SOC-Plan führen, obwohl Forecast.Solar noch nutzbare
+Restenergie meldet.
+
+Ist die Restprognose nicht verfügbar, bleibt die Beta-14-Berechnung aus der
+nativen Restkurve der Fallback. Ohne nutzbare zukünftige Kurvenform wird kein
+künstliches Ladeprofil erfunden.
+
+Keine Dashboard-Template- oder Translation-Migration erforderlich.
+
 ## Voraussetzungen
 
 - Home Assistant
@@ -382,7 +406,7 @@ Typ:
 Integration
 ```
 
-Für `2.1.0-beta.14` müssen in HACS Vorabversionen für dieses Repository
+Für `2.1.0-beta.15` müssen in HACS Vorabversionen für dieses Repository
 angezeigt werden.
 
 Nach Installation oder Update Home Assistant vollständig neu starten.
@@ -904,6 +928,15 @@ Prüfen:
 Danach aktive Steuerung wieder freigeben.
 
 ## Versionshistorie
+
+### 2.1.0-beta.15
+
+- Restenergie-Sensor wird zur maßgeblichen Energiemenge des rebasierten Plans
+- native Forecast.Solar-Kurve liefert weiterhin die zeitliche Verteilung
+- verbleibende Kurvenfläche wird auf die wirksame Restprognose normiert
+- prognostizierter End-SOC ist damit konsistent zur Restprognose
+- Beta-14-Rebasing, Forecast-Cache und Offline-Sicherheit bleiben erhalten
+- keine neue Dashboard-Template- oder Translation-Version
 
 ### 2.1.0-beta.14
 

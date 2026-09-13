@@ -2,7 +2,7 @@
 
 Stable release: `2.0.0`
 
-Current pre-release: `2.1.0-beta.14`
+Current pre-release: `2.1.0-beta.15`
 
 The `2.1.0-beta.1` pre-release adds passive, persistent PV learning. Applying
 the learned correction is opt-in and disabled by default. `2.1.0-beta.2` keeps
@@ -13,6 +13,23 @@ dynamic SOC schedule from the time-resolved forecast without making extra
 Forecast.Solar API calls.
 `2.1.0-beta.4` adds date-selectable SOC schedule history and persistent
 forecast/plan snapshots for reviewing older days and individual plan versions.
+
+## 2.1.0-beta.15 – Forecast remaining-energy normalization
+
+Beta 15 makes the rebased SOC schedule use the same remaining-energy budget as
+the normal optimizer calculations. `energy_production_today_remaining` is the
+authoritative remaining energy, while the native Forecast.Solar power curve is
+kept as the time-distribution shape.
+
+The future native curve area is normalized to the effective remaining forecast
+before forecast safety reserve and charging efficiency are applied. This keeps
+the planned end SOC consistent with the displayed effective remaining forecast.
+
+If the remaining-energy sensor is unavailable, the Beta 14 native-curve
+calculation remains the fallback. No artificial charging profile is created when
+no usable future curve shape exists.
+
+No dashboard-template or translation migration is required.
 
 ## 2.1.0-beta.14 – Intraday SOC plan rebasing
 
