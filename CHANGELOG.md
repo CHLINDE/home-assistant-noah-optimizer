@@ -1,3 +1,33 @@
+## [2.1.0-beta.14]
+
+### Fixed
+
+- Rebase the actionable SOC charging plan when Forecast.Solar publishes a new
+  source update or its native power curve changes during the day
+- Use the measured battery SOC at that forecast update as the new plan anchor
+- Integrate only forecast PV energy that lies after the new anchor, so elapsed
+  forecast energy is no longer treated as if it had actually been produced
+- Recalculate the reachable end SOC from the current SOC and remaining forecast
+  instead of from minimum SOC plus the complete daily forecast
+- Keep the previous plan segment visible in history while replacing only the
+  future section of the schedule
+- Do not continuously rebase on ordinary NOAH coordinator refreshes; the anchor
+  only moves on a Forecast.Solar source update / curve change
+
+### Safety
+
+- Existing forecast safety reserve, charge efficiency, minimum SOC and target SOC
+  remain part of the rebased plan
+- Beta 13 same-day Forecast.Solar cache and all NOAH offline guards remain active
+- No new output command path is introduced
+
+### Changed version
+
+- Integration version updated to `2.1.0-beta.14`
+- No dashboard-template or translation migration is required
+
+---
+
 ## [2.1.0-beta.13]
 
 ### Fixed

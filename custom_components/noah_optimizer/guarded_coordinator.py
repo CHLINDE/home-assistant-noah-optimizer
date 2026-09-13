@@ -9,6 +9,7 @@ from typing import Any
 from homeassistant.util import dt as dt_util
 
 from .const import (
+    CONF_BATTERY_SOC,
     CONTROLLER_OFF,
     CONTROLLER_SOC_HOLD,
     CONTROLLER_SOC_RELEASE,
@@ -55,6 +56,15 @@ class NoahOfflineAwareCoordinator(NoahOptimizerCoordinator):
         self._last_forecast_curve_cached_at: datetime | None = None
         self._last_forecast_curve_signature: tuple[float, ...] | None = None
 
+        # Intraday plan rebasing is triggered only by a changed native
+        # Forecast.Solar power curve. Normal coordinator refreshes must not
+        # continuously move the plan anchor to the current SOC.
+        self._forecast_plan_source_signature: (
+            tuple[float | None, tuple[tuple[float, float], ...]] | None
+        ) = None
+        self._forecast_plan_anchor_at: datetime | None = None
+        self._forecast_plan_anchor_soc: float | None = None
+
     def set_source_update_guard(
         self,
         callback: Callable[[], bool],
@@ -82,6 +92,187 @@ class NoahOfflineAwareCoordinator(NoahOptimizerCoordinator):
             float(target_soc),
         )
 
+    @staticmethod
+    def _forecast_source_signature(
+        curve: ForecastCurveData,
+    ) -> tuple[float | None, tuple[tuple[float, float], ...]]:
+        """Return a signature for a genuine Forecast.Solar update.
+
+        The source entity timestamp identifies a new Forecast.Solar refresh,
+        while the power points also catch native runtime-curve changes. Normal
+        NOAH coordinator refreshes leave both values unchanged and therefore do
+        not continuously move the SOC-plan anchor.
+        """
+        updated_at = (
+            curve.updated_at.timestamp()
+            if curve.updated_at is not None
+            else None
+        )
+        points = tuple(
+            (
+                timestamp.timestamp(),
+                round(float(power), 3),
+            )
+            for timestamp, power in curve.raw_power
+        )
+        return updated_at, points
+
+    @staticmethod
+    def _forecast_power_at(
+        points: tuple[tuple[datetime, float], ...],
+        at: datetime,
+    ) -> float:
+        """Interpolate forecast power at the plan anchor timestamp."""
+        if not points:
+            return 0.0
+        if at <= points[0][0]:
+            return 0.0
+        if at >= points[-1][0]:
+            return 0.0
+
+        previous_time, previous_power = points[0]
+        for current_time, current_power in points[1:]:
+            if at <= current_time:
+                span = (current_time - previous_time).total_seconds()
+                if span <= 0:
+                    return max(float(current_power), 0.0)
+                fraction = (at - previous_time).total_seconds() / span
+                value = previous_power + fraction * (
+                    current_power - previous_power
+                )
+                return max(float(value), 0.0)
+            previous_time = current_time
+            previous_power = current_power
+
+        return 0.0
+
+    def _rebase_forecast_curve(
+        self,
+        curve: ForecastCurveData,
+        *,
+        anchor_at: datetime,
+        anchor_soc: float,
+        forecast_safety_kwh: float,
+        battery_capacity_kwh: float,
+        efficiency: float,
+        min_soc: float,
+        target_soc: float,
+    ) -> ForecastCurveData:
+        """Build the remaining SOC plan from an observed intraday anchor.
+
+        Forecast.Solar keeps forecast values for already elapsed periods in its
+        complete daily runtime curve. A full-day SOC schedule therefore assumes
+        that all forecast energy from the morning actually occurred. On every
+        genuinely changed native forecast curve, start the actionable part of
+        the schedule at the current measured SOC and integrate only forecast PV
+        that still lies ahead of the anchor.
+        """
+        minimum = float(min_soc)
+        target = max(float(target_soc), minimum)
+        anchor_soc = min(max(float(anchor_soc), minimum), target)
+        capacity = max(float(battery_capacity_kwh), 0.001)
+        safe_efficiency = max(float(efficiency), 0.1)
+
+        effective_points = tuple(curve.effective_power)
+        anchor_power = self._forecast_power_at(effective_points, anchor_at)
+        future_points: list[tuple[datetime, float]] = [
+            (anchor_at, anchor_power)
+        ]
+        future_points.extend(
+            (timestamp, max(float(power), 0.0))
+            for timestamp, power in effective_points
+            if timestamp > anchor_at
+        )
+
+        cumulative: list[tuple[datetime, float]] = [(anchor_at, 0.0)]
+        cumulative_kwh = 0.0
+        previous_time, previous_power = future_points[0]
+        for current_time, current_power in future_points[1:]:
+            delta_hours = (
+                current_time - previous_time
+            ).total_seconds() / 3600.0
+            if 0 < delta_hours <= 2.0:
+                cumulative_kwh += (
+                    (previous_power + current_power)
+                    / 2.0
+                    * delta_hours
+                    / 1000.0
+                )
+            cumulative.append((current_time, cumulative_kwh))
+            previous_time = current_time
+            previous_power = current_power
+
+        total_input_kwh = cumulative[-1][1]
+        total_storable_kwh = total_input_kwh * safe_efficiency
+        safe_input_kwh = max(
+            total_input_kwh - max(float(forecast_safety_kwh), 0.0),
+            0.0,
+        )
+        usable_storable_kwh = safe_input_kwh * safe_efficiency
+
+        usable_scale = (
+            usable_storable_kwh / total_storable_kwh
+            if total_storable_kwh > 0
+            else 0.0
+        )
+        max_needed_kwh = capacity * max(target - anchor_soc, 0.0) / 100.0
+        usable_for_plan_kwh = min(usable_storable_kwh, max_needed_kwh)
+        target_scale = (
+            usable_for_plan_kwh / usable_storable_kwh
+            if usable_storable_kwh > 0
+            else 0.0
+        )
+
+        future_soc_plan: list[tuple[datetime, float]] = []
+        for timestamp, cumulative_input_kwh in cumulative:
+            cumulative_storable_kwh = (
+                cumulative_input_kwh
+                * safe_efficiency
+                * usable_scale
+                * target_scale
+            )
+            soc_gain = cumulative_storable_kwh / capacity * 100.0
+            planned_soc = min(
+                max(anchor_soc + soc_gain, minimum),
+                target,
+            )
+            future_soc_plan.append((timestamp, planned_soc))
+
+        # Keep already established plan history visible in the newest snapshot.
+        # Only the actionable future section is replaced by the new anchor and
+        # remaining forecast. This makes intraday forecast corrections visible
+        # in the historical plan instead of rewriting the past.
+        prefix: list[tuple[datetime, float]] = []
+        previous_curve = self._last_forecast_curve
+        if previous_curve is not None and previous_curve.soc_plan:
+            anchor_day = dt_util.as_local(anchor_at).date()
+            previous_day = dt_util.as_local(
+                previous_curve.soc_plan[0][0]
+            ).date()
+            if previous_day == anchor_day:
+                prefix = [
+                    (timestamp, value)
+                    for timestamp, value in previous_curve.soc_plan
+                    if timestamp < anchor_at
+                ]
+
+        soc_plan = tuple(prefix + future_soc_plan)
+        planned_end_soc = (
+            future_soc_plan[-1][1]
+            if future_soc_plan
+            else anchor_soc
+        )
+
+        return ForecastCurveData(
+            updated_at=curve.updated_at,
+            raw_power=curve.raw_power,
+            effective_power=curve.effective_power,
+            soc_plan=soc_plan,
+            raw_day_energy_kwh=curve.raw_day_energy_kwh,
+            effective_day_energy_kwh=curve.effective_day_energy_kwh,
+            planned_end_soc=planned_end_soc,
+        )
+
     def _build_forecast_curve(
         self,
         *,
@@ -92,7 +283,7 @@ class NoahOfflineAwareCoordinator(NoahOptimizerCoordinator):
         min_soc: float,
         target_soc: float,
     ) -> ForecastCurveData | None:
-        """Use the last valid same-day Forecast.Solar curve for short gaps."""
+        """Build a rebased plan and bridge short Forecast.Solar gaps."""
         signature = self._forecast_curve_signature(
             effective_factor=effective_factor,
             forecast_safety_kwh=forecast_safety_kwh,
@@ -102,7 +293,7 @@ class NoahOfflineAwareCoordinator(NoahOptimizerCoordinator):
             target_soc=target_soc,
         )
 
-        curve = super()._build_forecast_curve(
+        native_curve = super()._build_forecast_curve(
             effective_factor=effective_factor,
             forecast_safety_kwh=forecast_safety_kwh,
             battery_capacity_kwh=battery_capacity_kwh,
@@ -112,7 +303,47 @@ class NoahOfflineAwareCoordinator(NoahOptimizerCoordinator):
         )
 
         now = dt_util.utcnow()
-        if curve is not None:
+        if native_curve is not None:
+            source_signature = self._forecast_source_signature(native_curve)
+            anchor_day_changed = (
+                self._forecast_plan_anchor_at is None
+                or dt_util.as_local(self._forecast_plan_anchor_at).date()
+                != dt_util.now().date()
+            )
+            source_changed = (
+                self._forecast_plan_source_signature != source_signature
+            )
+
+            if source_changed or anchor_day_changed:
+                current_soc = self._read_soc(
+                    self.entry.data[CONF_BATTERY_SOC]
+                )
+                if current_soc is not None:
+                    self._forecast_plan_anchor_at = now
+                    self._forecast_plan_anchor_soc = current_soc
+                    self._forecast_plan_source_signature = source_signature
+
+            anchor_at = self._forecast_plan_anchor_at
+            anchor_soc = self._forecast_plan_anchor_soc
+
+            if anchor_at is not None and anchor_soc is not None:
+                curve = self._rebase_forecast_curve(
+                    native_curve,
+                    anchor_at=anchor_at,
+                    anchor_soc=anchor_soc,
+                    forecast_safety_kwh=forecast_safety_kwh,
+                    battery_capacity_kwh=battery_capacity_kwh,
+                    efficiency=efficiency,
+                    min_soc=min_soc,
+                    target_soc=target_soc,
+                )
+            else:
+                # SOC may be temporarily unavailable during startup. Keep the
+                # native plan until a valid observed SOC can establish the
+                # first intraday anchor; active control is blocked separately
+                # by the normal critical-data checks.
+                curve = native_curve
+
             self._last_forecast_curve = curve
             self._last_forecast_curve_cached_at = now
             self._last_forecast_curve_signature = signature

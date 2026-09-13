@@ -80,7 +80,7 @@ HACS-Vorabversionen aktivieren.
 Installieren:
 
 ```text
-2.1.0-beta.13
+2.1.0-beta.14
 ```
 
 Home Assistant vollständig neu starten.
@@ -487,3 +487,13 @@ angehoben.
 Die Änderung betrifft ausschließlich Dashboarddarstellung und
 Dashboardmigration. Optimizer-Berechnung und aktive NOAH-Regelung bleiben
 unverändert.
+
+
+## Beta 14 prüfen
+
+Nach dem Update einen Forecast.Solar-Aktualisierungszeitpunkt beobachten. Bei
+einem neuen Forecast.Solar-Stand oder einer geänderten nativen Forecast-Kurve wird der Ladeplan am
+aktuellen Ist-SOC neu verankert. Der zukünftige Plan darf nur noch aus der nach
+diesem Zeitpunkt verbleibenden Forecast-Leistung ansteigen. Normale
+Coordinator-Aktualisierungen ohne geänderte Forecast-Kurve dürfen den Anker
+nicht verschieben.

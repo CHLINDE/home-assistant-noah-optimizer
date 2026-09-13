@@ -2,7 +2,7 @@
 
 Stable release: `2.0.0`
 
-Current pre-release: `2.1.0-beta.13`
+Current pre-release: `2.1.0-beta.14`
 
 The `2.1.0-beta.1` pre-release adds passive, persistent PV learning. Applying
 the learned correction is opt-in and disabled by default. `2.1.0-beta.2` keeps
@@ -13,6 +13,24 @@ dynamic SOC schedule from the time-resolved forecast without making extra
 Forecast.Solar API calls.
 `2.1.0-beta.4` adds date-selectable SOC schedule history and persistent
 forecast/plan snapshots for reviewing older days and individual plan versions.
+
+## 2.1.0-beta.14 – Intraday SOC plan rebasing
+
+Beta 14 rebases the actionable SOC schedule when Forecast.Solar publishes a new source update or its native time-resolved
+power curve changes. The current measured SOC becomes
+the new plan anchor and only forecast PV energy after that timestamp contributes
+to the future SOC gain.
+
+This prevents elapsed forecast energy from remaining in the afternoon charging
+plan when poor weather caused the morning production to be lower than forecast.
+The planned end SOC therefore reflects the current battery state plus the
+remaining usable forecast.
+
+Ordinary coordinator refreshes do not move the anchor. Existing catch-up
+behavior between forecast updates, the Beta 13 same-day forecast cache, forecast
+safety reserve and all offline guards remain unchanged.
+
+No dashboard-template or translation migration is required.
 
 ## 2.1.0-beta.13 – Stable SOC release and resilient forecast planning
 
@@ -1140,7 +1158,7 @@ First stable 2.x release:
 
 ## Current limitations 
 
-The current `2.1.0-beta.13` pre-release does not yet include:
+The current `2.1.0-beta.14` pre-release does not yet include:
 
 - learned household load
 - multiple independent NOAH systems
