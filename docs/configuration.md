@@ -2,7 +2,7 @@
 
 Dieses Dokument beschreibt die HACS-Integration **Growatt NOAH Optimizer**
 für den stabilen Release `2.0.0` und den aktuellen Pre-Release
-`2.1.0-beta.15`.
+`2.1.0-beta.16`.
 
 Die tatsächlichen Entity-IDs können durch Bereichsnamen oder manuelle
 Umbenennungen abweichen. Die Integration und das automatische Dashboard lösen
@@ -848,3 +848,11 @@ Fläche wird auf die wirksame Restprognose normiert.
 Prognose-Sicherheitsreserve und Ladeeffizienz werden anschließend unverändert
 angewendet. Ist die Restprognose nicht verfügbar, bleibt die native
 Kurvenintegration als Fallback aktiv.
+
+
+## 2.1.0-beta.16 – NOAH-Energieflusskarte
+
+Das Standard-Dashboard nutzt eine gebündelte NOAH-Energieflusskarte.
+`output_power` bestimmt ausschließlich den Pfad NOAH → Haus; `solar_power` wird
+als PV → NOAH dargestellt. Power Flow Card Plus ist für die Standardkarte nicht
+mehr erforderlich. Template-Version 20 migriert bestehende Standard-Dashboards.

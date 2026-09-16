@@ -9,9 +9,16 @@ Stable release:
 Current pre-release:
 
 ```text
-2.1.0-beta.15
+2.1.0-beta.16
 ```
 
+
+## Beta 16: gebündelte NOAH-Energieflusskarte
+
+Die Standard-Energieflusskarte wird mit der Integration ausgeliefert. Power Flow
+Card Plus ist nicht mehr erforderlich. Der Pfad NOAH → Haus verwendet direkt
+`output_power`; bestehende Standard-Dashboards werden auf Template-Version 20
+migriert.
 
 ## Beta 15 – Forecast remaining-energy normalization
 

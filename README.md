@@ -4,7 +4,7 @@ Prognosebasierte Steuerung der Ausgangsleistung eines Growatt NOAH 2000
 über Home Assistant und Noah-MQTT.
 
 > **Status:** Stabiler Release `2.0.0`. Aktueller Pre-Release:
-> `2.1.0-beta.15`.
+> `2.1.0-beta.16`.
 >
 > Die aktive Steuerung kann die NOAH-Ausgangsleistung verändern. Vor der
 > Aktivierung sollten Quellwerte, Netzvorzeichen und Stellgröße geprüft werden.
@@ -48,7 +48,7 @@ Aktuelle stabile Version:
 Aktueller Pre-Release:
 
 ```text
-2.1.0-beta.15
+2.1.0-beta.16
 ```
 
 ### 2.1.0-beta.1 – PV-Learning
@@ -362,6 +362,19 @@ künstliches Ladeprofil erfunden.
 
 Keine Dashboard-Template- oder Translation-Migration erforderlich.
 
+### 2.1.0-beta.16 – NOAH-spezifischer Energiefluss
+
+Beta 16 ersetzt die generische Power Flow Card Plus im automatisch erzeugten
+Dashboard durch eine mitgelieferte NOAH-Energieflusskarte. Der Pfad
+**NOAH → Haus** wird ausschließlich von der gemessenen `output_power`-Entität
+gesteuert. PV-Eingang und Batterieladung werden nicht mehr gegeneinander
+verrechnet, um einen vermeintlichen Hausfluss abzuleiten.
+
+Damit erscheinen Differenzen durch NOAH-Eigenverbrauch, Wandlungsverluste oder
+Sensorauflösung nicht mehr fälschlich als PV-Leistung zum Haus. Power Flow Card
+Plus ist für das Standard-Dashboard nicht mehr erforderlich. Bestehende
+Standard-Dashboards werden automatisch auf Template-Version 20 migriert.
+
 ## Voraussetzungen
 
 - Home Assistant
@@ -375,13 +388,11 @@ Keine Dashboard-Template- oder Translation-Migration erforderlich.
 
 Für das erweiterte Dashboard zusätzlich:
 
-- Power Flow Card Plus
 - ApexCharts Card
 
-Die beiden Custom Cards werden nicht automatisch installiert. Der Optimizer
-selbst funktioniert auch ohne sie.
-
-Die historische SOC-Karte wird mit der Integration ausgeliefert.
+Die Energieflusskarte und die historische SOC-Karte werden mit der Integration
+ausgeliefert. Nur ApexCharts Card muss zusätzlich über HACS installiert werden.
+Der Optimizer selbst funktioniert auch ohne die Dashboardkarten.
 
 ## Installation über HACS
 
@@ -406,7 +417,7 @@ Typ:
 Integration
 ```
 
-Für `2.1.0-beta.15` müssen in HACS Vorabversionen für dieses Repository
+Für `2.1.0-beta.16` müssen in HACS Vorabversionen für dieses Repository
 angezeigt werden.
 
 Nach Installation oder Update Home Assistant vollständig neu starten.
@@ -791,17 +802,19 @@ Dashboard-Inhalte:
 - Kalibrierung
 - Diagnose
 
-Für Power Flow Card Plus gilt:
+Ab `2.1.0-beta.16` verwendet das automatische Dashboard die mitgelieferte
+NOAH-Energieflusskarte. Die Pfade werden nicht mehr aus einer generischen
+PV-/Batteriebilanz abgeleitet, sondern direkt aus den NOAH-Messwerten:
 
 ```text
-Grid:
-consumption = Netzbezug
-production  = Netzeinspeisung
-
-Battery:
-consumption = Entladeleistung
-production  = Ladeleistung
+Netz <-> Haus = Netzbezug / Einspeisung
+PV -> NOAH    = PV-Leistung
+NOAH -> Haus  = NOAH Output Power
 ```
+
+Damit wird bei `Output Power = 0 W` auch kein NOAH-/PV-Fluss zum Haus
+dargestellt. Kleine Differenzen zwischen PV-Leistung und Batterieladeleistung
+werden nicht mehr als Hausversorgung interpretiert.
 
 ## Feste Dashboard-Farbpalette
 
@@ -928,6 +941,15 @@ Prüfen:
 Danach aktive Steuerung wieder freigeben.
 
 ## Versionshistorie
+
+### 2.1.0-beta.16
+
+- gebündelte NOAH-Energieflusskarte statt Power Flow Card Plus
+- NOAH → Haus wird ausschließlich aus `output_power` dargestellt
+- PV-Leistung wird als DC-Eingang in den NOAH visualisiert
+- keine Scheinflüsse aus PV-/Ladeleistungsdifferenzen mehr
+- Power Flow Card Plus ist für das Standard-Dashboard nicht mehr erforderlich
+- Dashboard-Migration auf Template-Version 20
 
 ### 2.1.0-beta.15
 

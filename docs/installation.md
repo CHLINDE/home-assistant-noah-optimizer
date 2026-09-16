@@ -2,7 +2,7 @@
 
 Diese Anleitung beschreibt Installation und Update des **Home Assistant
 Growatt NOAH Optimizers** für den stabilen Release `2.0.0` und den aktuellen
-Pre-Release `2.1.0-beta.15`.
+Pre-Release `2.1.0-beta.16`.
 
 ## 1. Voraussetzungen
 
@@ -17,10 +17,10 @@ Pre-Release `2.1.0-beta.15`.
 
 Dashboard zusätzlich:
 
-- Power Flow Card Plus
 - ApexCharts Card
 
-Die historische SOC-Karte wird mit der Integration ausgeliefert.
+Die NOAH-Energieflusskarte und die historische SOC-Karte werden mit der
+Integration ausgeliefert.
 
 Beta 10 wertet automatisch den Noah-MQTT-Binary-Sensor **Connectivity** aus,
 der zum selben Home-Assistant-Gerät wie **NOAH System Output Power** gehört.
@@ -51,7 +51,6 @@ negativ = Netzeinspeisung
 Über HACS installieren:
 
 ```text
-Power Flow Card Plus
 ApexCharts Card
 ```
 
@@ -80,7 +79,7 @@ HACS-Vorabversionen aktivieren.
 Installieren:
 
 ```text
-2.1.0-beta.15
+2.1.0-beta.16
 ```
 
 Home Assistant vollständig neu starten.
@@ -505,3 +504,6 @@ Nach einem Forecast.Solar-Update prüfen, dass die wirksame Restprognose und der
 aus dem aktuellen SOC berechnete End-SOC konsistent sind. Die native
 Forecast.Solar-Kurve bestimmt die Form des weiteren Plans; ihre Restfläche wird
 auf die Restprognose normiert.
+
+
+Ab Beta 16 werden die NOAH-Energieflusskarte und die historische SOC-Karte mit der Integration ausgeliefert.
