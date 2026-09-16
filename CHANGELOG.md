@@ -1,3 +1,28 @@
+## [2.1.0-beta.17]
+
+### Changed
+
+- redesign the bundled NOAH energy-flow card around the familiar four-node
+  Grid / PV / Home / NOAH layout
+- keep `output_power` as the exclusive source for the NOAH-to-home flow
+- replace dashed flow animation with smooth moving dots
+- show SOC, AC output, charging power and discharging power compactly inside
+  the NOAH node
+- bump the bundled energy-flow frontend resource from `v=1` to `v=2` to avoid
+  stale browser cache after updating
+
+### Safety
+
+- visualization only; controller, forecast, SOC-planning, PV-learning and
+  offline-protection logic are unchanged
+
+### Changed version
+
+- Integration version updated to `2.1.0-beta.17`
+- No entity, translation or dashboard-template migration is required
+
+---
+
 ## [2.1.0-beta.16]
 
 ### Fixed

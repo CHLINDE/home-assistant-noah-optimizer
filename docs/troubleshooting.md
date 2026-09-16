@@ -1,7 +1,7 @@
 # Fehlerbehebung
 
 Dieses Dokument bezieht sich auf die HACS-Integration **Growatt NOAH
-Optimizer**, insbesondere `2.1.0-beta.16`.
+Optimizer**, insbesondere `2.1.0-beta.17`.
 
 ## 1. Integration wird nicht geladen
 
@@ -16,7 +16,7 @@ suchen.
 Prüfen:
 
 - Home Assistant neu gestartet
-- `manifest.json` auf `2.1.0-beta.16`
+- `manifest.json` auf `2.1.0-beta.17`
 - Quell-Entitäten vorhanden
 - keine Python-Fehler
 
@@ -661,3 +661,14 @@ native Kurve liefert weiterhin nur die zeitliche Form.
 ## Beta 16: falscher PV-Hausfluss bei 0 W Ausgang
 
 Die gebündelte Energieflusskarte koppelt NOAH → Haus ausschließlich an `output_power`. Bei 0 W Ausgang bleibt dieser Pfad inaktiv; PV-Leistung wird nur als PV → NOAH angezeigt.
+
+
+## 2.1.0-beta.17 – Überarbeitete Energieflusskarte
+
+Beta 17 überarbeitet ausschließlich die Darstellung der gebündelten
+NOAH-Energieflusskarte. Die Karte verwendet wieder vier große Knoten für Netz,
+PV, Haus und NOAH und animiert aktive Flüsse mit bewegten Punkten. Der Pfad
+**NOAH → Haus** bleibt ausschließlich an `output_power` gekoppelt. SOC, Ausgang,
+Lade- und Entladeleistung werden kompakt im NOAH-Knoten angezeigt. Die
+Frontend-Ressource wird mit `v=2` registriert, damit Browser die neue Version
+zuverlässig laden.
