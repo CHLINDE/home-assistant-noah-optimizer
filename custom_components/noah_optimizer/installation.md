@@ -1,7 +1,7 @@
 # Installation
 
 Diese Anleitung beschreibt die Installation und das Update des **Home
-Assistant Growatt NOAH Optimizers** für den aktuellen Pre-Release `2.1.0-beta.17`.
+Assistant Growatt NOAH Optimizers** für den aktuellen Pre-Release `2.1.0-beta.18`.
 
 Für neue Installationen wird die HACS-Integration empfohlen.
 
@@ -785,3 +785,16 @@ PV, Haus und NOAH und animiert aktive Flüsse mit bewegten Punkten. Der Pfad
 Lade- und Entladeleistung werden kompakt im NOAH-Knoten angezeigt. Die
 Frontend-Ressource wird mit `v=2` registriert, damit Browser die neue Version
 zuverlässig laden.
+
+## 2.1.0-beta.18 – Energieflusskarte optisch verfeinert
+
+Beta 18 ändert ausschließlich die Darstellung der gebündelten
+NOAH-Energieflusskarte. Das Vier-Knoten-Layout bleibt bestehen, verwendet aber
+nur noch einen dezenten bewegten Punkt pro aktivem Pfad und eine optische Brücke
+an der Kreuzung von PV-Pfad und Hausnetz. Dadurch wird kein elektrischer Knoten
+an dieser Kreuzung suggeriert.
+
+Der Pfad **NOAH → Haus** wird weiterhin ausschließlich aus `output_power`
+dargestellt. Regler-, Forecast-, SOC-, PV-Learning- und Offline-Logik bleiben
+unverändert. Die Frontend-Ressource wird als `v=3` registriert.
+

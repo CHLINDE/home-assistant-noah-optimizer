@@ -18,7 +18,7 @@ HISTORY_CARD_URL = f"{HISTORY_CARD_STATIC_URL}?v={HISTORY_CARD_VERSION}"
 HISTORY_CARD_FILE = Path(__file__).with_name("frontend") / "noah-soc-history-card.js"
 
 ENERGY_FLOW_CARD_STATIC_URL = f"/{DOMAIN}/noah-energy-flow-card.js"
-ENERGY_FLOW_CARD_VERSION = "2"
+ENERGY_FLOW_CARD_VERSION = "3"
 ENERGY_FLOW_CARD_URL = f"{ENERGY_FLOW_CARD_STATIC_URL}?v={ENERGY_FLOW_CARD_VERSION}"
 ENERGY_FLOW_CARD_FILE = Path(__file__).with_name("frontend") / "noah-energy-flow-card.js"
 
