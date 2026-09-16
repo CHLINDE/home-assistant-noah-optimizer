@@ -1,3 +1,27 @@
+## [2.1.0-beta.18]
+
+### Changed
+
+- refine the bundled NOAH energy-flow card after the Beta 17 visual redesign
+- reduce visual clutter and empty space while keeping the familiar four-node layout
+- use one subtle moving flow marker per active path instead of multiple moving dots
+- add a visual bridge where the PV-to-NOAH path crosses the household AC bus so the
+  crossing cannot be mistaken for an electrical connection
+- keep `output_power` as the exclusive source for the NOAH-to-home flow
+- bump the bundled energy-flow frontend resource from `v=2` to `v=3`
+
+### Safety
+
+- visualization only; controller, forecast, SOC-planning, PV-learning and
+  offline-protection logic are unchanged
+
+### Changed version
+
+- Integration version updated to `2.1.0-beta.18`
+- No entity, translation or dashboard-template migration is required
+
+---
+
 ## [2.1.0-beta.17]
 
 ### Changed

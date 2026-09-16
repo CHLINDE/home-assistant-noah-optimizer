@@ -50,6 +50,7 @@ class NoahEnergyFlowCard extends HTMLElement {
 
   _numeric(entityId) {
     if (!this._hass || !entityId) return null;
+
     const state = this._hass.states[entityId];
     if (!state || ["unknown", "unavailable", ""].includes(state.state)) {
       return null;
@@ -58,8 +59,10 @@ class NoahEnergyFlowCard extends HTMLElement {
     const value = Number(state.state);
     if (!Number.isFinite(value)) return null;
 
-    const unit = state.attributes?.unit_of_measurement;
-    if (unit === "kW") return value * 1000;
+    if (state.attributes?.unit_of_measurement === "kW") {
+      return value * 1000;
+    }
+
     return value;
   }
 
@@ -71,6 +74,7 @@ class NoahEnergyFlowCard extends HTMLElement {
 
   _formatPower(value) {
     if (value === null || !Number.isFinite(value)) return "–";
+
     const absolute = Math.abs(value);
 
     if (absolute >= 1000) {
@@ -89,31 +93,24 @@ class NoahEnergyFlowCard extends HTMLElement {
   }
 
   _flowDuration(value) {
-    if (!Number.isFinite(value) || value <= 0.5) return 4.0;
+    if (!Number.isFinite(value) || value <= 0.5) return 3.4;
+
     const clamped = Math.max(20, Math.min(3000, value));
-    return Math.max(0.8, 3.0 - ((clamped - 20) / 2980) * 2.2);
+    return Math.max(0.9, 3.4 - ((clamped - 20) / 2980) * 2.4);
   }
 
-  _movingDots(path, value, color) {
+  _flowDot(path, value, color) {
     if (!Number.isFinite(value) || value <= 0.5) return "";
 
-    const duration = this._flowDuration(value);
-    const starts = [0, -(duration / 3), -(duration * 2 / 3)];
-
-    return starts
-      .map(
-        (begin, index) => `
-          <circle r="${index === 0 ? 4.3 : 3.6}" fill="${color}" opacity="${index === 0 ? 1 : 0.82}">
-            <animateMotion
-              dur="${duration.toFixed(2)}s"
-              begin="${begin.toFixed(2)}s"
-              repeatCount="indefinite"
-              path="${path}"
-            />
-          </circle>
-        `,
-      )
-      .join("");
+    return `
+      <circle r="4.2" fill="${color}" class="flow-dot">
+        <animateMotion
+          dur="${this._flowDuration(value).toFixed(2)}s"
+          repeatCount="indefinite"
+          path="${path}"
+        />
+      </circle>
+    `;
   }
 
   _node({ x, y, cssClass, icon, title, main, details = [], entity }) {
@@ -139,6 +136,7 @@ class NoahEnergyFlowCard extends HTMLElement {
 
   _moreInfo(entityId) {
     if (!entityId) return;
+
     this.dispatchEvent(
       new CustomEvent("hass-more-info", {
         bubbles: true,
@@ -179,13 +177,24 @@ class NoahEnergyFlowCard extends HTMLElement {
     const charging = Math.max(chargingRaw ?? 0, 0);
     const discharging = Math.max(dischargingRaw ?? 0, 0);
 
-    const gridPath = gridImport > 0.5
-      ? "M82 190 L418 190"
-      : "M418 190 L82 190";
     const gridFlow = gridImport > 0.5 ? gridImport : gridExport;
+    const gridPath = gridImport > 0.5
+      ? "M90 195 H410"
+      : "M410 195 H90";
 
-    const pvPath = "M250 104 L250 300";
-    const outputPath = "M283 306 C330 285 370 225 418 197";
+    /*
+     * PV and the household AC bus visually cross, but are not directly
+     * connected. The small bridge in this path makes that topology explicit.
+     */
+    const pvPath =
+      "M250 112 V176 C250 184 242 184 242 195 C242 206 250 206 250 214 V300";
+
+    /*
+     * This is the only NOAH-to-home path and is driven exclusively by
+     * output_power.
+     */
+    const outputPath =
+      "M286 305 C334 292 367 232 410 202";
 
     const noahClass = charging > discharging + 0.5
       ? "charging"
@@ -193,143 +202,235 @@ class NoahEnergyFlowCard extends HTMLElement {
         ? "discharging"
         : "idle";
 
-    const outputDetail = `<span class="output-value">→ ${this._formatPower(outputRaw)}</span>`;
-    const batteryDetail = `
-      <span class="charge-value">↓ ${this._formatPower(chargingRaw)}</span>
-      <span class="separator"> · </span>
-      <span class="discharge-value">↑ ${this._formatPower(dischargingRaw)}</span>
-    `;
-
     this.shadowRoot.innerHTML = `
       <style>
-        :host { display:block; }
+        :host {
+          display: block;
+        }
 
         ha-card {
-          padding:18px 16px 16px;
-          overflow:hidden;
+          padding: 18px 18px 16px;
+          overflow: hidden;
         }
 
         .title {
-          margin:0 0 8px 2px;
-          color:var(--primary-text-color);
-          font-size:1.35rem;
-          line-height:1.35;
+          margin: 0 0 4px;
+          color: var(--primary-text-color);
+          font-size: 1.35rem;
+          line-height: 1.35;
+          font-weight: 500;
         }
 
         .stage {
-          position:relative;
-          width:100%;
-          aspect-ratio:1.31 / 1;
-          min-height:315px;
+          position: relative;
+          width: 100%;
+          aspect-ratio: 1.33 / 1;
+          min-height: 320px;
         }
 
         svg {
-          position:absolute;
-          inset:0;
-          width:100%;
-          height:100%;
-          overflow:visible;
-          pointer-events:none;
+          position: absolute;
+          inset: 0;
+          width: 100%;
+          height: 100%;
+          overflow: visible;
+          pointer-events: none;
         }
 
         .base-line {
-          fill:none;
-          stroke:color-mix(in srgb, var(--secondary-text-color) 72%, transparent);
-          stroke-width:1.25;
-          opacity:.9;
+          fill: none;
+          stroke: color-mix(
+            in srgb,
+            var(--secondary-text-color) 68%,
+            transparent
+          );
+          stroke-width: 1.35;
+          stroke-linecap: round;
+          opacity: 0.78;
         }
 
         .base-line.output {
-          stroke:color-mix(in srgb, #26a69a 58%, var(--secondary-text-color));
+          stroke: color-mix(
+            in srgb,
+            #26a69a 48%,
+            var(--secondary-text-color)
+          );
+        }
+
+        .bridge-mask {
+          fill: none;
+          stroke: var(--ha-card-background, var(--card-background-color));
+          stroke-width: 5;
+          stroke-linecap: round;
+        }
+
+        .flow-dot {
+          filter: drop-shadow(0 0 1.5px currentColor);
         }
 
         .node {
-          position:absolute;
-          transform:translate(-50%,-50%);
-          width:80px;
-          min-height:80px;
-          padding:7px 4px 5px;
-          border-radius:50%;
-          border:2px solid var(--secondary-text-color);
-          background:var(--ha-card-background, var(--card-background-color));
-          color:var(--primary-text-color);
-          display:flex;
-          flex-direction:column;
-          align-items:center;
-          justify-content:center;
-          cursor:pointer;
-          font:inherit;
-          box-sizing:border-box;
-          z-index:2;
+          position: absolute;
+          transform: translate(-50%, -50%);
+          width: 86px;
+          min-height: 86px;
+          padding: 7px 5px 6px;
+          border-radius: 50%;
+          border: 2px solid var(--secondary-text-color);
+          background: var(--ha-card-background, var(--card-background-color));
+          color: var(--primary-text-color);
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          box-sizing: border-box;
+          cursor: pointer;
+          font: inherit;
+          z-index: 2;
         }
 
-        .node:hover { filter:brightness(1.08); }
-        .node.grid, .node.home { border-color:#42a5f5; }
-        .node.pv { border-color:#ff9800; }
-        .node.noah.idle { border-color:#26a69a; }
-        .node.noah.charging { border-color:#ec407a; }
-        .node.noah.discharging { border-color:#26c6da; }
+        .node:hover {
+          filter: brightness(1.06);
+        }
+
+        .node.grid,
+        .node.home {
+          border-color: #42a5f5;
+        }
+
+        .node.pv {
+          border-color: #ff9800;
+        }
+
+        .node.noah.idle {
+          border-color: #26a69a;
+        }
+
+        .node.noah.charging {
+          border-color: #ec407a;
+        }
+
+        .node.noah.discharging {
+          border-color: #26c6da;
+        }
 
         .node-icon {
-          height:18px;
-          line-height:18px;
-          margin-bottom:1px;
+          height: 19px;
+          line-height: 19px;
+          margin-bottom: 1px;
         }
 
-        ha-icon { --mdc-icon-size:18px; }
+        ha-icon {
+          --mdc-icon-size: 18px;
+        }
 
         .node-main {
-          font-size:12px;
-          font-weight:700;
-          line-height:15px;
-          white-space:nowrap;
+          font-size: 12px;
+          font-weight: 700;
+          line-height: 15px;
+          white-space: nowrap;
         }
 
         .node-detail {
-          font-size:9px;
-          line-height:11px;
-          white-space:nowrap;
+          font-size: 9.5px;
+          line-height: 11.5px;
+          white-space: nowrap;
         }
 
         .node-title {
-          position:absolute;
-          top:calc(100% + 5px);
-          color:var(--primary-text-color);
-          font-size:11px;
-          font-weight:500;
-          white-space:nowrap;
+          position: absolute;
+          top: calc(100% + 5px);
+          color: var(--primary-text-color);
+          font-size: 11px;
+          font-weight: 500;
+          white-space: nowrap;
         }
 
-        .node.pv .node-main { color:#ff9800; }
-        .node.noah .output-value { color:#26a69a; }
-        .node.noah.charging .charge-value { color:#ec407a; }
-        .node.noah.discharging .discharge-value { color:#26c6da; }
-        .separator { color:var(--secondary-text-color); }
+        .node.pv .node-main {
+          color: #ff9800;
+        }
 
-        @media (max-width:420px) {
-          .stage { min-height:290px; }
-          .node { width:74px; min-height:74px; }
-          .node-main { font-size:11px; }
-          .node-detail { font-size:8.5px; }
+        .output-value {
+          color: #26a69a;
+        }
+
+        .charge-value {
+          color: #ec407a;
+        }
+
+        .discharge-value {
+          color: #26c6da;
+        }
+
+        .separator {
+          color: var(--secondary-text-color);
+        }
+
+        @media (max-width: 420px) {
+          .stage {
+            min-height: 295px;
+          }
+
+          .node {
+            width: 78px;
+            min-height: 78px;
+          }
+
+          .node-main {
+            font-size: 11px;
+          }
+
+          .node-detail {
+            font-size: 8.5px;
+          }
         }
       </style>
 
       <ha-card>
         <div class="title">${this._config.title || ""}</div>
+
         <div class="stage">
           <svg viewBox="0 0 500 390" preserveAspectRatio="none" aria-hidden="true">
-            <path class="base-line" d="M82 190 L418 190" />
-            <path class="base-line" d="M250 104 L250 300" />
-            <path class="base-line output" d="M283 306 C330 285 370 225 418 197" />
+            <!-- Grid / household AC bus -->
+            <path class="base-line" d="M90 195 H410" />
 
-            ${this._movingDots(gridPath, gridFlow, gridImport > 0.5 ? "#42a5f5" : "#8e44ad")}
-            ${this._movingDots(pvPath, solar, "#ff9800")}
-            ${this._movingDots(outputPath, output, "#26a69a")}
+            <!-- PV -> NOAH, with a visual bridge over the AC bus -->
+            <path
+              class="bridge-mask"
+              d="M250 176 C250 184 242 184 242 195 C242 206 250 206 250 214"
+            />
+            <path
+              class="base-line"
+              d="M250 112 V176 C250 184 242 184 242 195 C242 206 250 206 250 214 V300"
+            />
+
+            <!-- NOAH -> Home -->
+            <path
+              class="base-line output"
+              d="M286 305 C334 292 367 232 410 202"
+            />
+
+            ${this._flowDot(
+              gridPath,
+              gridFlow,
+              gridImport > 0.5 ? "#42a5f5" : "#8e44ad",
+            )}
+
+            ${this._flowDot(
+              pvPath,
+              solar,
+              "#ff9800",
+            )}
+
+            ${this._flowDot(
+              outputPath,
+              output,
+              "#26a69a",
+            )}
           </svg>
 
           ${this._node({
             x: 10,
-            y: 49,
+            y: 50,
             cssClass: "grid",
             icon: "mdi:transmission-tower",
             title: labels.grid,
@@ -340,7 +441,7 @@ class NoahEnergyFlowCard extends HTMLElement {
 
           ${this._node({
             x: 50,
-            y: 22,
+            y: 21,
             cssClass: "pv",
             icon: "mdi:solar-power",
             title: labels.pv,
@@ -350,7 +451,7 @@ class NoahEnergyFlowCard extends HTMLElement {
 
           ${this._node({
             x: 90,
-            y: 49,
+            y: 50,
             cssClass: "home",
             icon: "mdi:home",
             title: labels.home,
@@ -365,7 +466,10 @@ class NoahEnergyFlowCard extends HTMLElement {
             icon: "mdi:battery",
             title: labels.noah,
             main: this._formatSoc(soc),
-            details: [outputDetail, batteryDetail],
+            details: [
+              `<span class="output-value">→ ${this._formatPower(outputRaw)}</span>`,
+              `<span class="charge-value">↓ ${this._formatPower(chargingRaw)}</span><span class="separator"> · </span><span class="discharge-value">↑ ${this._formatPower(dischargingRaw)}</span>`,
+            ],
             entity: e.soc,
           })}
         </div>
@@ -373,7 +477,10 @@ class NoahEnergyFlowCard extends HTMLElement {
     `;
 
     for (const node of this.shadowRoot.querySelectorAll(".node")) {
-      node.addEventListener("click", () => this._moreInfo(node.dataset.entity));
+      node.addEventListener(
+        "click",
+        () => this._moreInfo(node.dataset.entity),
+      );
     }
   }
 }

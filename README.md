@@ -4,7 +4,7 @@ Prognosebasierte Steuerung der Ausgangsleistung eines Growatt NOAH 2000
 über Home Assistant und Noah-MQTT.
 
 > **Status:** Stabiler Release `2.0.0`. Aktueller Pre-Release:
-> `2.1.0-beta.17`.
+> `2.1.0-beta.18`.
 >
 > Die aktive Steuerung kann die NOAH-Ausgangsleistung verändern. Vor der
 > Aktivierung sollten Quellwerte, Netzvorzeichen und Stellgröße geprüft werden.
@@ -48,7 +48,7 @@ Aktuelle stabile Version:
 Aktueller Pre-Release:
 
 ```text
-2.1.0-beta.17
+2.1.0-beta.18
 ```
 
 ### 2.1.0-beta.1 – PV-Learning
@@ -362,6 +362,17 @@ künstliches Ladeprofil erfunden.
 
 Keine Dashboard-Template- oder Translation-Migration erforderlich.
 
+### 2.1.0-beta.18 – Energieflusskarte optisch verfeinert
+
+Beta 18 überarbeitet ausschließlich die Darstellung der in Beta 17
+eingeführten Energieflusskarte. Das Vier-Knoten-Layout für Netz, PV, Haus und
+NOAH bleibt erhalten, wird aber kompakter und ruhiger dargestellt.
+
+Aktive Flüsse verwenden nur noch einen dezenten bewegten Punkt. An der
+Kreuzung zwischen PV-Pfad und Hausnetz wird eine optische Brücke gezeichnet,
+damit dort kein elektrischer Knoten suggeriert wird. **NOAH → Haus** bleibt
+weiterhin ausschließlich an `output_power` gekoppelt.
+
 ### 2.1.0-beta.17 – Überarbeitete Energieflusskarte
 
 Beta 17 behält die in Beta 16 korrigierte Messlogik bei, gestaltet die
@@ -426,7 +437,7 @@ Typ:
 Integration
 ```
 
-Für `2.1.0-beta.17` müssen in HACS Vorabversionen für dieses Repository
+Für `2.1.0-beta.18` müssen in HACS Vorabversionen für dieses Repository
 angezeigt werden.
 
 Nach Installation oder Update Home Assistant vollständig neu starten.
@@ -950,6 +961,14 @@ Prüfen:
 Danach aktive Steuerung wieder freigeben.
 
 ## Versionshistorie
+
+### 2.1.0-beta.18
+
+- Energieflusskarte optisch kompakter und ruhiger gestaltet
+- nur noch ein dezenter bewegter Punkt pro aktivem Flusspfad
+- optische Brücke an der Kreuzung PV-Pfad / Hausnetz
+- NOAH → Haus weiterhin ausschließlich aus `output_power`
+- Frontend-Ressource auf `v=3` angehoben
 
 ### 2.1.0-beta.17
 
