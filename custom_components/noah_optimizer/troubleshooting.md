@@ -17,7 +17,7 @@ Zusätzlich prüfen:
 
 - HACS-Installation vollständig
 - Home Assistant nach dem Update neu gestartet
-- `manifest.json` auf `2.0.0` (stabil) oder `2.1.0-beta.15` (aktueller Pre-Release)
+- `manifest.json` auf `2.0.0` (stabil) oder `2.1.0-beta.16` (aktueller Pre-Release)
 - alle Quell-Entitäten vorhanden
 - keine Python-Fehler im Protokoll
 
@@ -72,33 +72,20 @@ negativ = Netzeinspeisung
 Bei umgekehrter Konvention die Integration mit **Netzvorzeichen umkehren**
 einrichten.
 
-## 5. Batteriefluss im Dashboard ist falsch herum
+## 5. Energiefluss zeigt PV-Leistung zum Haus trotz 0 W NOAH-Ausgang
 
-Für Power Flow Card Plus muss gelten:
+Ab `2.1.0-beta.16` verwendet das Standard-Dashboard die gebündelte
+NOAH-Energieflusskarte. Der Pfad **NOAH → Haus** basiert ausschließlich auf
+`output_power`. Bei `output_power = 0 W` darf dort kein aktiver Fluss erscheinen.
 
-```text
-consumption = Entladeleistung
-production  = Ladeleistung
-```
+PV-Leistung wird separat als **PV → NOAH** dargestellt. Unterschiede zwischen
+PV-Leistung und Batterieladeleistung können durch NOAH-Eigenverbrauch,
+Wandlungsverluste oder Messwertauflösung entstehen und werden nicht mehr als
+Hausversorgung interpretiert.
 
-Im HACS-Dashboard:
-
-```yaml
-battery:
-  entity:
-    consumption: __DISCHARGING_POWER__
-    production: __CHARGING_POWER__
-```
-
-Das bedeutet:
-
-```text
-Ladeleistung    -> Energie fließt in den Akku
-Entladeleistung -> Energie fließt aus dem Akku
-```
-
-Beta 8 korrigiert beim bestehenden Dashboard zusätzlich die exakte alte
-Beta-6-Zuordnung, falls sie noch vorhanden ist.
+Wenn weiterhin die alte Darstellung erscheint, Home Assistant nach dem Update
+vollständig neu starten und Browser/App neu laden. Das Standard-Dashboard wird
+automatisch auf Template-Version 20 migriert.
 
 ## 6. Dynamisches SOC-Soll ist `unavailable`
 
@@ -437,18 +424,15 @@ Stark veränderte Standardkarten können verhindern, dass einzelne Blöcke
 automatisch erkannt werden. Die Integration überschreibt bewusst nicht das
 gesamte benutzerdefinierte Dashboard.
 
-## 17. Power Flow Card Plus fehlt
+## 17. Alte Power Flow Card Plus wird noch angezeigt
 
-Fehler wie:
+Power Flow Card Plus ist ab `2.1.0-beta.16` für das automatisch erzeugte
+Standard-Dashboard nicht mehr erforderlich. Nach vollständigem Home-Assistant-
+Neustart migriert die Integration die erkannte Standardkarte auf die gebündelte
+`custom:noah-energy-flow-card`.
 
-```text
-Custom element doesn't exist: power-flow-card-plus
-```
-
-bedeuten, dass Power Flow Card Plus nicht installiert oder noch nicht im
-Frontend geladen ist.
-
-In HACS installieren und Browser/App vollständig neu laden.
+Absichtlich selbst angelegte oder stark angepasste Power-Flow-Karten werden
+nicht überschrieben. Diese müssen bei Bedarf manuell entfernt werden.
 
 ## 18. ApexCharts Card fehlt
 

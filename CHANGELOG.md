@@ -1,3 +1,37 @@
+## [2.1.0-beta.16]
+
+### Fixed
+
+- replace the generated Power Flow Card Plus energy-flow card with a bundled
+  NOAH-specific frontend card
+- drive the NOAH-to-home path exclusively from the measured `output_power`
+  entity
+- show PV power as PV-to-NOAH DC input instead of deriving a direct PV-to-home
+  flow from differences between PV and battery charging power
+- prevent NOAH internal consumption, conversion losses or sensor-resolution
+  differences from appearing as fictitious household supply
+- migrate recognized generated dashboards to template version 20 while leaving
+  unrelated/user-created Power Flow Card Plus cards unchanged
+
+### Dashboard
+
+- bundle and register `custom:noah-energy-flow-card` with the integration
+- Power Flow Card Plus is no longer required for the generated dashboard
+- ApexCharts Card remains the only external dashboard-card dependency
+
+### Safety
+
+- no controller, forecast, SOC-planning, offline-protection or command logic is
+  changed
+
+### Changed version
+
+- Integration version updated to `2.1.0-beta.16`
+- Dashboard template version updated to 20
+- No entity or translation migration is required
+
+---
+
 ## [2.1.0-beta.15]
 
 ### Fixed

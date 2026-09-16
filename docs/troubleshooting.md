@@ -1,7 +1,7 @@
 # Fehlerbehebung
 
 Dieses Dokument bezieht sich auf die HACS-Integration **Growatt NOAH
-Optimizer**, insbesondere `2.1.0-beta.15`.
+Optimizer**, insbesondere `2.1.0-beta.16`.
 
 ## 1. Integration wird nicht geladen
 
@@ -16,7 +16,7 @@ suchen.
 Prüfen:
 
 - Home Assistant neu gestartet
-- `manifest.json` auf `2.1.0-beta.15`
+- `manifest.json` auf `2.1.0-beta.16`
 - Quell-Entitäten vorhanden
 - keine Python-Fehler
 
@@ -252,9 +252,12 @@ Could not create the NOAH Optimizer dashboard
 
 suchen.
 
-## 32. Power Flow Card Plus fehlt
+## 32. Alte Power Flow Card Plus wird noch angezeigt
 
-HACS installieren und Frontend neu laden.
+Ab Beta 16 ist Power Flow Card Plus für das Standard-Dashboard nicht mehr
+erforderlich. Nach Home-Assistant-Neustart wird die erkannte Standardkarte auf
+`custom:noah-energy-flow-card` migriert. Benutzerdefinierte Karten werden nicht
+automatisch überschrieben.
 
 ## 33. ApexCharts Card fehlt
 
@@ -653,3 +656,8 @@ Beta 15 normiert die nach dem Intraday-Anker verbleibende native
 Forecast.Solar-Kurvenfläche auf `energy_production_today_remaining`. Dadurch
 verwendet der SOC-Plan dieselbe Restenergiemenge wie die Reglerberechnung. Die
 native Kurve liefert weiterhin nur die zeitliche Form.
+
+
+## Beta 16: falscher PV-Hausfluss bei 0 W Ausgang
+
+Die gebündelte Energieflusskarte koppelt NOAH → Haus ausschließlich an `output_power`. Bei 0 W Ausgang bleibt dieser Pfad inaktiv; PV-Leistung wird nur als PV → NOAH angezeigt.

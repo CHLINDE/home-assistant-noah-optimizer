@@ -2,7 +2,7 @@
 
 Stable release: `2.0.0`
 
-Current pre-release: `2.1.0-beta.15`
+Current pre-release: `2.1.0-beta.16`
 
 The `2.1.0-beta.1` pre-release adds passive, persistent PV learning. Applying
 the learned correction is opt-in and disabled by default. `2.1.0-beta.2` keeps
@@ -13,6 +13,17 @@ dynamic SOC schedule from the time-resolved forecast without making extra
 Forecast.Solar API calls.
 `2.1.0-beta.4` adds date-selectable SOC schedule history and persistent
 forecast/plan snapshots for reviewing older days and individual plan versions.
+
+## 2.1.0-beta.16 – Bundled NOAH energy-flow card
+
+Beta 16 replaces the generated Power Flow Card Plus card with a bundled
+NOAH-specific energy-flow card. PV is shown as the DC input to the NOAH, while
+the NOAH-to-home path is driven only by the measured `output_power` entity.
+A zero AC output therefore cannot be visualized as PV power flowing to the home.
+
+Power Flow Card Plus is no longer required for the generated dashboard. Existing
+standard dashboards migrate automatically to template version 20. ApexCharts
+Card remains required for the chart cards.
 
 ## 2.1.0-beta.15 – Forecast remaining-energy normalization
 
@@ -838,7 +849,6 @@ standard card can be identified reliably.
 
 The enhanced dashboard requires:
 
-- Power Flow Card Plus
 - ApexCharts Card
 
 These frontend cards are separate HACS dashboard components and are not

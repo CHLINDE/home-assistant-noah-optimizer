@@ -32,7 +32,7 @@ from .control import (
 )
 from .coordinator import NoahOptimizerCoordinator
 from .guarded_coordinator import NoahOfflineAwareCoordinator
-from .dashboard_migration_v18 import (
+from .dashboard_migration_v20 import (
     async_ensure_dashboard,
     remove_dashboard_panel,
 )
@@ -141,13 +141,13 @@ async def async_setup_entry(
     # The offline guard runs before the original controller can write.
     await controller.async_control_tick()
 
-    # The bundled date-selectable history card is optional and must never
-    # prevent the optimizer itself from loading.
+    # The bundled frontend cards are optional and must never prevent the
+    # optimizer itself from loading.
     try:
         await async_register_history_card(hass)
     except Exception:  # noqa: BLE001
         _LOGGER.exception(
-            "Could not register the NOAH Optimizer history card"
+            "Could not register the NOAH Optimizer frontend cards"
         )
 
     # The dashboard is optional and must never prevent the optimizer itself

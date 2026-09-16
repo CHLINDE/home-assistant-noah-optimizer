@@ -1,7 +1,7 @@
 # Konfiguration
 
 Dieses Dokument beschreibt die HACS-Integration **Growatt NOAH Optimizer**
-für den aktuellen Pre-Release `2.1.0-beta.15`.
+für den aktuellen Pre-Release `2.1.0-beta.16`.
 
 `2.1.0-beta.1` ergänzt auf Basis des stabilen Stands `2.0.0` passives,
 persistentes PV-Learning. `2.1.0-beta.2` korrigiert zusätzlich die Automatik
@@ -1157,23 +1157,23 @@ Ab `2.1.0-beta.3` zeigt das Dashboard zusätzlich eine Karte **PV-Prognose**
 mit Forecast.Solar-Leistung, wirksamer korrigierter Prognose und realer
 PV-Leistung. Der Aktualisierungszeitpunkt, der prognostizierte End-SOC und die
 Ladeplanbasis werden in den Planungsdetails angezeigt. Beta 3 führte dafür
-Dashboard-Template-Version 14 ein; der aktuelle `2.1.0-beta.10`-Stand verwendet
-nach Historienkarte und vollständiger Serienfarben-Migration **Template-Version 17**.
+Dashboard-Template-Version 14 ein. Der aktuelle Beta-16-Stand verwendet nach
+Historienkarte, Serienfarben-Migration und NOAH-Energieflusskarte
+**Template-Version 20**.
 
 
-Das automatische Dashboard verwendet für Power Flow Card Plus:
+Ab `2.1.0-beta.16` verwendet das automatische Dashboard die gebündelte
+NOAH-Energieflusskarte mit expliziter Topologie:
 
 ```text
-Grid:
-consumption = Netzbezug
-production  = Netzeinspeisung
-
-Battery:
-consumption = Entladeleistung
-production  = Ladeleistung
+Netz <-> Haus = Netzbezug / Netzeinspeisung
+PV -> NOAH    = NOAH Solar Power
+NOAH -> Haus  = NOAH Output Power
 ```
 
-Damit entspricht die animierte Richtung dem realen Energiefluss.
+Der Pfad **NOAH → Haus** hängt damit ausschließlich von `output_power` ab. Bei
+`output_power = 0 W` wird kein Fluss zum Haus dargestellt, auch wenn sich
+PV-Leistung und Batterieladeleistung um einige Watt unterscheiden.
 
 Seit Beta 8 enthält das Dashboard außerdem:
 
@@ -1404,3 +1404,13 @@ Beta-14-Kurvenintegration als Fallback erhalten. Existiert keine nutzbare
 zukünftige Kurvenform, wird kein künstlicher Verlauf erzeugt.
 
 Keine Dashboard- oder Translation-Migration erforderlich.
+
+
+## 2.1.0-beta.16 – NOAH-Energieflusskarte
+
+Die Standard-Energieflusskarte wird ab Beta 16 mit der Integration ausgeliefert.
+Power Flow Card Plus ist dafür nicht mehr erforderlich. Die Karte verwendet
+`solar_power` für PV → NOAH und ausschließlich `output_power` für NOAH → Haus.
+Dadurch werden interne NOAH-Verluste oder Messwertdifferenzen nicht als direkte
+PV-Hausversorgung dargestellt. Bestehende Standard-Dashboards werden über
+Template-Version 20 automatisch migriert.
