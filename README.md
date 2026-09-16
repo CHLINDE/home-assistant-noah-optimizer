@@ -4,7 +4,7 @@ Prognosebasierte Steuerung der Ausgangsleistung eines Growatt NOAH 2000
 über Home Assistant und Noah-MQTT.
 
 > **Status:** Stabiler Release `2.0.0`. Aktueller Pre-Release:
-> `2.1.0-beta.16`.
+> `2.1.0-beta.17`.
 >
 > Die aktive Steuerung kann die NOAH-Ausgangsleistung verändern. Vor der
 > Aktivierung sollten Quellwerte, Netzvorzeichen und Stellgröße geprüft werden.
@@ -48,7 +48,7 @@ Aktuelle stabile Version:
 Aktueller Pre-Release:
 
 ```text
-2.1.0-beta.16
+2.1.0-beta.17
 ```
 
 ### 2.1.0-beta.1 – PV-Learning
@@ -362,6 +362,15 @@ künstliches Ladeprofil erfunden.
 
 Keine Dashboard-Template- oder Translation-Migration erforderlich.
 
+### 2.1.0-beta.17 – Überarbeitete Energieflusskarte
+
+Beta 17 behält die in Beta 16 korrigierte Messlogik bei, gestaltet die
+mitgelieferte Energieflusskarte aber wieder näher an der bisherigen Darstellung.
+Netz, PV, Haus und NOAH werden als vier große Knoten gezeigt; animierte Punkte
+stellen die aktiven Flüsse dar. **NOAH → Haus** bleibt ausschließlich an
+`output_power` gekoppelt. Ausgang, Lade- und Entladeleistung werden kompakt im
+NOAH-Knoten angezeigt.
+
 ### 2.1.0-beta.16 – NOAH-spezifischer Energiefluss
 
 Beta 16 ersetzt die generische Power Flow Card Plus im automatisch erzeugten
@@ -417,7 +426,7 @@ Typ:
 Integration
 ```
 
-Für `2.1.0-beta.16` müssen in HACS Vorabversionen für dieses Repository
+Für `2.1.0-beta.17` müssen in HACS Vorabversionen für dieses Repository
 angezeigt werden.
 
 Nach Installation oder Update Home Assistant vollständig neu starten.
@@ -941,6 +950,14 @@ Prüfen:
 Danach aktive Steuerung wieder freigeben.
 
 ## Versionshistorie
+
+### 2.1.0-beta.17
+
+- Energieflusskarte optisch auf vier große Knoten zurückgeführt
+- glatte bewegte Punkte statt gestrichelter Flusslinien
+- NOAH → Haus weiterhin ausschließlich aus `output_power`
+- SOC, Ausgang, Laden und Entladen kompakt im NOAH-Knoten
+- Frontend-Ressource auf `v=2` angehoben
 
 ### 2.1.0-beta.16
 

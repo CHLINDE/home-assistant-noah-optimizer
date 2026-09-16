@@ -18,7 +18,7 @@ HISTORY_CARD_URL = f"{HISTORY_CARD_STATIC_URL}?v={HISTORY_CARD_VERSION}"
 HISTORY_CARD_FILE = Path(__file__).with_name("frontend") / "noah-soc-history-card.js"
 
 ENERGY_FLOW_CARD_STATIC_URL = f"/{DOMAIN}/noah-energy-flow-card.js"
-ENERGY_FLOW_CARD_VERSION = "1"
+ENERGY_FLOW_CARD_VERSION = "2"
 ENERGY_FLOW_CARD_URL = f"{ENERGY_FLOW_CARD_STATIC_URL}?v={ENERGY_FLOW_CARD_VERSION}"
 ENERGY_FLOW_CARD_FILE = Path(__file__).with_name("frontend") / "noah-energy-flow-card.js"
 
@@ -35,7 +35,7 @@ async def async_register_history_card(hass: HomeAssistant) -> None:
     """Serve and register all bundled NOAH Optimizer frontend cards.
 
     The function name is kept for compatibility with the existing integration
-    setup path; Beta 16 extends it to register the dedicated energy-flow card.
+    setup path; Beta 16 added the dedicated energy-flow card.
     """
 
     # Keep the Beta 4 history-card registration key so an in-process update

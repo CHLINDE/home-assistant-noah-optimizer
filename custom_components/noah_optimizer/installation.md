@@ -1,7 +1,7 @@
 # Installation
 
 Diese Anleitung beschreibt die Installation und das Update des **Home
-Assistant Growatt NOAH Optimizers** für den aktuellen Pre-Release `2.1.0-beta.16`.
+Assistant Growatt NOAH Optimizers** für den aktuellen Pre-Release `2.1.0-beta.17`.
 
 Für neue Installationen wird die HACS-Integration empfohlen.
 
@@ -102,16 +102,16 @@ Typ:
 Integration
 ```
 
-## 5. Version 2.1.0-beta.16 installieren
+## 5. Version 2.1.0-beta.17 installieren
 
 Zu installierende Version:
 
 ```text
-2.1.0-beta.16
+2.1.0-beta.17
 ```
 
 In HACS müssen für dieses Repository Vorabversionen angezeigt beziehungsweise
-berücksichtigt werden. Danach `2.1.0-beta.16` auswählen und installieren.
+berücksichtigt werden. Danach `2.1.0-beta.17` auswählen und installieren.
 
 Nach der Installation Home Assistant vollständig neu starten.
 
@@ -774,3 +774,14 @@ verbleibender Energieinhalt wird jedoch auf die wirksame Restprognose normiert.
 Bei einem niedrigen Ist-SOC und noch positiver Restprognose darf der Plan deshalb
 nicht allein wegen einer zu kleinen integrierten Restfläche der nativen Kurve
 flach auf dem Ist-SOC stehen bleiben.
+
+
+## 2.1.0-beta.17 – Überarbeitete Energieflusskarte
+
+Beta 17 überarbeitet ausschließlich die Darstellung der gebündelten
+NOAH-Energieflusskarte. Die Karte verwendet wieder vier große Knoten für Netz,
+PV, Haus und NOAH und animiert aktive Flüsse mit bewegten Punkten. Der Pfad
+**NOAH → Haus** bleibt ausschließlich an `output_power` gekoppelt. SOC, Ausgang,
+Lade- und Entladeleistung werden kompakt im NOAH-Knoten angezeigt. Die
+Frontend-Ressource wird mit `v=2` registriert, damit Browser die neue Version
+zuverlässig laden.

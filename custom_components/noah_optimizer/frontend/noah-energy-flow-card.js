@@ -54,6 +54,7 @@ class NoahEnergyFlowCard extends HTMLElement {
     if (!state || ["unknown", "unavailable", ""].includes(state.state)) {
       return null;
     }
+
     const value = Number(state.state);
     if (!Number.isFinite(value)) return null;
 
@@ -69,44 +70,50 @@ class NoahEnergyFlowCard extends HTMLElement {
   }
 
   _formatPower(value) {
-    if (value === null) return "–";
+    if (value === null || !Number.isFinite(value)) return "–";
     const absolute = Math.abs(value);
+
     if (absolute >= 1000) {
-      const formatted = (absolute / 1000).toLocaleString(undefined, {
+      return `${(absolute / 1000).toLocaleString(undefined, {
         minimumFractionDigits: 1,
         maximumFractionDigits: 1,
-      });
-      return `${formatted} kW`;
+      })} kW`;
     }
+
     return `${Math.round(absolute)} W`;
   }
 
   _formatSoc(value) {
-    if (value === null) return "–";
+    if (value === null || !Number.isFinite(value)) return "–";
     return `${Math.round(value)} %`;
   }
 
-  _flowClass(value, reverse = false) {
-    if (!Number.isFinite(value) || value <= 0.5) return "flow inactive";
-    return `flow active${reverse ? " reverse" : ""}`;
-  }
-
   _flowDuration(value) {
-    if (!Number.isFinite(value) || value <= 0.5) return "4s";
+    if (!Number.isFinite(value) || value <= 0.5) return 4.0;
     const clamped = Math.max(20, Math.min(3000, value));
-    const duration = 2.8 - ((clamped - 20) / 2980) * 2.0;
-    return `${Math.max(0.8, duration).toFixed(2)}s`;
+    return Math.max(0.8, 3.0 - ((clamped - 20) / 2980) * 2.2);
   }
 
-  _moreInfo(entityId) {
-    if (!entityId) return;
-    this.dispatchEvent(
-      new CustomEvent("hass-more-info", {
-        bubbles: true,
-        composed: true,
-        detail: { entityId },
-      }),
-    );
+  _movingDots(path, value, color) {
+    if (!Number.isFinite(value) || value <= 0.5) return "";
+
+    const duration = this._flowDuration(value);
+    const starts = [0, -(duration / 3), -(duration * 2 / 3)];
+
+    return starts
+      .map(
+        (begin, index) => `
+          <circle r="${index === 0 ? 4.3 : 3.6}" fill="${color}" opacity="${index === 0 ? 1 : 0.82}">
+            <animateMotion
+              dur="${duration.toFixed(2)}s"
+              begin="${begin.toFixed(2)}s"
+              repeatCount="indefinite"
+              path="${path}"
+            />
+          </circle>
+        `,
+      )
+      .join("");
   }
 
   _node({ x, y, cssClass, icon, title, main, details = [], entity }) {
@@ -119,7 +126,7 @@ class NoahEnergyFlowCard extends HTMLElement {
       <button
         class="node ${cssClass}"
         style="left:${x}%;top:${y}%"
-        data-entity="${entity}"
+        data-entity="${entity || ""}"
         type="button"
       >
         <div class="node-icon"><ha-icon icon="${icon}"></ha-icon></div>
@@ -128,6 +135,17 @@ class NoahEnergyFlowCard extends HTMLElement {
         <div class="node-title">${title}</div>
       </button>
     `;
+  }
+
+  _moreInfo(entityId) {
+    if (!entityId) return;
+    this.dispatchEvent(
+      new CustomEvent("hass-more-info", {
+        bubbles: true,
+        composed: true,
+        detail: { entityId },
+      }),
+    );
   }
 
   _render() {
@@ -145,81 +163,91 @@ class NoahEnergyFlowCard extends HTMLElement {
       ...(this._config.labels || {}),
     };
 
-    const gridImport = Math.max(this._numeric(e.grid_import) ?? 0, 0);
-    const gridExport = Math.max(this._numeric(e.grid_export) ?? 0, 0);
-    const solar = Math.max(this._numeric(e.solar_power) ?? 0, 0);
-    const output = Math.max(this._numeric(e.output_power) ?? 0, 0);
-    const charging = Math.max(this._numeric(e.charging_power) ?? 0, 0);
-    const discharging = Math.max(this._numeric(e.discharging_power) ?? 0, 0);
-    const home = Math.max(this._numeric(e.home_load) ?? 0, 0);
+    const gridImportRaw = this._numeric(e.grid_import);
+    const gridExportRaw = this._numeric(e.grid_export);
+    const solarRaw = this._numeric(e.solar_power);
+    const outputRaw = this._numeric(e.output_power);
+    const chargingRaw = this._numeric(e.charging_power);
+    const dischargingRaw = this._numeric(e.discharging_power);
+    const homeRaw = this._numeric(e.home_load);
     const soc = this._soc(e.soc);
 
-    const gridFlow = gridImport > 0.5 ? gridImport : gridExport;
-    const gridReverse = gridExport > gridImport;
+    const gridImport = Math.max(gridImportRaw ?? 0, 0);
+    const gridExport = Math.max(gridExportRaw ?? 0, 0);
+    const solar = Math.max(solarRaw ?? 0, 0);
+    const output = Math.max(outputRaw ?? 0, 0);
+    const charging = Math.max(chargingRaw ?? 0, 0);
+    const discharging = Math.max(dischargingRaw ?? 0, 0);
 
-    const noahColor = charging > discharging + 0.5
+    const gridPath = gridImport > 0.5
+      ? "M82 190 L418 190"
+      : "M418 190 L82 190";
+    const gridFlow = gridImport > 0.5 ? gridImport : gridExport;
+
+    const pvPath = "M250 104 L250 300";
+    const outputPath = "M283 306 C330 285 370 225 418 197";
+
+    const noahClass = charging > discharging + 0.5
       ? "charging"
       : discharging > charging + 0.5
         ? "discharging"
         : "idle";
 
+    const outputDetail = `<span class="output-value">→ ${this._formatPower(outputRaw)}</span>`;
+    const batteryDetail = `
+      <span class="charge-value">↓ ${this._formatPower(chargingRaw)}</span>
+      <span class="separator"> · </span>
+      <span class="discharge-value">↑ ${this._formatPower(dischargingRaw)}</span>
+    `;
+
     this.shadowRoot.innerHTML = `
       <style>
         :host { display:block; }
+
         ha-card {
-          padding: 18px 16px 14px;
-          overflow: hidden;
+          padding:18px 16px 16px;
+          overflow:hidden;
         }
+
         .title {
-          font-size: 1.35rem;
-          line-height: 1.35;
-          margin: 0 0 8px 2px;
-          color: var(--primary-text-color);
+          margin:0 0 8px 2px;
+          color:var(--primary-text-color);
+          font-size:1.35rem;
+          line-height:1.35;
         }
+
         .stage {
-          position: relative;
-          width: 100%;
-          aspect-ratio: 1.28 / 1;
-          min-height: 310px;
+          position:relative;
+          width:100%;
+          aspect-ratio:1.31 / 1;
+          min-height:315px;
         }
+
         svg {
           position:absolute;
-          inset: 0;
+          inset:0;
           width:100%;
           height:100%;
           overflow:visible;
           pointer-events:none;
         }
+
         .base-line {
           fill:none;
-          stroke: color-mix(in srgb, var(--secondary-text-color) 70%, transparent);
-          stroke-width:1.2;
-          opacity:.8;
+          stroke:color-mix(in srgb, var(--secondary-text-color) 72%, transparent);
+          stroke-width:1.25;
+          opacity:.9;
         }
-        .flow {
-          fill:none;
-          stroke-width:2.4;
-          stroke-linecap:round;
-          stroke-dasharray: 1 8;
-          opacity:0;
+
+        .base-line.output {
+          stroke:color-mix(in srgb, #26a69a 58%, var(--secondary-text-color));
         }
-        .flow.active {
-          opacity:1;
-          animation-name: move-flow;
-          animation-timing-function: linear;
-          animation-iteration-count: infinite;
-        }
-        .flow.reverse { animation-direction: reverse; }
-        .grid-flow { stroke:#42a5f5; }
-        .grid-flow.reverse { stroke:#8e44ad; }
-        .pv-flow { stroke:#ff9800; }
-        .output-flow { stroke:#26a69a; }
-        @keyframes move-flow { to { stroke-dashoffset:-36; } }
+
         .node {
           position:absolute;
           transform:translate(-50%,-50%);
-          width:78px;
-          min-height:78px;
+          width:80px;
+          min-height:80px;
           padding:7px 4px 5px;
           border-radius:50%;
           border:2px solid var(--secondary-text-color);
@@ -234,74 +262,69 @@ class NoahEnergyFlowCard extends HTMLElement {
           box-sizing:border-box;
           z-index:2;
         }
+
         .node:hover { filter:brightness(1.08); }
         .node.grid, .node.home { border-color:#42a5f5; }
         .node.pv { border-color:#ff9800; }
         .node.noah.idle { border-color:#26a69a; }
         .node.noah.charging { border-color:#ec407a; }
         .node.noah.discharging { border-color:#26c6da; }
+
         .node-icon {
-          height:19px;
-          line-height:19px;
+          height:18px;
+          line-height:18px;
           margin-bottom:1px;
         }
+
         ha-icon { --mdc-icon-size:18px; }
-        .node-main { font-size:12px; font-weight:700; line-height:15px; }
-        .node-detail { font-size:10px; line-height:12px; white-space:nowrap; }
+
+        .node-main {
+          font-size:12px;
+          font-weight:700;
+          line-height:15px;
+          white-space:nowrap;
+        }
+
+        .node-detail {
+          font-size:9px;
+          line-height:11px;
+          white-space:nowrap;
+        }
+
         .node-title {
           position:absolute;
           top:calc(100% + 5px);
+          color:var(--primary-text-color);
           font-size:11px;
           font-weight:500;
           white-space:nowrap;
-          color:var(--primary-text-color);
         }
+
         .node.pv .node-main { color:#ff9800; }
-        .node.noah.charging .charge { color:#ec407a; }
-        .node.noah.discharging .discharge { color:#26c6da; }
-        .line-label {
-          position:absolute;
-          left:68%;
-          top:69%;
-          transform:translate(-50%,-50%);
-          padding:2px 5px;
-          border-radius:8px;
-          background:color-mix(in srgb, var(--ha-card-background, var(--card-background-color)) 88%, transparent);
-          color:var(--secondary-text-color);
-          font-size:10px;
-          white-space:nowrap;
-          z-index:1;
-        }
+        .node.noah .output-value { color:#26a69a; }
+        .node.noah.charging .charge-value { color:#ec407a; }
+        .node.noah.discharging .discharge-value { color:#26c6da; }
+        .separator { color:var(--secondary-text-color); }
+
         @media (max-width:420px) {
-          .stage { min-height:285px; }
-          .node { width:72px; min-height:72px; }
-          .line-label { font-size:9px; }
+          .stage { min-height:290px; }
+          .node { width:74px; min-height:74px; }
+          .node-main { font-size:11px; }
+          .node-detail { font-size:8.5px; }
         }
       </style>
+
       <ha-card>
         <div class="title">${this._config.title || ""}</div>
         <div class="stage">
           <svg viewBox="0 0 500 390" preserveAspectRatio="none" aria-hidden="true">
             <path class="base-line" d="M82 190 L418 190" />
-            <path
-              class="${this._flowClass(gridFlow, gridReverse)} grid-flow${gridReverse ? " reverse" : ""}"
-              style="animation-duration:${this._flowDuration(gridFlow)}"
-              d="M82 190 L418 190"
-            />
+            <path class="base-line" d="M250 104 L250 300" />
+            <path class="base-line output" d="M283 306 C330 285 370 225 418 197" />
 
-            <path class="base-line" d="M250 112 L250 308" />
-            <path
-              class="${this._flowClass(solar)} pv-flow"
-              style="animation-duration:${this._flowDuration(solar)}"
-              d="M250 112 L250 308"
-            />
-
-            <path class="base-line" d="M278 306 C320 280 365 235 418 200" />
-            <path
-              class="${this._flowClass(output)} output-flow"
-              style="animation-duration:${this._flowDuration(output)}"
-              d="M278 306 C320 280 365 235 418 200"
-            />
+            ${this._movingDots(gridPath, gridFlow, gridImport > 0.5 ? "#42a5f5" : "#8e44ad")}
+            ${this._movingDots(pvPath, solar, "#ff9800")}
+            ${this._movingDots(outputPath, output, "#26a69a")}
           </svg>
 
           ${this._node({
@@ -310,8 +333,8 @@ class NoahEnergyFlowCard extends HTMLElement {
             cssClass: "grid",
             icon: "mdi:transmission-tower",
             title: labels.grid,
-            main: `→ ${this._formatPower(gridImport)}`,
-            details: [`← ${this._formatPower(gridExport)}`],
+            main: `→ ${this._formatPower(gridImportRaw)}`,
+            details: [`← ${this._formatPower(gridExportRaw)}`],
             entity: e.grid_import,
           })}
 
@@ -321,7 +344,7 @@ class NoahEnergyFlowCard extends HTMLElement {
             cssClass: "pv",
             icon: "mdi:solar-power",
             title: labels.pv,
-            main: this._formatPower(solar),
+            main: this._formatPower(solarRaw),
             entity: e.solar_power,
           })}
 
@@ -331,25 +354,20 @@ class NoahEnergyFlowCard extends HTMLElement {
             cssClass: "home",
             icon: "mdi:home",
             title: labels.home,
-            main: this._formatPower(home),
+            main: this._formatPower(homeRaw),
             entity: e.home_load,
           })}
 
           ${this._node({
             x: 50,
             y: 82,
-            cssClass: `noah ${noahColor}`,
+            cssClass: `noah ${noahClass}`,
             icon: "mdi:battery",
             title: labels.noah,
             main: this._formatSoc(soc),
-            details: [
-              `<span class="charge">↓ ${this._formatPower(charging)}</span>`,
-              `<span class="discharge">↑ ${this._formatPower(discharging)}</span>`,
-            ],
+            details: [outputDetail, batteryDetail],
             entity: e.soc,
           })}
-
-          <div class="line-label">${labels.output}: ${this._formatPower(output)}</div>
         </div>
       </ha-card>
     `;

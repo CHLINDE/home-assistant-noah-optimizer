@@ -2,7 +2,7 @@
 
 Stable release: `2.0.0`
 
-Current pre-release: `2.1.0-beta.16`
+Current pre-release: `2.1.0-beta.17`
 
 The `2.1.0-beta.1` pre-release adds passive, persistent PV learning. Applying
 the learned correction is opt-in and disabled by default. `2.1.0-beta.2` keeps
@@ -1193,3 +1193,14 @@ The current `2.1.0-beta.14` pre-release does not yet include:
 
 Active control directly changes the NOAH output setpoint and should be
 monitored during commissioning and after configuration changes.
+
+
+## 2.1.0-beta.17 – Überarbeitete Energieflusskarte
+
+Beta 17 überarbeitet ausschließlich die Darstellung der gebündelten
+NOAH-Energieflusskarte. Die Karte verwendet wieder vier große Knoten für Netz,
+PV, Haus und NOAH und animiert aktive Flüsse mit bewegten Punkten. Der Pfad
+**NOAH → Haus** bleibt ausschließlich an `output_power` gekoppelt. SOC, Ausgang,
+Lade- und Entladeleistung werden kompakt im NOAH-Knoten angezeigt. Die
+Frontend-Ressource wird mit `v=2` registriert, damit Browser die neue Version
+zuverlässig laden.
