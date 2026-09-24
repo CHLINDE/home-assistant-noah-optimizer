@@ -20,6 +20,7 @@ class ForecastCurveData:
     raw_day_energy_kwh: float
     effective_day_energy_kwh: float
     planned_end_soc: float
+    planning_remaining_kwh: float | None = None
 
     def soc_target_at(self, at: datetime) -> float | None:
         """Interpolate the charging schedule at a timestamp."""
@@ -70,6 +71,10 @@ class ForecastCurveData:
                 3,
             ),
             "planned_end_soc": round(self.planned_end_soc, 1),
+            "planning_remaining_kwh": (
+                round(self.planning_remaining_kwh, 3)
+                if self.planning_remaining_kwh is not None else None
+            ),
         }
 
 
@@ -201,10 +206,9 @@ def build_forecast_curve(
         )
         soc_plan.append((timestamp, planned_soc))
 
-    raw_day_energy_kwh = sum(
-        value
-        for timestamp, value in _today_points(wh_period, today)
-    ) / 1000.0
+    # Both the displayed energy and the initial SOC plan must describe the
+    # same power curve. wh_period can cover different intervals from watts.
+    raw_day_energy_kwh = _integrate_trapezoids(raw_power)[-1][1]
 
     return ForecastCurveData(
         updated_at=updated_at,

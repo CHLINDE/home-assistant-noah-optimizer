@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import date, datetime, timedelta
 import hashlib
 import json
+import math
 from typing import Any
 
 import voluptuous as vol
@@ -43,6 +44,7 @@ def _snapshot_signature(
         "raw_power": _compact_points(curve.raw_power),
         "effective_power": _compact_points(curve.effective_power),
         "soc_plan": _compact_points(curve.soc_plan),
+        "planning_remaining_kwh": curve.planning_remaining_kwh,
     }
     encoded = json.dumps(
         payload,
@@ -136,6 +138,10 @@ class NoahHistoryStore:
                 3,
             ),
             "planned_end_soc": round(curve.planned_end_soc, 1),
+            "planning_remaining_kwh": (
+                round(curve.planning_remaining_kwh, 3)
+                if curve.planning_remaining_kwh is not None else None
+            ),
             **metadata,
         }
         snapshots.append(snapshot)
@@ -158,6 +164,36 @@ class NoahHistoryStore:
             "retention_days": MAX_HISTORY_DAYS,
             "snapshots": snapshots,
         }
+
+    def latest_plan_before(
+        self, at: datetime,
+    ) -> list[tuple[datetime, float]]:
+        """Recover today's established plan history after an HA restart."""
+        day = dt_util.as_local(at).date().isoformat()
+        snapshots = self.get_day(day)["snapshots"]
+        if not snapshots:
+            return []
+        points = snapshots[-1].get("soc_plan", [])
+        parsed: list[tuple[datetime, float]] = []
+        for item in points:
+            try:
+                timestamp = dt_util.parse_datetime(item[0])
+                value = float(item[1])
+            except (IndexError, TypeError, ValueError):
+                continue
+            if timestamp is not None and math.isfinite(value):
+                parsed.append((timestamp, value))
+        parsed.sort(key=lambda point: point[0])
+        result = [(timestamp, value) for timestamp, value in parsed if timestamp < at]
+        if not result:
+            return result
+        previous_time, previous_value = result[-1]
+        later = next((point for point in parsed if point[0] >= at), None)
+        if later is not None and later[0] > previous_time:
+            fraction = (at - previous_time) / (later[0] - previous_time)
+            previous_value += fraction * (later[1] - previous_value)
+        result.append((at - timedelta(microseconds=1), previous_value))
+        return result
 
     def _prune_old_days(self) -> None:
         """Keep only the configured rolling history window."""

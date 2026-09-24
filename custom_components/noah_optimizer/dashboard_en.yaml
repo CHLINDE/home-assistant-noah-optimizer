@@ -286,6 +286,7 @@ views:
               noData: No history data is available for this day.
               forecastUpdated: Forecast updated
               effectiveForecast: Effective forecast
+              planningRemaining: Remaining energy in schedule
               plannedEndSoc: Forecast end SOC
               retention: Plan snapshots are retained for {days} days
 

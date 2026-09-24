@@ -286,6 +286,7 @@ views:
               noData: Für diesen Tag sind keine Verlaufsdaten vorhanden.
               forecastUpdated: Forecast aktualisiert
               effectiveForecast: Wirksame Prognose
+              planningRemaining: Restenergie im Ladeplan
               plannedEndSoc: Prognostizierter End-SOC
               retention: Plan-Snapshots werden {days} Tage gespeichert
 

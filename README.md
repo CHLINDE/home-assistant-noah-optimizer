@@ -4,7 +4,7 @@ Prognosebasierte Steuerung der Ausgangsleistung eines Growatt NOAH 2000
 über Home Assistant und Noah-MQTT.
 
 > **Status:** Stabiler Release `2.0.0`. Aktueller Pre-Release:
-> `2.1.0-beta.18`.
+> `2.1.0-beta.19`.
 >
 > Die aktive Steuerung kann die NOAH-Ausgangsleistung verändern. Vor der
 > Aktivierung sollten Quellwerte, Netzvorzeichen und Stellgröße geprüft werden.
@@ -48,7 +48,7 @@ Aktuelle stabile Version:
 Aktueller Pre-Release:
 
 ```text
-2.1.0-beta.18
+2.1.0-beta.19
 ```
 
 ### 2.1.0-beta.1 – PV-Learning
@@ -437,7 +437,7 @@ Typ:
 Integration
 ```
 
-Für `2.1.0-beta.18` müssen in HACS Vorabversionen für dieses Repository
+Für `2.1.0-beta.19` müssen in HACS Vorabversionen für dieses Repository
 angezeigt werden.
 
 Nach Installation oder Update Home Assistant vollständig neu starten.
@@ -962,6 +962,13 @@ Danach aktive Steuerung wieder freigeben.
 
 ## Versionshistorie
 
+### 2.1.0-beta.19
+
+- SOC-Plan bleibt zwischen Forecast-Updates stabil; vergangener Verlauf bleibt erhalten
+- Wirksame Tagesprognose und Restenergie des Ladeplans werden getrennt angezeigt
+- Tagesenergie und ursprünglicher Ladeplan basieren auf derselben Leistungskurve
+- Energieflusskarte behält das Layout und die gemessenen Flusspfade von Beta 18
+
 ### 2.1.0-beta.18
 
 - Energieflusskarte optisch kompakter und ruhiger gestaltet
@@ -1171,3 +1178,23 @@ Erster stabiler Release der 2.x-Reihe. Funktionsstand entspricht
 ## Lizenz
 
 MIT License. Siehe `LICENSE` und `THIRD_PARTY.md`.
+
+## 2.1.0-beta.19 – Stabiler historischer SOC-Ladeplan
+
+Bei einem neuen Forecast wird der bisherige Plan bis zum Zeitpunkt der
+Aktualisierung beibehalten. Ab diesem Zeitpunkt beginnt ein neuer Zukunftsplan
+am gemessenen SOC. Zwischen Forecast-Aktualisierungen bleibt dieser Plan
+unverändert; ein neuer Zeitstempel des Restenergiesensors allein löst keine
+Neuplanung aus.
+
+Die Tagesprognose im Verlauf stammt nun aus der integrierten Leistungskurve.
+Zusätzlich zeigt der Snapshot die **Restenergie im Ladeplan**, die nach der
+Normierung auf den Forecast.Solar-Restenergiesensor für den Zukunftsplan
+verwendet wurde. Der End-SOC hängt auch vom gemessenen SOC am Anker und der
+Sicherheitsreserve ab. Bereits gespeicherte Snapshots werden nicht verändert.
+
+Die Energieflusskarte behält das Layout von Beta 18. Bei 0 W gemessener
+NOAH-Ausgangsleistung erscheint weiterhin kein Fluss NOAH → Haus. Die
+Ladung bei etwa 40 W PV hängt von NOAH-Eigenverbrauch, Geräte-/MPPT-Schwellen
+und den tatsächlich gemessenen Ladeleistungswerten ab; aus der PV-Leistung
+allein lässt sich kein Ladefluss ableiten.

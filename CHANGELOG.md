@@ -1,3 +1,24 @@
+## [2.1.0-beta.19]
+
+### Fixed
+
+- keep the anchored SOC schedule stable when only remaining-energy sensor timestamps change
+- preserve the previous plan up to the new forecast anchor instead of interpolating a change into the past
+- derive displayed full-day energy and initial SOC schedule from the same native power curve
+- show the normalized remaining energy actually used by a rebased plan in history metadata
+- do not add a fictitious minimum-SOC history before a new intraday anchor
+
+### Unchanged
+
+- preserve the Beta 18 energy-flow layout, its measured paths and controller behavior
+- existing forecast-outage cache, night target, enum status and release guard remain active
+
+### Version
+
+- integration `2.1.0-beta.19`; history frontend resource `v=10`
+
+---
+
 ## [2.1.0-beta.18]
 
 ### Changed

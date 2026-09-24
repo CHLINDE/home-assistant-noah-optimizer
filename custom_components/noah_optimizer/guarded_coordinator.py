@@ -61,7 +61,7 @@ class NoahOfflineAwareCoordinator(NoahOptimizerCoordinator):
         # Forecast.Solar power curve. Normal coordinator refreshes must not
         # continuously move the plan anchor to the current SOC.
         self._forecast_plan_source_signature: (
-            tuple[float | None, tuple[tuple[float, float], ...]] | None
+            tuple[tuple[float, float], ...] | None
         ) = None
         self._forecast_plan_anchor_at: datetime | None = None
         self._forecast_plan_anchor_soc: float | None = None
@@ -96,27 +96,20 @@ class NoahOfflineAwareCoordinator(NoahOptimizerCoordinator):
     @staticmethod
     def _forecast_source_signature(
         curve: ForecastCurveData,
-    ) -> tuple[float | None, tuple[tuple[float, float], ...]]:
+    ) -> tuple[tuple[float, float], ...]:
         """Return a signature for a genuine Forecast.Solar update.
 
-        The source entity timestamp identifies a new Forecast.Solar refresh,
-        while the power points also catch native runtime-curve changes. Normal
-        NOAH coordinator refreshes leave both values unchanged and therefore do
-        not continuously move the SOC-plan anchor.
+        The remaining-energy sensor can receive a new state timestamp while
+        the native power curve stays identical. Only changed native points
+        establish a new plan anchor.
         """
-        updated_at = (
-            curve.updated_at.timestamp()
-            if curve.updated_at is not None
-            else None
-        )
-        points = tuple(
+        return tuple(
             (
                 timestamp.timestamp(),
                 round(float(power), 3),
             )
             for timestamp, power in curve.raw_power
         )
-        return updated_at, points
 
     @staticmethod
     def _forecast_power_at(
@@ -286,6 +279,16 @@ class NoahOfflineAwareCoordinator(NoahOptimizerCoordinator):
                     for timestamp, value in previous_curve.soc_plan
                     if timestamp < anchor_at
                 ]
+        elif getattr(self, "history", None) is not None:
+            prefix = self.history.latest_plan_before(anchor_at)
+
+        # Preserve the old plan right up to the refresh. Otherwise the chart
+        # interpolates from the last forecast slot to the newly observed SOC
+        # and appears to revise the past hour.
+        if prefix and previous_curve is not None:
+            old_target = previous_curve.soc_target_at(anchor_at)
+            if old_target is not None:
+                prefix.append((anchor_at - timedelta(microseconds=1), old_target))
 
         soc_plan = tuple(prefix + future_soc_plan)
         planned_end_soc = (
@@ -302,6 +305,7 @@ class NoahOfflineAwareCoordinator(NoahOptimizerCoordinator):
             raw_day_energy_kwh=curve.raw_day_energy_kwh,
             effective_day_energy_kwh=curve.effective_day_energy_kwh,
             planned_end_soc=planned_end_soc,
+            planning_remaining_kwh=total_input_kwh,
         )
 
     def _build_forecast_curve(
@@ -336,6 +340,22 @@ class NoahOfflineAwareCoordinator(NoahOptimizerCoordinator):
         now = dt_util.utcnow()
         if native_curve is not None:
             source_signature = self._forecast_source_signature(native_curve)
+            same_day = (
+                self._forecast_plan_anchor_at is not None
+                and dt_util.as_local(self._forecast_plan_anchor_at).date()
+                == dt_util.as_local(now).date()
+            )
+            if (
+                same_day
+                and self._forecast_plan_source_signature == source_signature
+                and self._last_forecast_curve_signature == signature
+                and self._last_forecast_curve is not None
+            ):
+                # The remaining-energy entity can update independently of the
+                # native curve. Do not silently rewrite an anchored plan on
+                # every NOAH refresh; a new forecast establishes a new anchor.
+                self._last_forecast_curve_cached_at = now
+                return self._last_forecast_curve
             anchor_day_changed = (
                 self._forecast_plan_anchor_at is None
                 or dt_util.as_local(self._forecast_plan_anchor_at).date()
@@ -345,7 +365,7 @@ class NoahOfflineAwareCoordinator(NoahOptimizerCoordinator):
                 self._forecast_plan_source_signature != source_signature
             )
 
-            if source_changed or anchor_day_changed:
+            if source_changed or anchor_day_changed or self._last_forecast_curve_signature != signature:
                 current_soc = self._read_soc(
                     self.entry.data[CONF_BATTERY_SOC]
                 )
