@@ -77,6 +77,7 @@ class NoahSocHistoryCard extends HTMLElement {
       noData: "No history data available for this day.",
       forecastUpdated: "Forecast updated",
       effectiveForecast: "Effective forecast",
+      planningRemaining: "Remaining energy used by plan",
       plannedEndSoc: "Forecast end SOC",
       retention: "Snapshots retained for {days} days",
       ...this._config?.labels,
@@ -441,7 +442,7 @@ class NoahSocHistoryCard extends HTMLElement {
     const clipped = this._clipSeries(points, start, end);
     if (!clipped.length) return [];
 
-    if (clipped[0][0] > start) {
+    if (clipped[0][0] > start && snapshot.planning_remaining_kwh == null) {
       const initial = Number(snapshot.min_soc);
       clipped.unshift([start, Number.isFinite(initial) ? initial : clipped[0][1]]);
     }
@@ -678,6 +679,9 @@ class NoahSocHistoryCard extends HTMLElement {
     }
     if (Number.isFinite(Number(snapshot?.effective_day_energy_kwh))) {
       parts.push(`${this._escape(labels.effectiveForecast)}: ${Number(snapshot.effective_day_energy_kwh).toFixed(2)} kWh`);
+    }
+    if (snapshot?.planning_remaining_kwh != null && Number.isFinite(Number(snapshot.planning_remaining_kwh))) {
+      parts.push(`${this._escape(labels.planningRemaining)}: ${Number(snapshot.planning_remaining_kwh).toFixed(2)} kWh`);
     }
     if (Number.isFinite(Number(snapshot?.planned_end_soc))) {
       parts.push(`${this._escape(labels.plannedEndSoc)}: ${Number(snapshot.planned_end_soc).toFixed(1)} %`);
