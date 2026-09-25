@@ -1,3 +1,13 @@
+## [2.1.0-beta.21]
+
+### Fixed
+
+- use Growatt's NOAH `timeStr` in the Home Assistant time zone for freshness checks; the numeric `time` remains a fallback
+- include the last update and calculated age in stale-data errors to make clock and time-zone problems visible
+- keep genuinely old data unavailable so the heater and activation counters cannot treat it as a current state
+
+---
+
 ## [2.1.0-beta.20]
 
 ### Added

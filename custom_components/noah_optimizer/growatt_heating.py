@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, tzinfo
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from aiohttp import ClientError
 from homeassistant.core import HomeAssistant
@@ -19,7 +20,12 @@ _LOGGER = logging.getLogger(__name__)
 _URL = "https://openapi.growatt.com/v4/new-api/queryLastData"
 
 
-def parse_heating_status(payload: Any, serial: str) -> bool:
+def parse_heating_status(
+    payload: Any,
+    serial: str,
+    local_timezone: tzinfo,
+    now: datetime | None = None,
+) -> bool:
     """Reject missing, stale, or mismatched data instead of reporting OFF."""
     if not isinstance(payload, dict) or str(payload.get("code")) != "0":
         raise ValueError("Growatt did not return a successful response")
@@ -33,16 +39,28 @@ def parse_heating_status(payload: Any, serial: str) -> bool:
     )
     if device is None:
         raise ValueError("NOAH serial number not found in Growatt response")
-    timestamp = device.get("time")
-    if timestamp is not None:
-        try:
-            age = datetime.now(timezone.utc) - datetime.fromtimestamp(
-                float(timestamp) / 1000, tz=timezone.utc
+    # Growatt's timeStr is the plant's local display time. Its numeric `time`
+    # can differ from that display time by several hours, so prefer timeStr
+    # for freshness checks. The epoch remains a fallback for older responses.
+    try:
+        if isinstance(device.get("timeStr"), str) and device["timeStr"].strip():
+            timestamp = datetime.fromisoformat(device["timeStr"].strip())
+            if timestamp.tzinfo is None:
+                timestamp = timestamp.replace(tzinfo=local_timezone)
+        elif device.get("time") is not None:
+            timestamp = datetime.fromtimestamp(
+                float(device["time"]) / 1000, tz=timezone.utc
             )
-        except (TypeError, ValueError, OverflowError) as err:
-            raise ValueError("Invalid NOAH data timestamp") from err
-        if age > timedelta(minutes=30) or age < -timedelta(minutes=5):
-            raise ValueError("NOAH data is stale")
+        else:
+            raise ValueError("NOAH response has no timestamp")
+    except (TypeError, ValueError, OverflowError) as err:
+        raise ValueError("Invalid NOAH data timestamp") from err
+    age = (now or datetime.now(timezone.utc)) - timestamp
+    if age > timedelta(minutes=30) or age < -timedelta(minutes=5):
+        raise ValueError(
+            f"NOAH data is stale (last update {timestamp.isoformat()}, "
+            f"age {age})"
+        )
     status = device.get("heatingStatus")
     if status in (0, "0", False):
         return False
@@ -65,6 +83,7 @@ class GrowattHeatingCoordinator(DataUpdateCoordinator[bool]):
         )
         self._token = token
         self._serial = serial
+        self._local_timezone = ZoneInfo(hass.config.time_zone)
         self._store: Store[dict[str, Any]] = Store(
             hass, 1, f"{DOMAIN}.heating.{entry_id}"
         )
@@ -148,7 +167,9 @@ class GrowattHeatingCoordinator(DataUpdateCoordinator[bool]):
             ) as response:
                 response.raise_for_status()
                 payload = await response.json()
-            state = parse_heating_status(payload, self._serial)
+            state = parse_heating_status(
+                payload, self._serial, self._local_timezone
+            )
             await self._async_record_state(state)
             return state
         except (ClientError, TimeoutError, ValueError) as err:
