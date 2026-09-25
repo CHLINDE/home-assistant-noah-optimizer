@@ -12,6 +12,7 @@ from homeassistant.core import (
 )
 from homeassistant.helpers.event import (
     async_track_state_change_event,
+    async_track_time_change,
     async_track_time_interval,
 )
 
@@ -21,6 +22,8 @@ from .const import (
     CONF_DISCHARGE_POWER,
     CONF_FORECAST_REMAINING,
     CONF_GRID_POWER,
+    CONF_NOAH_API_TOKEN,
+    CONF_NOAH_DEVICE_SN,
     CONF_OUTPUT_POWER,
     CONF_SOLAR_POWER,
     CONF_SYSTEM_OUTPUT_POWER,
@@ -37,6 +40,7 @@ from .dashboard_migration_v20 import (
     remove_dashboard_panel,
 )
 from .frontend import async_register_history_card, remove_history_card
+from .growatt_heating import GrowattHeatingCoordinator
 from .history import (
     async_register_history_store,
     async_unregister_history_store,
@@ -84,7 +88,42 @@ async def async_setup_entry(
     coordinator.controller = controller
     entry.runtime_data = coordinator
 
+    api_config = (
+        entry.options.get(CONF_NOAH_API_TOKEN),
+        entry.options.get(CONF_NOAH_DEVICE_SN),
+    )
+
+    async def _async_options_changed(hass, updated_entry) -> None:
+        if api_config != (
+            updated_entry.options.get(CONF_NOAH_API_TOKEN),
+            updated_entry.options.get(CONF_NOAH_DEVICE_SN),
+        ):
+            await hass.config_entries.async_reload(updated_entry.entry_id)
+
+    entry.async_on_unload(entry.add_update_listener(_async_options_changed))
+
     await coordinator.async_config_entry_first_refresh()
+
+    coordinator.heating = None
+    if all(api_config):
+        try:
+            heating = GrowattHeatingCoordinator(
+                hass, api_config[0], api_config[1], entry.entry_id
+            )
+            await heating.async_initialize()
+            await heating.async_refresh()
+            coordinator.heating = heating
+            entry.async_on_unload(
+                async_track_time_change(
+                    hass,
+                    lambda _now: heating.async_update_listeners(),
+                    hour=0,
+                    minute=0,
+                    second=0,
+                )
+            )
+        except Exception:  # noqa: BLE001
+            _LOGGER.exception("Could not initialize optional NOAH heating diagnostics")
 
     async_register_history_store(hass, entry.entry_id, coordinator.history)
 
@@ -197,6 +236,9 @@ async def async_unload_entry(
     )
 
     if unload_ok:
+        heating = getattr(entry.runtime_data, "heating", None)
+        if heating is not None:
+            await heating.async_shutdown()
         remove_dashboard_panel(hass)
         remove_history_card(hass)
         async_unregister_history_store(hass, entry.entry_id)

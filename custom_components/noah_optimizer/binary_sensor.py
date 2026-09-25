@@ -10,6 +10,8 @@ from homeassistant.components.binary_sensor import (
     BinarySensorEntityDescription,
 )
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.helpers.entity_platform import (
     AddConfigEntryEntitiesCallback,
 )
@@ -20,8 +22,10 @@ from .const import (
     DATA_CRITICAL_DATA_OK,
     DATA_FORECAST_AVAILABLE,
     DATA_PV_LEARNING_READY,
+    DOMAIN,
 )
 from .entity import NoahOptimizerEntity
+from .growatt_heating import GrowattHeatingCoordinator
 
 
 @dataclass(
@@ -74,14 +78,42 @@ async def async_setup_entry(
 ) -> None:
     """Set up NOAH Optimizer binary sensors."""
 
-    async_add_entities(
+    entities = [
         NoahOptimizerBinarySensor(
             entry.runtime_data,
             entry,
             description,
         )
         for description in BINARY_SENSORS
-    )
+    ]
+    heating = entry.runtime_data.heating
+    if heating is not None:
+        entities.append(NoahHeatingBinarySensor(heating, entry))
+    async_add_entities(entities)
+
+
+class NoahHeatingBinarySensor(
+    CoordinatorEntity[GrowattHeatingCoordinator], BinarySensorEntity
+):
+    """Show the NOAH battery heater state; unavailable on API failures."""
+
+    _attr_has_entity_name = True
+    _attr_translation_key = "battery_heating"
+    _attr_device_class = BinarySensorDeviceClass.HEAT
+
+    def __init__(self, coordinator, entry) -> None:
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{entry.entry_id}_battery_heating"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, entry.entry_id)},
+            name="Growatt NOAH Optimizer",
+            manufacturer="Community",
+            model="NOAH Optimizer",
+        )
+
+    @property
+    def is_on(self) -> bool:
+        return self.coordinator.data is True
 
 
 class NoahOptimizerBinarySensor(

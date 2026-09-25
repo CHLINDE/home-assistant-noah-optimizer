@@ -1198,3 +1198,9 @@ NOAH-Ausgangsleistung erscheint weiterhin kein Fluss NOAH → Haus. Die
 Ladung bei etwa 40 W PV hängt von NOAH-Eigenverbrauch, Geräte-/MPPT-Schwellen
 und den tatsächlich gemessenen Ladeleistungswerten ab; aus der PV-Leistung
 allein lässt sich kein Ladefluss ableiten.
+
+### NOAH-Batterieheizung (optional, Beta 20)
+
+Unter **Einstellungen → Geräte & Dienste → Growatt NOAH Optimizer → Konfigurieren** den Growatt-OpenAPI-Token und die **Seriennummer des NOAH** eintragen (nicht die des NEO-Wechselrichters). Danach erscheint unter dem Gerät „Growatt NOAH Optimizer“ die Entität **Batterieheizung** (`binary_sensor.growatt_noah_optimizer_batterieheizung`, sofern der Name nicht bereits belegt ist). Der Status wird alle fünf Minuten über Growatts v4-OpenAPI gelesen. Bei API-Fehlern oder über 30 Minuten alten Daten steht die Entität auf „nicht verfügbar“. Beide Felder leeren, um den Abruf wieder auszuschalten. Die bestehende Growatt-Server-Integration wird nicht verändert; deren Zugangsdaten werden nicht automatisch übernommen.
+
+Die Entitäten **Batterieheizung Einschaltungen heute**, **diese Woche** und **diesen Monat** zählen beobachtete Wechsel von „aus“ auf „ein“. Die Zähler werden in der Home-Assistant-Zeitzone täglich um Mitternacht, montags beziehungsweise am Monatsersten auf null gesetzt und über Neustarts hinweg gespeichert. Beim ersten gültigen API-Status beginnt die Beobachtung; frühere Einschaltungen werden nicht rückwirkend übernommen. Da die API alle fünf Minuten abgefragt wird, können kürzere Heizzyklen und Wechsel während längerer Verbindungsunterbrechungen ungezählt bleiben.
