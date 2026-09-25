@@ -220,6 +220,15 @@
           "forecast_curve": "Forecast.Solar-Kurve",
           "daylight_fallback": "Tageslicht-Fallback"
         }
+      },
+      "battery_heating_today": {
+        "name": "Batterieheizung Einschaltungen heute"
+      },
+      "battery_heating_week": {
+        "name": "Batterieheizung Einschaltungen diese Woche"
+      },
+      "battery_heating_month": {
+        "name": "Batterieheizung Einschaltungen diesen Monat"
       }
     },
     "number": {

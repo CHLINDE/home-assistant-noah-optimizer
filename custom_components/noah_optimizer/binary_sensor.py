@@ -22,8 +22,6 @@ from .const import (
     DATA_CRITICAL_DATA_OK,
     DATA_FORECAST_AVAILABLE,
     DATA_PV_LEARNING_READY,
-    CONF_NOAH_API_TOKEN,
-    CONF_NOAH_DEVICE_SN,
     DOMAIN,
 )
 from .entity import NoahOptimizerEntity
@@ -88,12 +86,9 @@ async def async_setup_entry(
         )
         for description in BINARY_SENSORS
     ]
-    token = entry.options.get(CONF_NOAH_API_TOKEN)
-    serial = entry.options.get(CONF_NOAH_DEVICE_SN)
-    if token and serial:
-        heating = GrowattHeatingCoordinator(hass, token, serial)
-        await heating.async_refresh()
-        entities.append(NoahHeatingBinarySensor(heating, entry, serial))
+    heating = entry.runtime_data.heating
+    if heating is not None:
+        entities.append(NoahHeatingBinarySensor(heating, entry))
     async_add_entities(entities)
 
 
@@ -106,7 +101,7 @@ class NoahHeatingBinarySensor(
     _attr_translation_key = "battery_heating"
     _attr_device_class = BinarySensorDeviceClass.HEAT
 
-    def __init__(self, coordinator, entry, serial: str) -> None:
+    def __init__(self, coordinator, entry) -> None:
         super().__init__(coordinator)
         self._attr_unique_id = f"{entry.entry_id}_battery_heating"
         self._attr_device_info = DeviceInfo(

@@ -13,7 +13,9 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.const import PERCENTAGE, UnitOfEnergy, UnitOfPower, UnitOfTime
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import NoahOptimizerConfigEntry
 from .const import (
@@ -98,8 +100,10 @@ from .const import (
     SOC_PLAN_SOURCE_DAYLIGHT_FALLBACK,
     SOC_PLAN_SOURCE_FORECAST_CURVE,
     STATUS_OK,
+    DOMAIN,
 )
 from .entity import NoahOptimizerEntity
+from .growatt_heating import GrowattHeatingCoordinator
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -504,7 +508,41 @@ async def async_setup_entry(
             entry,
         )
     )
+    if (heating := entry.runtime_data.heating) is not None:
+        sensors.extend(
+            NoahHeatingCountSensor(heating, entry, period)
+            for period in ("today", "week", "month")
+        )
     async_add_entities(sensors)
+
+
+class NoahHeatingCountSensor(
+    CoordinatorEntity[GrowattHeatingCoordinator], SensorEntity
+):
+    """Count observed battery heater activations in a calendar period."""
+
+    _attr_has_entity_name = True
+    _attr_icon = "mdi:counter"
+
+    def __init__(self, coordinator, entry, period: str) -> None:
+        super().__init__(coordinator)
+        self._period = period
+        self._attr_translation_key = f"battery_heating_{period}"
+        self._attr_unique_id = f"{entry.entry_id}_battery_heating_{period}"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, entry.entry_id)},
+            name="Growatt NOAH Optimizer",
+            manufacturer="Community",
+            model="NOAH Optimizer",
+        )
+
+    @property
+    def native_value(self) -> int:
+        return self.coordinator.activation_count(self._period)
+
+    @property
+    def available(self) -> bool:
+        return self.coordinator.history_available
 
 
 class NoahOptimizerSensor(NoahOptimizerEntity, SensorEntity):

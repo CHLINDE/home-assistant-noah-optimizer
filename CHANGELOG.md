@@ -5,6 +5,7 @@
 - optional Growatt OpenAPI v4 access in the integration options (API token and NOAH serial number)
 - independent five-minute polling of the NOAH `heatingStatus` field
 - translated battery-heating binary sensor that becomes unavailable on API, serial-number or stale-data errors
+- persistent counts of observed OFF-to-ON heating transitions for today, ISO week and calendar month
 
 ### Compatibility
 

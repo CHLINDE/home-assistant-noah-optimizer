@@ -220,6 +220,15 @@
           "forecast_curve": "Forecast.Solar curve",
           "daylight_fallback": "Daylight fallback"
         }
+      },
+      "battery_heating_today": {
+        "name": "Battery heating activations today"
+      },
+      "battery_heating_week": {
+        "name": "Battery heating activations this week"
+      },
+      "battery_heating_month": {
+        "name": "Battery heating activations this month"
       }
     },
     "number": {
