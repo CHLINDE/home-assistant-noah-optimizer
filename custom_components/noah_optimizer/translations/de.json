@@ -314,7 +314,25 @@
       },
       "pv_learning_ready": {
         "name": "PV-Learning bereit"
+      },
+      "battery_heating": {
+        "name": "Batterieheizung"
       }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "NOAH-Heizstatus (Growatt OpenAPI)",
+        "description": "Beide Felder leer lassen, um den API-Abruf zu deaktivieren. Der API-Token bleibt in Home Assistant gespeichert.",
+        "data": {
+          "noah_api_token": "Growatt OpenAPI-Token",
+          "noah_device_sn": "NOAH-Seriennummer"
+        }
+      }
+    },
+    "error": {
+      "api_credentials_incomplete": "Token und NOAH-Seriennummer müssen beide ausgefüllt sein."
     }
   }
 }

@@ -17,6 +17,8 @@ from .const import (
     CONF_FORECAST_REMAINING,
     CONF_GRID_POWER,
     CONF_INVERT_GRID_SIGN,
+    CONF_NOAH_API_TOKEN,
+    CONF_NOAH_DEVICE_SN,
     CONF_OUTPUT_POWER,
     CONF_SOLAR_POWER,
     CONF_SYSTEM_OUTPUT_POWER,
@@ -51,6 +53,11 @@ class NoahOptimizerConfigFlow(
     """Handle the Growatt NOAH Optimizer config flow."""
 
     VERSION = 1
+
+    @staticmethod
+    def async_get_options_flow(config_entry):
+        """Offer optional Growatt OpenAPI settings to existing installations."""
+        return NoahOptimizerOptionsFlow(config_entry)
 
     async def async_step_user(
         self,
@@ -133,5 +140,51 @@ class NoahOptimizerConfigFlow(
         return self.async_show_form(
             step_id="user",
             data_schema=schema,
+            errors=errors,
+        )
+
+
+class NoahOptimizerOptionsFlow(config_entries.OptionsFlow):
+    """Configure optional NOAH diagnostics without changing source entities."""
+
+    def __init__(self, config_entry) -> None:
+        self._entry = config_entry
+
+    async def async_step_init(self, user_input: dict[str, Any] | None = None):
+        """Configure the NOAH OpenAPI credentials."""
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            token = user_input.get(CONF_NOAH_API_TOKEN, "").strip()
+            serial = user_input.get(CONF_NOAH_DEVICE_SN, "").strip()
+            if bool(token) != bool(serial):
+                errors["base"] = "api_credentials_incomplete"
+            else:
+                return self.async_create_entry(
+                    data={
+                        **self._entry.options,
+                        CONF_NOAH_API_TOKEN: token,
+                        CONF_NOAH_DEVICE_SN: serial,
+                    }
+                )
+
+        options = self._entry.options
+        return self.async_show_form(
+            step_id="init",
+            data_schema=vol.Schema(
+                {
+                    vol.Optional(
+                        CONF_NOAH_API_TOKEN,
+                        default=options.get(CONF_NOAH_API_TOKEN, ""),
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.PASSWORD,
+                        )
+                    ),
+                    vol.Optional(
+                        CONF_NOAH_DEVICE_SN,
+                        default=options.get(CONF_NOAH_DEVICE_SN, ""),
+                    ): selector.TextSelector(),
+                }
+            ),
             errors=errors,
         )

@@ -21,6 +21,8 @@ from .const import (
     CONF_DISCHARGE_POWER,
     CONF_FORECAST_REMAINING,
     CONF_GRID_POWER,
+    CONF_NOAH_API_TOKEN,
+    CONF_NOAH_DEVICE_SN,
     CONF_OUTPUT_POWER,
     CONF_SOLAR_POWER,
     CONF_SYSTEM_OUTPUT_POWER,
@@ -83,6 +85,20 @@ async def async_setup_entry(
 
     coordinator.controller = controller
     entry.runtime_data = coordinator
+
+    api_config = (
+        entry.options.get(CONF_NOAH_API_TOKEN),
+        entry.options.get(CONF_NOAH_DEVICE_SN),
+    )
+
+    async def _async_options_changed(hass, updated_entry) -> None:
+        if api_config != (
+            updated_entry.options.get(CONF_NOAH_API_TOKEN),
+            updated_entry.options.get(CONF_NOAH_DEVICE_SN),
+        ):
+            await hass.config_entries.async_reload(updated_entry.entry_id)
+
+    entry.async_on_unload(entry.add_update_listener(_async_options_changed))
 
     await coordinator.async_config_entry_first_refresh()
 

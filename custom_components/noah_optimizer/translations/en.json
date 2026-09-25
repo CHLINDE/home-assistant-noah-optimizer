@@ -314,7 +314,25 @@
       },
       "pv_learning_ready": {
         "name": "PV learning ready"
+      },
+      "battery_heating": {
+        "name": "Battery heating"
       }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "NOAH heating status (Growatt OpenAPI)",
+        "description": "Leave both fields empty to disable API polling. The API token is stored in Home Assistant.",
+        "data": {
+          "noah_api_token": "Growatt OpenAPI token",
+          "noah_device_sn": "NOAH serial number"
+        }
+      }
+    },
+    "error": {
+      "api_credentials_incomplete": "Enter both the token and NOAH serial number."
     }
   }
 }
