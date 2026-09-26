@@ -821,6 +821,7 @@ Dashboard-Inhalte:
 - PV-Learning
 - Kalibrierung
 - Diagnose
+- Batterieheizung mit Status und Einschaltungen heute, diese Woche und diesen Monat (bei konfiguriertem Growatt OpenAPI-Zugang)
 
 Ab `2.1.0-beta.16` verwendet das automatische Dashboard die mitgelieferte
 NOAH-Energieflusskarte. Die Pfade werden nicht mehr aus einer generischen
@@ -921,6 +922,8 @@ NOAH-Kernserien eindeutig dem Standardchart entsprechen.
 17  abschließende Farbangleichung
 18  Korrektur alter expliziter Farben
 19  Reglerverhalten: alte 5-Serien-Variante migrieren
+20  NOAH-Energieflusskarte
+21  Batterieheizung bei aktivem OpenAPI-Zugang
 ```
 
 Migrationen sind gezielt. Das komplette Dashboard wird nicht pauschal ersetzt.
@@ -1204,5 +1207,7 @@ allein lässt sich kein Ladefluss ableiten.
 Unter **Einstellungen → Geräte & Dienste → Growatt NOAH Optimizer → Konfigurieren** den Growatt-OpenAPI-Token und die **Seriennummer des NOAH** eintragen (nicht die des NEO-Wechselrichters). Danach erscheint unter dem Gerät „Growatt NOAH Optimizer“ die Entität **Batterieheizung** (`binary_sensor.growatt_noah_optimizer_batterieheizung`, sofern der Name nicht bereits belegt ist). Der Status wird alle fünf Minuten über Growatts v4-OpenAPI gelesen. Bei API-Fehlern oder über 30 Minuten alten Daten steht die Entität auf „nicht verfügbar“. Beide Felder leeren, um den Abruf wieder auszuschalten. Die bestehende Growatt-Server-Integration wird nicht verändert; deren Zugangsdaten werden nicht automatisch übernommen.
 
 Die Entitäten **Batterieheizung Einschaltungen heute**, **diese Woche** und **diesen Monat** zählen beobachtete Wechsel von „aus“ auf „ein“. Die Zähler werden in der Home-Assistant-Zeitzone täglich um Mitternacht, montags beziehungsweise am Monatsersten auf null gesetzt und über Neustarts hinweg gespeichert. Beim ersten gültigen API-Status beginnt die Beobachtung; frühere Einschaltungen werden nicht rückwirkend übernommen. Da die API alle fünf Minuten abgefragt wird, können kürzere Heizzyklen und Wechsel während längerer Verbindungsunterbrechungen ungezählt bleiben.
+
+Ab Beta 22 zeigt das automatische NOAH-Dashboard bei eingerichtetem OpenAPI-Zugang unter **Batterieheizung** den aktuellen Status sowie die drei Einschaltungszähler. Die Karte wird beim nächsten Home-Assistant-Neustart auch zu einem bereits bestehenden Dashboard ergänzt. Ohne hinterlegten API-Token und NOAH-Seriennummer wird die Karte nicht angezeigt. Ein eigens erstelltes Lovelace-Dashboard muss separat angepasst werden.
 
 Ab Beta 21 verwendet die Frischeprüfung Growatts lokale NOAH-Zeit `timeStr` in der eingestellten Home-Assistant-Zeitzone. Der numerische API-Zeitstempel `time` dient nur als Ersatz, falls `timeStr` fehlt. Prüfe bei weiterhin gemeldeten veralteten Daten die Home-Assistant-Zeitzone und den letzten Aktualisierungszeitpunkt in der Fehlermeldung.

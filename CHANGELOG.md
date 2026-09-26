@@ -1,3 +1,13 @@
+## [2.1.0-beta.22]
+
+### Added
+
+- show the optional NOAH battery-heating state and today/week/month activation counts on the automatically generated dashboard
+- add the card to existing dashboards when OpenAPI credentials become available, including after the dashboard has already reached template version 21
+- preserve existing dashboard cards and resolve heater entity IDs from the Home Assistant entity registry
+
+---
+
 ## [2.1.0-beta.21]
 
 ### Fixed

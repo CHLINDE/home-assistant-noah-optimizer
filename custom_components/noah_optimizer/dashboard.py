@@ -287,6 +287,87 @@ def _resolve_entities(hass: HomeAssistant, entry: ConfigEntry) -> dict[str, str]
     return resolved
 
 
+def _add_heating_card(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    config: dict[str, Any],
+) -> bool:
+    """Add the optional heater status and counters to the generated dashboard.
+
+    Run on every setup: OpenAPI credentials may be added after a dashboard has
+    already reached the current template version. Leave user-created cards and
+    manually rearranged dashboards alone.
+    """
+    if getattr(entry.runtime_data, "heating", None) is None:
+        return False
+
+    registry = er.async_get(hass)
+    entities: list[str] = []
+    for domain, suffix in (
+        ("binary_sensor", "battery_heating"),
+        ("sensor", "battery_heating_today"),
+        ("sensor", "battery_heating_week"),
+        ("sensor", "battery_heating_month"),
+    ):
+        entity_id = registry.async_get_entity_id(
+            domain, DOMAIN, f"{entry.entry_id}_{suffix}"
+        )
+        if entity_id is None:
+            _LOGGER.warning("Could not resolve NOAH heating dashboard entity %s", suffix)
+            return False
+        entities.append(entity_id)
+
+    diagnostics_entity = registry.async_get_entity_id(
+        "sensor", DOMAIN, f"{entry.entry_id}_data_status"
+    )
+    if diagnostics_entity is None:
+        return False
+
+    # Respect a card the user already created with all four heater entities.
+    for item in _iter_dicts(config):
+        if item.get("type") == "entities" and all(
+            _card_contains_entity(item, entity_id) for entity_id in entities
+        ):
+            return False
+
+    german = (hass.config.language or "en").lower().startswith("de")
+    title = "Batterieheizung" if german else "Battery heating"
+    names = (
+        ("Status", "Heute", "Diese Woche", "Diesen Monat")
+        if german
+        else ("Status", "Today", "This week", "This month")
+    )
+    card = {
+        "type": "entities",
+        "title": title,
+        "show_header_toggle": False,
+        "entities": [
+            {"entity": entity_id, "name": name}
+            for entity_id, name in zip(entities, names, strict=True)
+        ],
+    }
+
+    # The generated first section contains the diagnostics card. Its entity
+    # combination identifies it even when the dashboard language has changed.
+    for section in _iter_dicts(config):
+        if section.get("type") != "grid":
+            continue
+        cards = section.get("cards")
+        if not isinstance(cards, list):
+            continue
+        for index, existing in enumerate(cards):
+            if (
+                isinstance(existing, dict)
+                and existing.get("type") == "entities"
+                and _card_contains_entity(existing, diagnostics_entity)
+            ):
+                cards.insert(index + 1, card)
+                return True
+
+    _LOGGER.info("NOAH dashboard layout changed; add the heating card manually")
+    return False
+
+
 def _replace_tokens(value: Any, replacements: dict[str, str]) -> Any:
     """Replace entity tokens recursively."""
     if isinstance(value, str):
@@ -1494,6 +1575,9 @@ async def async_ensure_dashboard(
 
     except ConfigNotFound:
         dashboard_config = await _async_build_dashboard_config(hass, entry)
+        await dashboard.async_save(dashboard_config)
+
+    if _add_heating_card(hass, entry, dashboard_config):
         await dashboard.async_save(dashboard_config)
 
     lovelace_data.dashboards[DASHBOARD_URL_PATH] = dashboard
