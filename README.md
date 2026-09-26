@@ -10,6 +10,12 @@ Prognosebasierte Steuerung der Ausgangsleistung eines Growatt NOAH 2000
 
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=CHLINDE&repository=home-assistant-noah-optimizer&category=integration)
 
+## Dashboard in Version 2.1.0
+
+![NOAH Optimizer Dashboard mit Energiefluss, SOC-Ladeplan und Batterieheizung](screenshots/noah_dashboard_2.1.0.png)
+
+[Dashboard-Bild in voller Größe](screenshots/noah_dashboard_2.1.0.png) · [Details zum automatischen Dashboard](#automatisches-dashboard)
+
 ## Ziele
 
 - Netzbezug reduzieren
@@ -831,14 +837,6 @@ NOAH -> Haus  = NOAH Output Power
 Damit wird bei `Output Power = 0 W` auch kein NOAH-/PV-Fluss zum Haus
 dargestellt. Kleine Differenzen zwischen PV-Leistung und Batterieladeleistung
 werden nicht mehr als Hausversorgung interpretiert.
-
-### Aktueller Dashboard-Screenshot
-
-Aufnahme vom 26. September 2026 mit Energiefluss, historischem SOC-Ladeplan,
-Diagnose und dem optionalen Status der Batterieheizung. Zum Vergrößern auf das
-Bild klicken.
-
-<a href="screenshots/noah_dashboard_2.1.0.png"><img src="screenshots/noah_dashboard_2.1.0.png" alt="NOAH Optimizer Dashboard mit Energiefluss, SOC-Ladeplan und Batterieheizung" width="900"></a>
 
 ## Feste Dashboard-Farbpalette
 
