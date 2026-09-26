@@ -1,8 +1,7 @@
 # Konfiguration
 
 Dieses Dokument beschreibt die HACS-Integration **Growatt NOAH Optimizer**
-für den stabilen Release `2.0.0` und den aktuellen Pre-Release
-`2.1.0-beta.17`.
+für den stabilen Release `2.1.0`.
 
 Die tatsächlichen Entity-IDs können durch Bereichsnamen oder manuelle
 Umbenennungen abweichen. Die Integration und das automatische Dashboard lösen

@@ -1,8 +1,8 @@
 # HACS Beta / Pre-Release
 
-Stable release: `2.0.0`
+Stable release: `2.1.0`
 
-Current pre-release: `2.1.0-beta.19`
+Most recent pre-release (archive): `2.1.0-beta.22`
 
 The `2.1.0-beta.1` pre-release adds passive, persistent PV learning. Applying
 the learned correction is opt-in and disabled by default. `2.1.0-beta.2` keeps

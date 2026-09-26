@@ -1,7 +1,7 @@
 # Fehlerbehebung
 
 Dieses Dokument bezieht sich auf die HACS-Integration **Growatt NOAH
-Optimizer**, insbesondere `2.1.0-beta.17`.
+Optimizer**, insbesondere `2.1.0`.
 
 ## 1. Integration wird nicht geladen
 
@@ -16,7 +16,7 @@ suchen.
 Prüfen:
 
 - Home Assistant neu gestartet
-- `manifest.json` auf `2.1.0-beta.17`
+- `manifest.json` auf `2.1.0`
 - Quell-Entitäten vorhanden
 - keine Python-Fehler
 

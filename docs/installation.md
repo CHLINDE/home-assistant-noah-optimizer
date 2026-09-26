@@ -2,7 +2,7 @@
 
 Diese Anleitung beschreibt Installation und Update des **Home Assistant
 Growatt NOAH Optimizers** für den stabilen Release `2.0.0` und den aktuellen
-Pre-Release `2.1.0-beta.17`.
+Release `2.1.0`.
 
 ## 1. Voraussetzungen
 
@@ -72,14 +72,14 @@ Typ:
 Integration
 ```
 
-## 5. Pre-Release installieren
+## 5. Stabile Version installieren
 
-HACS-Vorabversionen aktivieren.
+In HACS die stabile Version installieren:
 
 Installieren:
 
 ```text
-2.1.0-beta.17
+2.1.0
 ```
 
 Home Assistant vollständig neu starten.

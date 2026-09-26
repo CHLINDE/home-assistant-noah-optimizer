@@ -1,7 +1,7 @@
 # Installation
 
 Diese Anleitung beschreibt die Installation und das Update des **Home
-Assistant Growatt NOAH Optimizers** für den aktuellen Pre-Release `2.1.0-beta.19`.
+Assistant Growatt NOAH Optimizers** für den stabilen Release `2.1.0`.
 
 Für neue Installationen wird die HACS-Integration empfohlen.
 
@@ -102,21 +102,21 @@ Typ:
 Integration
 ```
 
-## 5. Version 2.1.0-beta.17 installieren
+## 5. Version 2.1.0 installieren
 
 Zu installierende Version:
 
 ```text
-2.1.0-beta.17
+2.1.0
 ```
 
-In HACS müssen für dieses Repository Vorabversionen angezeigt beziehungsweise
-berücksichtigt werden. Danach `2.1.0-beta.17` auswählen und installieren.
+In HACS `2.1.0` auswählen und installieren. Vorabversionen müssen dafür nicht
+aktiviert sein.
 
 Nach der Installation Home Assistant vollständig neu starten.
 
-Wer PV-Learning noch nicht testen möchte, kann beim stabilen Release `2.0.0`
-bleiben.
+Die Anwendung des PV-Lernfaktors bleibt nach dem Update standardmäßig
+ausgeschaltet und kann bei Bedarf separat aktiviert werden.
 
 ## 6. Neue Installation einrichten
 
