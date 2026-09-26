@@ -3,7 +3,7 @@
 Prognosebasierte Steuerung der Ausgangsleistung eines Growatt NOAH 2000
 über Home Assistant und Noah-MQTT.
 
-> **Status:** Stabiler Release `2.1.0`.
+> **Status:** Stabiler Release `2.1.1`.
 >
 > Die aktive Steuerung kann die NOAH-Ausgangsleistung verändern. Vor der
 > Aktivierung sollten Quellwerte, Netzvorzeichen und Stellgröße geprüft werden.
@@ -47,10 +47,10 @@ Prognosebasierte Steuerung der Ausgangsleistung eines Growatt NOAH 2000
 Aktuelle stabile Version:
 
 ```text
-2.1.0
+2.1.1
 ```
 
-Der vorherige stabile Stand war `2.0.0`; die Entwicklung von `2.1.0` ist in
+Der vorherige stabile Stand war `2.1.0`; die Entwicklung der 2.1-Reihe ist in
 den Beta-Versionen dokumentiert.
 
 ### 2.1.0-beta.1 – PV-Learning
@@ -965,6 +965,12 @@ Prüfen:
 Danach aktive Steuerung wieder freigeben.
 
 ## Versionshistorie
+
+### 2.1.1
+
+- Aktueller Dashboard-Screenshot direkt am Anfang der README sichtbar
+- Keine Änderungen an der Optimiererregelung
+- Details in [Release Notes 2.1.1](RELEASE_NOTES_2.1.1.md)
 
 ### 2.1.0
 
