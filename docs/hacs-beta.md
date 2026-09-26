@@ -3,13 +3,13 @@
 Stable release:
 
 ```text
-2.0.0
+2.1.0
 ```
 
-Current pre-release:
+Most recent pre-release (archive):
 
 ```text
-2.1.0-beta.19
+2.1.0-beta.22
 ```
 
 

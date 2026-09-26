@@ -3,8 +3,7 @@
 Prognosebasierte Steuerung der Ausgangsleistung eines Growatt NOAH 2000
 über Home Assistant und Noah-MQTT.
 
-> **Status:** Stabiler Release `2.0.0`. Aktueller Pre-Release:
-> `2.1.0-beta.19`.
+> **Status:** Stabiler Release `2.1.0`.
 >
 > Die aktive Steuerung kann die NOAH-Ausgangsleistung verändern. Vor der
 > Aktivierung sollten Quellwerte, Netzvorzeichen und Stellgröße geprüft werden.
@@ -42,14 +41,11 @@ Prognosebasierte Steuerung der Ausgangsleistung eines Growatt NOAH 2000
 Aktuelle stabile Version:
 
 ```text
-2.0.0
+2.1.0
 ```
 
-Aktueller Pre-Release:
-
-```text
-2.1.0-beta.19
-```
+Der vorherige stabile Stand war `2.0.0`; die Entwicklung von `2.1.0` ist in
+den Beta-Versionen dokumentiert.
 
 ### 2.1.0-beta.1 – PV-Learning
 
@@ -437,8 +433,7 @@ Typ:
 Integration
 ```
 
-Für `2.1.0-beta.19` müssen in HACS Vorabversionen für dieses Repository
-angezeigt werden.
+Für `2.1.0` ist in HACS keine Aktivierung von Vorabversionen erforderlich.
 
 Nach Installation oder Update Home Assistant vollständig neu starten.
 
@@ -837,6 +832,14 @@ Damit wird bei `Output Power = 0 W` auch kein NOAH-/PV-Fluss zum Haus
 dargestellt. Kleine Differenzen zwischen PV-Leistung und Batterieladeleistung
 werden nicht mehr als Hausversorgung interpretiert.
 
+### Aktueller Dashboard-Screenshot
+
+Aufnahme vom 26. September 2026 mit Energiefluss, historischem SOC-Ladeplan,
+Diagnose und dem optionalen Status der Batterieheizung. Zum Vergrößern auf das
+Bild klicken.
+
+<a href="screenshots/noah_dashboard_2.1.0.png"><img src="screenshots/noah_dashboard_2.1.0.png" alt="NOAH Optimizer Dashboard mit Energiefluss, SOC-Ladeplan und Batterieheizung" width="900"></a>
+
 ## Feste Dashboard-Farbpalette
 
 Die von der Integration erzeugten Standarddiagramme verwenden eine feste
@@ -943,7 +946,7 @@ Legacy-YAML und HACS dürfen denselben NOAH nicht gleichzeitig aktiv regeln.
 
 ## Sicherheit
 
-Nach einem Pre-Release-Update zunächst:
+Nach einem Update zunächst:
 
 ```text
 NOAH-Steuerung aktiv = Aus
@@ -964,6 +967,13 @@ Prüfen:
 Danach aktive Steuerung wieder freigeben.
 
 ## Versionshistorie
+
+### 2.1.0
+
+- PV-Learning, Forecast.Solar-Ladeplan und historische SOC-Ansicht
+- Offline-Schutz, Forecast-Ausfallüberbrückung und gezielte Dashboard-Migrationen
+- optionale Batterieheizung mit Einschaltungszählern und Dashboardkarte
+- Details in [Release Notes 2.1.0](RELEASE_NOTES_2.1.0.md)
 
 ### 2.1.0-beta.19
 

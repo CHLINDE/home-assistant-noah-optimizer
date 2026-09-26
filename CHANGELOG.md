@@ -1,3 +1,14 @@
+## [2.1.0]
+
+### Stable release candidate
+
+- bring the 2.1 beta series to a stable version: PV learning, time-resolved and historical SOC planning, forecast-outage recovery, NOAH offline protection and the bundled energy-flow dashboard
+- include the optional Growatt OpenAPI heater state, observed activation counts and dashboard card introduced in Beta 20–22
+- preserve existing options, entity unique IDs, saved history and dashboard migrations when upgrading from 2.0.0 or a 2.1 beta
+- document that short heating cycles may escape the five-minute API poll and that very-low-PV charging behavior remains a diagnostic question
+
+---
+
 ## [2.1.0-beta.22]
 
 ### Added
