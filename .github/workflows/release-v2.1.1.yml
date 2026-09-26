@@ -1,0 +1,44 @@
+name: Publish v2.1.1
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/release-v2.1.1.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-v2.1.1
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the release commit
+        uses: actions/checkout@v4
+
+      - name: Confirm the stable manifest version
+        run: |
+          version=$(python3 -c 'import json; print(json.load(open("custom_components/noah_optimizer/manifest.json"))["version"])')
+          test "$version" = "2.1.1"
+
+      - name: Package the full repository
+        run: git archive --format=zip --output=noah-optimizer-2.1.1.zip HEAD
+
+      - name: Publish the stable GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh release view v2.1.1 >/dev/null 2>&1; then
+            echo "v2.1.1 is already published"
+            exit 0
+          fi
+          gh release create v2.1.1 noah-optimizer-2.1.1.zip \
+            --target "$GITHUB_SHA" \
+            --title "Growatt NOAH Optimizer 2.1.1" \
+            --notes-file RELEASE_NOTES_2.1.1.md \
+            --latest
