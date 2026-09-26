@@ -832,6 +832,14 @@ Damit wird bei `Output Power = 0 W` auch kein NOAH-/PV-Fluss zum Haus
 dargestellt. Kleine Differenzen zwischen PV-Leistung und Batterieladeleistung
 werden nicht mehr als Hausversorgung interpretiert.
 
+### Aktueller Dashboard-Screenshot
+
+Aufnahme vom 26. September 2026 mit Energiefluss, historischem SOC-Ladeplan,
+Diagnose und dem optionalen Status der Batterieheizung. Zum Vergrößern auf das
+Bild klicken.
+
+<a href="screenshots/noah_dashboard_2.1.0.png"><img src="screenshots/noah_dashboard_2.1.0.png" alt="NOAH Optimizer Dashboard mit Energiefluss, SOC-Ladeplan und Batterieheizung" width="900"></a>
+
 ## Feste Dashboard-Farbpalette
 
 Die von der Integration erzeugten Standarddiagramme verwenden eine feste

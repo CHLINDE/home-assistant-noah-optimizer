@@ -18,6 +18,10 @@ Ladeplan-Snapshots und das automatisch erzeugte Dashboard.
   Zähler der **beobachteten** Einschaltungen heute, diese Woche und diesen
   Monat. Bei eingerichtetem API-Zugang erscheinen sie auch im NOAH-Dashboard.
 
+Ein [aktueller Desktop-Screenshot](screenshots/noah_dashboard_2.1.0.png) zeigt
+die Karte mit verfügbarem Status und allen drei Zählern. Eine tatsächlich
+aktive Heizphase ist damit noch nicht belegt.
+
 ## Installation und Update
 
 In HACS das Repository **Growatt NOAH Optimizer** öffnen und `2.1.0`
