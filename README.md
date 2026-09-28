@@ -3,7 +3,7 @@
 Prognosebasierte Steuerung der Ausgangsleistung eines Growatt NOAH 2000
 über Home Assistant und Noah-MQTT.
 
-> **Status:** Stabiler Release `2.1.1`.
+> **Status:** Stabiler Release `2.1.1`; Korrektur `2.1.2` in Vorbereitung.
 >
 > Die aktive Steuerung kann die NOAH-Ausgangsleistung verändern. Vor der
 > Aktivierung sollten Quellwerte, Netzvorzeichen und Stellgröße geprüft werden.
@@ -965,6 +965,19 @@ Prüfen:
 Danach aktive Steuerung wieder freigeben.
 
 ## Versionshistorie
+
+### 2.1.2 – Nachtruhe im Dashboard (in Vorbereitung)
+
+- Bei erwarteter Mindest-SOC-Abschaltung unterscheidet der Datenstatus nun
+  „Nachtruhe am Mindest-SOC“ von einer unerwarteten Offline-Meldung.
+- Das automatisch erzeugte Dashboard zeigt während fehlender NOAH-Stellwerte
+  einen kompakten Zustand anstelle der vier nicht verfügbaren Gauges und der
+  langen Liste nicht verfügbarer Messwerte. Die Tageskarten und ihre
+  Energiefluss-Konfiguration bleiben erhalten.
+- Ein weiterhin verfügbarer Netzsensor aktualisiert Netzleistung, Bezug und
+  Einspeisung auch dann, wenn der NOAH offline ist. Ein angezeigter letzter
+  SOC-Wert wird ausdrücklich als **kein Live-Wert** bezeichnet.
+- Die Offline-Sperre für Stellbefehle und PV-Learning bleibt aktiv.
 
 ### 2.1.1
 

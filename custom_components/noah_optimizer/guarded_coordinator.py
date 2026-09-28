@@ -11,6 +11,8 @@ from homeassistant.util import dt as dt_util
 from .const import (
     CONF_BATTERY_SOC,
     CONF_FORECAST_REMAINING,
+    CONF_GRID_POWER,
+    CONF_INVERT_GRID_SIGN,
     CONTROLLER_OFF,
     CONTROLLER_SOC_HOLD,
     CONTROLLER_SOC_RELEASE,
@@ -19,6 +21,8 @@ from .const import (
     DATA_CRITICAL_DATA_OK,
     DATA_FORECAST_AVAILABLE,
     DATA_GRID_POWER,
+    DATA_GRID_IMPORT,
+    DATA_GRID_EXPORT,
     DATA_OUTPUT_POWER,
     DATA_OUTPUT_TARGET,
     DATA_RELEASABLE_BATTERY_ENERGY,
@@ -31,6 +35,7 @@ from .const import (
     OPT_MAX_OUTPUT,
     OPT_SOC_RELEASE_ENABLED,
     STATUS_ACTUATOR_UNAVAILABLE,
+    STATUS_EXPECTED_NIGHT_SHUTDOWN,
 )
 from .coordinator import NoahOptimizerCoordinator
 from .forecast_curve import ForecastCurveData
@@ -432,11 +437,27 @@ class NoahOfflineAwareCoordinator(NoahOptimizerCoordinator):
     def _offline_snapshot(self) -> dict[str, Any]:
         """Return the last known data marked as unsafe for active control."""
         data = dict(self.data or {})
+        # The grid meter is independent of Noah-MQTT. Keep its *current*
+        # measurement visible while all NOAH-based control remains blocked.
+        grid_power = self._read_power_w(self.entry.data[CONF_GRID_POWER])
+        if grid_power is not None and self.entry.data.get(CONF_INVERT_GRID_SIGN, False):
+            grid_power *= -1
+        data[DATA_GRID_POWER] = round(grid_power) if grid_power is not None else None
+        data[DATA_GRID_IMPORT] = (
+            round(max(grid_power, 0.0)) if grid_power is not None else None
+        )
+        data[DATA_GRID_EXPORT] = (
+            round(max(-grid_power, 0.0)) if grid_power is not None else None
+        )
         data[DATA_CRITICAL_DATA_OK] = False
         data[DATA_ACTUATOR_AVAILABLE] = False
         data[DATA_OUTPUT_TARGET] = None
         data[DATA_CONTROLLER_MODE] = CONTROLLER_OFF
-        data[DATA_STATUS] = STATUS_ACTUATOR_UNAVAILABLE
+        data[DATA_STATUS] = (
+            STATUS_EXPECTED_NIGHT_SHUTDOWN
+            if getattr(getattr(self, "controller", None), "expected_night_shutdown", False)
+            else STATUS_ACTUATOR_UNAVAILABLE
+        )
         return data
 
     def _apply_soc_release_hysteresis(

@@ -1,3 +1,20 @@
+## [2.1.2] – planned patch
+
+### Fixed
+
+- distinguish the expected minimum-SOC night shutdown from an unexpected NOAH outage in the data-status enum
+- show a compact offline view in the integration-owned dashboard instead of unavailable gauges and long unavailable status lists
+- retain the existing daytime energy-flow card and its visual settings during the dashboard v22 migration
+- refresh independently available grid power, import and export during NOAH offline mode while output commands remain blocked
+- label the last reported SOC as historical, not as a current measurement
+
+### Compatibility
+
+- no new integration options; dashboard migration targets recognized generated cards
+- user-managed dashboards outside the integration-owned dashboard require a manual card change
+
+---
+
 ## [2.1.0]
 
 ### Stable release candidate

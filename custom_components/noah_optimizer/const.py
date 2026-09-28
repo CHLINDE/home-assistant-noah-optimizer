@@ -170,6 +170,7 @@ STATUS_CRITICAL_DATA_MISSING: Final = "critical_data_missing"
 STATUS_BATTERY_DATA_MISSING: Final = "battery_data_missing"
 STATUS_FORECAST_UNAVAILABLE: Final = "forecast_unavailable"
 STATUS_ACTUATOR_UNAVAILABLE: Final = "actuator_unavailable"
+STATUS_EXPECTED_NIGHT_SHUTDOWN: Final = "expected_night_shutdown"
 
 DYNAMIC_SOC_AHEAD: Final = "ahead"
 DYNAMIC_SOC_ON_TRACK: Final = "on_track"
