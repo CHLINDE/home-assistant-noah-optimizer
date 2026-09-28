@@ -31,6 +31,7 @@ from .const import (
     DYNAMIC_SOC_NIGHT,
     OPT_MIN_SOC,
     STATUS_ACTUATOR_UNAVAILABLE,
+    STATUS_EXPECTED_NIGHT_SHUTDOWN,
 )
 from .control import NoahOptimizerController
 
@@ -65,6 +66,7 @@ class NoahOfflineGuard:
         self._offline = False
         self._offline_reason: str | None = None
         self._offline_notified = False
+        self._expected_night_shutdown = False
         self._first_online_cleanup_done = False
         self._started_at = dt_util.utcnow()
 
@@ -92,6 +94,11 @@ class NoahOfflineGuard:
         """Return the discovered Noah-MQTT connectivity entity."""
 
         return self._connectivity_entity_id
+
+    @property
+    def expected_night_shutdown(self) -> bool:
+        """Return whether the offline NOAH is resting at minimum SOC."""
+        return self._offline and self._expected_night_shutdown
 
     def source_updates_allowed(self) -> bool:
         """Return whether Noah-MQTT source values may be consumed.
@@ -374,12 +381,19 @@ class NoahOfflineGuard:
 
         self._offline = True
         self._offline_reason = reason
+        self._expected_night_shutdown = (
+            suppression_reason == "expected_min_soc_night_shutdown"
+        )
 
         # Noah-MQTT can leave numeric values cached/available while the
         # physical device itself is offline. Override the optimizer-facing
         # status after each normal coordinator refresh.
         self.coordinator.data[DATA_ACTUATOR_AVAILABLE] = False
-        self.coordinator.data[DATA_STATUS] = STATUS_ACTUATOR_UNAVAILABLE
+        self.coordinator.data[DATA_STATUS] = (
+            STATUS_EXPECTED_NIGHT_SHUTDOWN
+            if self._expected_night_shutdown
+            else STATUS_ACTUATOR_UNAVAILABLE
+        )
 
         # A minimum-SOC night shutdown is expected and intentionally blocks
         # all Noah-MQTT source updates. Do not let the dynamic SOC target stay
@@ -448,6 +462,7 @@ class NoahOfflineGuard:
 
         self._offline = False
         self._offline_reason = None
+        self._expected_night_shutdown = False
 
         if self._offline_notified or not self._first_online_cleanup_done:
             await self._async_dismiss_offline_notification()
@@ -515,4 +530,5 @@ class NoahOfflineGuard:
 
         self._offline = False
         self._offline_reason = None
+        self._expected_night_shutdown = False
         self._offline_notified = False

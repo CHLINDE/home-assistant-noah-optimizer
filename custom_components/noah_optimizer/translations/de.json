@@ -182,7 +182,8 @@
           "critical_data_missing": "Kritische Daten fehlen",
           "battery_data_missing": "Batteriedaten fehlen",
           "forecast_unavailable": "Prognose nicht verfügbar",
-          "actuator_unavailable": "Stellgröße nicht verfügbar"
+          "actuator_unavailable": "Stellgröße nicht verfügbar",
+          "expected_night_shutdown": "Nachtruhe am Mindest-SOC"
         }
       },
       "controller_status": {

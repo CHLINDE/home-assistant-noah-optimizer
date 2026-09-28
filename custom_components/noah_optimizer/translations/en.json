@@ -182,7 +182,8 @@
           "critical_data_missing": "Critical data missing",
           "battery_data_missing": "Battery data missing",
           "forecast_unavailable": "Forecast unavailable",
-          "actuator_unavailable": "Output control unavailable"
+          "actuator_unavailable": "Output control unavailable",
+          "expected_night_shutdown": "Resting at minimum SOC overnight"
         }
       },
       "controller_status": {
