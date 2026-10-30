@@ -3,7 +3,7 @@
 Prognosebasierte Steuerung der Ausgangsleistung eines Growatt NOAH 2000
 über Home Assistant und Noah-MQTT.
 
-> **Status:** Stabiler Release `2.1.1`; Korrektur `2.1.2` in Vorbereitung.
+> **Status:** Stabiler Release `2.1.1`; Patch `2.1.2` auf `main` in Vorbereitung. Entwicklungsbranch: `2.2.0-beta.1` (PV-Überschussladung und Tests).
 >
 > Die aktive Steuerung kann die NOAH-Ausgangsleistung verändern. Vor der
 > Aktivierung sollten Quellwerte, Netzvorzeichen und Stellgröße geprüft werden.
@@ -41,6 +41,21 @@ Prognosebasierte Steuerung der Ausgangsleistung eines Growatt NOAH 2000
 - SOC-Freigabe mit Hysterese stabil um den Netz-Nullpunkt regeln
 - SOC-Ladeplan bei neuen Forecast.Solar-Kurven auf Ist-SOC und verbleibende Prognose neu verankern
 - verbleibende Forecast-Kurvenenergie auf die Forecast.Solar-Restprognose normieren
+
+## Tests (Entwicklung)
+
+Der Branch `feature/pv-surplus-charge-priority` enthält erstmals eine reproduzierbare Python-Testsuite mit `pytest`, Controller-/Coordinator-Regressionsszenarien und automatischer GitHub-Actions-Prüfung.
+
+Lokal mit Python 3.14:
+
+```bash
+python -m pip install -r requirements-test.txt
+python -m pytest tests/ -q
+```
+
+Die Coverage-Untergrenze von 95 % gilt zunächst **nur für das neue Modul** `pv_surplus.py`, nicht für die gesamte Integration. GitHub Actions prüft außerdem Python-Syntax und Ruff für die neue PV-Regelung und Tests. Der produktive NOAH wird durch die Tests nicht angesteuert.
+
+`2.2.0-beta.1` ist noch nicht für den produktiven Betrieb freigegeben.
 
 ## HACS-Integration
 
