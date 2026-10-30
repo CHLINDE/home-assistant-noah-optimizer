@@ -1,3 +1,20 @@
+## [2.2.0-beta.1] – PV surplus control and automated tests (development)
+
+### Changed
+
+- while battery SOC remains below the configured target, suppress avoidable export by limiting SOC-hold output using instantaneous grid measurements even when the five-minute grid average is stale
+- in PV diversion, redirect only the grid import above the configured reserve and never more than current measured battery charge power
+- preserve all existing battery limits, safety shutdowns, off-line guards and manual modes
+
+### Quality
+
+- introduce reproducible pytest tests for PV diversion, battery charging, actual coordinator mode selection and controller command timing
+- run Python tests and branch coverage in GitHub Actions alongside Ruff lint, HACS and Hassfest checks
+- start with >=95% branch coverage for the small newly introduced PV surplus helper; this does NOT yet mean 95% coverage of the whole integration
+- no production rollout; physical NOAH testing and CI verification are required before release
+
+---
+
 ## [2.1.2] – planned patch
 
 ### Fixed
