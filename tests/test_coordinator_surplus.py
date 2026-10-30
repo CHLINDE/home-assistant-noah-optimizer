@@ -142,4 +142,5 @@ async def test_when_no_battery_charge_does_not_redirect(monkeypatch) -> None:
     )
     data = await coordinator._async_update_data()
     assert data[DATA_CONTROLLER_MODE] == CONTROLLER_SOC_HOLD
-    assert data[DATA_OUTPUT_TARGET] <= 450
+    # SOC hold may still serve additional PV, but it is not PV diversion.
+    assert data[DATA_OUTPUT_TARGET] == 490
