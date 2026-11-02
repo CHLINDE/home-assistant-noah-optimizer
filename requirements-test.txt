@@ -1,0 +1,5 @@
+# Development/test tooling only. Not installed by HACS.
+pytest>=8.3,<10
+pytest-asyncio>=1.0,<2
+pytest-cov>=6,<9
+pytest-homeassistant-custom-component>=0.13.0

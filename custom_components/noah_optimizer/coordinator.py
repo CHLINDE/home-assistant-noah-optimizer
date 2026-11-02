@@ -129,6 +129,7 @@ from .const import (
 from .forecast_curve import ForecastCurveData, build_forecast_curve, target_after_hours
 from .history import NoahHistoryStore
 from .pv_learning import PvLearning
+from .pv_surplus import instantaneous_hold_cap, pv_redirect_headroom
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -981,16 +982,16 @@ class NoahOptimizerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             max_output,
         )
 
-        # If the battery is already at or above the dynamic SOC target while
-        # it is still charging, simultaneous grid import should not be used
-        # merely to keep that charging power high. Redirect only the smaller
-        # of current grid import and current battery charging power to the
-        # household. This raises NOAH output without deliberately discharging
-        # the battery.
+        # When the battery is already ahead of its dynamic SOC schedule,
+        # redirect only actual grid import *above* the configured reserve
+        # to the house. The remaining buffer avoids chasing 0 W import and
+        # overshooting into export as household load or PV output changes.
+        # Never redirect more power than is currently charging the battery.
         pv_redirect_power = (
-            min(
-                max(grid_power, 0.0),
-                max(charging_power or 0.0, 0.0),
+            pv_redirect_headroom(
+                grid_power,
+                charging_power or 0.0,
+                grid_reserve,
             )
             if battery_data_ok
             else 0.0
@@ -1014,13 +1015,20 @@ class NoahOptimizerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             self_consumption_target,
         )
 
-        # Schedule-hold uses available PV for household consumption but
-        # never deliberately requests more output than current PV production.
-        # Predictive SOC release remains the only automatic mode that may
+        # Schedule-hold uses only available PV. Additionally cap its output
+        # from the instantaneous grid reading: a stale positive five-minute
+        # average must not raise output while the grid is already exporting,
+        # or while current import is smaller than the configured reserve.
+        # Predictive SOC release is the only automatic mode that may
         # intentionally use safely releasable battery energy above the plan.
         soc_hold_target = min(
             max(solar_power, 0.0),
             self_consumption_target,
+            instantaneous_hold_cap(
+                output_power,
+                grid_power,
+                grid_reserve,
+            ),
         )
 
         dynamic_catchup_active = (
