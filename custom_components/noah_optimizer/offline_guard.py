@@ -230,7 +230,11 @@ class NoahOfflineGuard:
         return True, "online"
 
     def _last_known_soc(self) -> float | None:
-        """Return the configured battery SOC without consuming coordinator data."""
+        """Prefer the last confirmed SOC over retained offline source values."""
+
+        trusted = getattr(self.coordinator, "last_trusted_soc", None)
+        if trusted is not None:
+            return trusted
 
         entity_id = self.coordinator.entry.data.get(CONF_BATTERY_SOC)
         if entity_id:
@@ -384,6 +388,11 @@ class NoahOfflineGuard:
         self._expected_night_shutdown = (
             suppression_reason == "expected_min_soc_night_shutdown"
         )
+        # An offline source may advertise a placeholder 0 %. Do not publish
+        # it as a measurement; an unknown SOC must stay unavailable.
+        self.coordinator.mark_soc_offline()
+        self.coordinator.data[DATA_SOC] = None
+        self.coordinator.data[DATA_SOC_DEVIATION] = None
 
         # Noah-MQTT can leave numeric values cached/available while the
         # physical device itself is offline. Override the optimizer-facing
