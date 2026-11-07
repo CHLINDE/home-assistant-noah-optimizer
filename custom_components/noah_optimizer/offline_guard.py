@@ -416,7 +416,9 @@ class NoahOfflineGuard:
                 min_soc = None
 
             if min_soc is not None:
-                soc = self._last_known_soc()
+                # The original MQTT state may still contain a synthetic 0 %.
+                # Only use confirmed prior SOC for the offline deviation.
+                soc = getattr(self.coordinator, "last_trusted_soc", None)
                 self.coordinator.data[DATA_DYNAMIC_SOC_TARGET] = round(
                     min_soc,
                     1,
