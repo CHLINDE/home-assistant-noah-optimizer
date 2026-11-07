@@ -27,18 +27,21 @@ from .const import (
     DATA_OUTPUT_TARGET,
     DATA_RELEASABLE_BATTERY_ENERGY,
     DATA_SOC,
+    DATA_SOC_DEVIATION,
     DATA_SOC_RELEASE_FLOOR,
     DATA_SOC_RELEASE_TARGET,
     DATA_STATUS,
     OPT_COMMAND_STEP,
     OPT_GRID_RESERVE,
     OPT_MAX_OUTPUT,
+    OPT_MIN_SOC,
     OPT_SOC_RELEASE_ENABLED,
     STATUS_ACTUATOR_UNAVAILABLE,
     STATUS_EXPECTED_NIGHT_SHUTDOWN,
 )
 from .coordinator import NoahOptimizerCoordinator
 from .forecast_curve import ForecastCurveData
+from .soc_guard import SocZeroGuard
 
 # A short Forecast.Solar runtime outage must not replace a valid intraday SOC
 # plan with the old daylight fallback. The cache is deliberately bounded and
@@ -57,6 +60,7 @@ class NoahOfflineAwareCoordinator(NoahOptimizerCoordinator):
         """Initialize the guarded coordinator."""
         super().__init__(hass, entry)
         self._source_updates_allowed: Callable[[], bool] | None = None
+        self._soc_guard = SocZeroGuard()
 
         self._last_forecast_curve: ForecastCurveData | None = None
         self._last_forecast_curve_cached_at: datetime | None = None
@@ -70,6 +74,26 @@ class NoahOfflineAwareCoordinator(NoahOptimizerCoordinator):
         ) = None
         self._forecast_plan_anchor_at: datetime | None = None
         self._forecast_plan_anchor_soc: float | None = None
+
+    @property
+    def last_trusted_soc(self) -> float | None:
+        """Last confirmed SOC for diagnostics, never for active control."""
+        return self._soc_guard.last_trusted_soc
+
+    def mark_soc_offline(self) -> None:
+        """Invalidate pending zero-percent evidence on loss of connectivity."""
+        self._soc_guard.reset_pending()
+
+    def _read_soc(self, entity_id: str) -> float | None:
+        """Suppress retained startup zero until fresh SOC reports confirm it."""
+        value = super()._read_soc(entity_id)
+        state = self.hass.states.get(entity_id)
+        return self._soc_guard.observe(
+            value,
+            now=dt_util.utcnow(),
+            source_updated_at=getattr(state, "last_updated", None),
+            minimum_soc=float(self.get_option(OPT_MIN_SOC)),
+        )
 
     def set_source_update_guard(
         self,
@@ -437,6 +461,9 @@ class NoahOfflineAwareCoordinator(NoahOptimizerCoordinator):
     def _offline_snapshot(self) -> dict[str, Any]:
         """Return the last known data marked as unsafe for active control."""
         data = dict(self.data or {})
+        self.mark_soc_offline()
+        data[DATA_SOC] = None
+        data[DATA_SOC_DEVIATION] = None
         # The grid meter is independent of Noah-MQTT. Keep its *current*
         # measurement visible while all NOAH-based control remains blocked.
         grid_power = self._read_power_w(self.entry.data[CONF_GRID_POWER])

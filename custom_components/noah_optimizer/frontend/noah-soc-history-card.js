@@ -284,18 +284,20 @@ class NoahSocHistoryCard extends HTMLElement {
     }
   }
 
-  _parseSeries(entityId) {
+  _parseSeries(entityId, keepUnavailable = false) {
     const raw = this._history?.[entityId] || [];
     const points = [];
     for (const item of raw) {
       const state = item.state ?? item.s;
-      const value = Number(state);
-      if (!Number.isFinite(value)) continue;
+      const value = state == null || state === "" ? NaN : Number(state);
+      if (!Number.isFinite(value) && !keepUnavailable) continue;
       let time = item.last_updated ?? item.last_changed ?? item.lu ?? item.lc;
       if (typeof time === "number") time *= 1000;
       else time = Date.parse(time);
       if (!Number.isFinite(time)) continue;
-      points.push([time, value]);
+      // Explicit unavailable/unknown states must break the measured curve,
+      // rather than drawing a misleading line across an overnight outage.
+      points.push([time, Number.isFinite(value) ? value : null]);
     }
     points.sort((a, b) => a[0] - b[0]);
     return points;
@@ -335,7 +337,7 @@ class NoahSocHistoryCard extends HTMLElement {
     const endDate = new Date(`${this._selectedDate}T00:00:00`);
     endDate.setDate(endDate.getDate() + 1);
     const end = endDate.getTime();
-    const actual = this._clipSeries(this._parseSeries(this._config.soc_entity), start, end);
+    const actual = this._clipSeries(this._parseSeries(this._config.soc_entity, true), start, end);
     const dynamic = this._clipSeries(this._parseSeries(this._config.dynamic_target_entity), start, end);
     const target = this._clipSeries(this._parseSeries(this._config.target_soc_entity), start, end);
     const snapshot = this._selectedSnapshot();
@@ -453,21 +455,30 @@ class NoahSocHistoryCard extends HTMLElement {
   }
 
   _path(points, x, y, step, cls, extendTo = null) {
-    const filtered = points.filter((p) => Number.isFinite(p[0]) && Number.isFinite(p[1]));
-    if (!filtered.length) return "";
-    let d = `M ${x(filtered[0][0]).toFixed(2)} ${y(filtered[0][1]).toFixed(2)}`;
-    let previous = filtered[0];
-    for (const current of filtered.slice(1)) {
-      if (step) {
-        d += ` L ${x(current[0]).toFixed(2)} ${y(previous[1]).toFixed(2)}`;
+    const filtered = points.filter(
+      (p) => Number.isFinite(p[0]) && (p[1] === null || Number.isFinite(p[1])),
+    );
+    let d = "";
+    let previous = null;
+    for (const current of filtered) {
+      if (current[1] === null) {
+        previous = null; // An offline measurement is a break, not 0 %.
+        continue;
       }
-      d += ` L ${x(current[0]).toFixed(2)} ${y(current[1]).toFixed(2)}`;
+      if (previous === null) {
+        d += ` M ${x(current[0]).toFixed(2)} ${y(current[1]).toFixed(2)}`;
+      } else {
+        if (step) {
+          d += ` L ${x(current[0]).toFixed(2)} ${y(previous[1]).toFixed(2)}`;
+        }
+        d += ` L ${x(current[0]).toFixed(2)} ${y(current[1]).toFixed(2)}`;
+      }
       previous = current;
     }
-    if (extendTo && extendTo > previous[0]) {
+    if (extendTo && previous !== null && extendTo > previous[0]) {
       d += ` L ${x(extendTo).toFixed(2)} ${y(previous[1]).toFixed(2)}`;
     }
-    return `<path class="line ${cls}" d="${d}"></path>`;
+    return d ? `<path class="line ${cls}" d="${d}"></path>` : "";
   }
 
   _valueAt(points, time, step = false, extendTo = null) {
@@ -487,11 +498,13 @@ class NoahSocHistoryCard extends HTMLElement {
 
     const index = Math.max(0, high);
     const current = points[index];
+    if (current[1] === null) return null;
     if (step || index >= points.length - 1 || current[0] === time) {
       return current[1];
     }
 
     const next = points[index + 1];
+    if (next[1] === null) return current[1];
     const span = next[0] - current[0];
     if (span <= 0) return current[1];
     const fraction = Math.max(0, Math.min(1, (time - current[0]) / span));

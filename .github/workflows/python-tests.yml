@@ -30,6 +30,8 @@ jobs:
         run: python -m pytest tests/ -q
       - name: Check Python syntax
         run: python -m compileall -q custom_components/noah_optimizer
+      - name: Check SOC history card JavaScript syntax
+        run: node --check custom_components/noah_optimizer/frontend/noah-soc-history-card.js
 
   lint:
     runs-on: ubuntu-latest
