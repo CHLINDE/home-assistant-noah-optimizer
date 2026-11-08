@@ -35,7 +35,7 @@ from .control import (
 )
 from .coordinator import NoahOptimizerCoordinator
 from .guarded_coordinator import NoahOfflineAwareCoordinator
-from .dashboard_migration_v23 import (
+from .dashboard_migration_v25 import (
     async_ensure_dashboard,
     remove_dashboard_panel,
 )
