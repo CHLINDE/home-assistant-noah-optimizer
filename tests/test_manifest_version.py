@@ -15,6 +15,6 @@ def test_integration_manifest_version() -> None:
             encoding="utf-8"
         )
     )
-    assert manifest["version"] == "2.2.0-beta.2"
+    assert manifest["version"] == "2.2.0-beta.3"
     assert manifest["domain"] == "noah_optimizer"
     assert manifest["requirements"] == []
