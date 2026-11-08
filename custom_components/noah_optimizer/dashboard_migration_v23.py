@@ -16,7 +16,9 @@ from typing import Any
 from . import dashboard_migration_v22 as _previous_migration  # noqa: F401
 from . import dashboard as _dashboard
 
-_dashboard.DASHBOARD_TEMPLATE_VERSION = 23
+# Bump the stored dashboard template version so early beta-3 test installs
+# with the broken condition are repaired automatically on the next restart.
+_dashboard.DASHBOARD_TEMPLATE_VERSION = 24
 _PATCH_MARKER = "_noah_template_v23_safe_dashboard_installed"
 
 
@@ -138,7 +140,12 @@ def _wrapped_card(
             {
                 "type": "conditional",
                 "conditions": [
-                    {"condition": "state_not", "entity": critical, "state": "on"}
+                    {
+                        "condition": "not",
+                        "conditions": [
+                            {"condition": "state", "entity": critical, "state": "on"}
+                        ],
+                    }
                 ],
                 "card": note,
             },
