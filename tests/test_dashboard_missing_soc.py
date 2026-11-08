@@ -158,7 +158,7 @@ def test_offline_message_describes_missing_data_in_both_languages():
     en = _offline_content(_entities(), german=False)
     assert "expected_night_shutdown" in de
     assert "critical_data_missing" in de
-    assert "keine" in de.lower()
+    assert "kein live-wert" in de.lower()
     assert "no live measurement" in en
     assert "blocked" in en
     assert "0 %" not in de
