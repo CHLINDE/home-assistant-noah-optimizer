@@ -9,6 +9,7 @@ import yaml
 
 from custom_components.noah_optimizer.dashboard_migration_v20 import (
     _energy_flow_card,
+    _apply_energy_flow_v20,
 )
 from custom_components.noah_optimizer.dashboard_migration_v25 import (
     _classic_power_flow,
@@ -121,3 +122,12 @@ def test_new_english_dashboard_recovers_classic_flow():
     classic = config["views"][0]["sections"][0]["cards"][0]
     assert classic["title"] == "Current energy flow"
     assert classic["entities"]["home"]["name"] == "Home"
+
+
+def test_legacy_v20_migration_never_overwrites_classic_flow():
+    ids = entities()
+    classic = _classic_power_flow(ids, german=True)
+    original = deepcopy(classic)
+    config = make_config(classic)
+    assert _apply_energy_flow_v20(config, ids, german=True)
+    assert config["views"][0]["sections"][0]["cards"][0] == original
