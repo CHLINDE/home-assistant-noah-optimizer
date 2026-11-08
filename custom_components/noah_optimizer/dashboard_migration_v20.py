@@ -135,11 +135,12 @@ def _apply_energy_flow_v20(
     *,
     german: bool,
 ) -> bool:
-    """Replace only the recognized generated legacy energy-flow card.
+    """Preserve classic Power Flow Card Plus diagrams during migrations.
 
-    User-created Power Flow Card Plus cards are intentionally left untouched.
-    Returning True for an already migrated generated card also allows the
-    template version to advance without repeating the migration on restart.
+    Earlier releases automatically replaced existing diagrams, discarding
+    user-selected appearance and flow styling. This is no longer desired.
+    Keep the v20 recognizer for legacy installations and let the v25 migration
+    restore already converted standard cards to the familiar classic style.
     """
     recognized = False
     changed = False
@@ -152,10 +153,9 @@ def _apply_energy_flow_v20(
         if not _is_generated_legacy_energy_flow(card, replacements):
             continue
 
+        # Classic Power Flow Card Plus is user-facing configuration. Never
+        # replace it with the bundled flow visual during dashboard migration.
         recognized = True
-        card.clear()
-        card.update(_energy_flow_card(replacements, german=german))
-        changed = True
 
     return changed or recognized
 
