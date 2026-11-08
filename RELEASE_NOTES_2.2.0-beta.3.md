@@ -8,7 +8,8 @@ Beta 3 baut auf v2.2.0-beta.2 auf und korrigiert die Anzeige unvollständiger Li
 - **Richtige Freigabebedingung:** Die Live-Anzeige verwendet jetzt „Kritische Daten gültig“ anstatt lediglich „Stellgröße erreichbar“. So werden bei einem nach der Nachtabschaltung wieder verbundenen Gerät keine ungültigen SOC-Werte dargestellt.
 - **Unbekannter SOC bleibt unbekannt:** Die Anzeige erfindet keinen Batteriestand und behauptet nicht, dass der letzte Messwert aktuell sei.
 - **Automatische Rückkehr zur Normalansicht:** Sobald wieder gültige Messwerte vorhanden sind, erscheinen die bisherigen Energiefluss- und Kennzahlenkarten unverändert.
-- **Dashboard-Migration (Template v24):** Bereits unter Beta 2 gespeicherte Standardkarten sowie erste Beta-3-Testinstallationen werden berücksichtigt. Die fehlerhafte inverse Sichtbarkeitsbedingung wird korrigiert, vorhandene persönliche Einstellungen der Online-Karten bleiben erhalten.
+- **Dashboard-Migration (Template v25):** Bereits unter Beta 2 gespeicherte Standardkarten sowie Beta-3-Testinstallationen werden berücksichtigt. Die inverse Sichtbarkeitsbedingung bleibt korrigiert.
+- **Ursprüngliches Energieflussdiagramm wiederhergestellt:** Die standardmäßig durch die v20-Migration ersetzte Power Flow Card Plus wird in der ursprünglichen Form mit farbigen Kreisen und geschwungenen Verbindungen wieder angezeigt. Individuell angepasste Energieflusskarten bleiben unangetastet.
 
 ### Sicherheit
 
