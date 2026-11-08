@@ -1,0 +1,45 @@
+name: Publish v2.2.0-beta.3
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/release-v2.2.0-beta.3.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-v2.2.0-beta.3
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the release commit
+        uses: actions/checkout@v4
+
+      - name: Verify beta version and release notes
+        run: |
+          version=$(python3 -c 'import json; print(json.load(open("custom_components/noah_optimizer/manifest.json"))["version"])')
+          test "$version" = "2.2.0-beta.3"
+          test -f RELEASE_NOTES_2.2.0-beta.3.md
+
+      - name: Package the complete repository
+        run: git archive --format=zip --output=noah-optimizer-2.2.0-beta.3.zip HEAD
+
+      - name: Publish GitHub pre-release and tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh release view v2.2.0-beta.3 >/dev/null 2>&1; then
+            echo "v2.2.0-beta.3 is already published"
+            exit 0
+          fi
+          gh release create v2.2.0-beta.3 noah-optimizer-2.2.0-beta.3.zip \
+            --target "$GITHUB_SHA" \
+            --title "Growatt NOAH Optimizer 2.2.0-beta.3" \
+            --notes-file RELEASE_NOTES_2.2.0-beta.3.md \
+            --prerelease
