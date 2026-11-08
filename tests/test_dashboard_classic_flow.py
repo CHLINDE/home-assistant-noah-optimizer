@@ -22,7 +22,7 @@ ROOT = Path(__file__).resolve().parents[1]
 def entities() -> dict[str, str]:
     names = (
         "__GRID_IMPORT__", "__GRID_EXPORT__", "__SOLAR_POWER__",
-        "__DISCHARGING_POWER__", "__CHARGING_POWER__", "__SOC__",
+        "__OUTPUT_POWER__", "__DISCHARGING_POWER__", "__CHARGING_POWER__", "__SOC__",
         "__HOME_LOAD__",
     )
     return {name: "sensor." + name.strip("_").lower() for name in names}
