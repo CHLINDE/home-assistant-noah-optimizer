@@ -72,7 +72,16 @@ def test_invalid_soc_hides_live_gauges_even_when_actuator_is_online():
         {"condition": "state", "entity": "binary_sensor.noah_critical_data", "state": "on"}
     ]
     assert fallback["conditions"] == [
-        {"condition": "state_not", "entity": "binary_sensor.noah_critical_data", "state": "on"}
+        {
+            "condition": "not",
+            "conditions": [
+                {
+                    "condition": "state",
+                    "entity": "binary_sensor.noah_critical_data",
+                    "state": "on",
+                }
+            ],
+        }
     ]
     assert live["card"] == original
     assert fallback["card"]["type"] == "markdown"
@@ -115,7 +124,7 @@ def test_beta2_actuator_conditional_wrapper_is_upgraded_without_nesting():
     assert live["card"] == original
     assert fallback["card"]["type"] == "markdown"
     assert live["conditions"][0]["entity"] == "binary_sensor.noah_critical_data"
-    assert fallback["conditions"][0]["condition"] == "state_not"
+    assert fallback["conditions"][0]["condition"] == "not"
     assert _apply_valid_data_view(config, _entities(), german=True) is False
 
 
@@ -162,3 +171,51 @@ def test_offline_message_describes_missing_data_in_both_languages():
     assert "no live measurement" in en
     assert "blocked" in en
     assert "0 %" not in de
+
+
+def test_early_beta3_invalid_wrapper_is_repaired_in_place():
+    """A previous local beta-3 test already saved template 23."""
+    original = _gauges()
+    early_beta3 = {
+        "type": "vertical-stack",
+        "cards": [
+            {
+                "type": "conditional",
+                "conditions": [
+                    {
+                        "condition": "state",
+                        "entity": "binary_sensor.noah_critical_data",
+                        "state": "on",
+                    }
+                ],
+                "card": deepcopy(original),
+            },
+            {
+                "type": "conditional",
+                "conditions": [
+                    {
+                        "condition": "state_not",
+                        "entity": "binary_sensor.noah_critical_data",
+                        "state": "on",
+                    }
+                ],
+                "card": {
+                    "type": "markdown",
+                    "content": "NOAH: Warten auf gültige Messwerte",
+                },
+            },
+        ],
+    }
+    config = _config(early_beta3)
+    assert _apply_valid_data_view(config, _entities(), german=True)
+    live, fallback = _children(config)
+    assert live["card"] == original
+    assert fallback["conditions"][0]["condition"] == "not"
+    assert fallback["conditions"][0]["conditions"] == [
+        {
+            "condition": "state",
+            "entity": "binary_sensor.noah_critical_data",
+            "state": "on",
+        }
+    ]
+    assert _apply_valid_data_view(config, _entities(), german=True) is False
